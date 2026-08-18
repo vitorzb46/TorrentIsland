@@ -3,6 +3,10 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# script
+gerar_contexto.bat
+./graphify-out
+
 # dotenv files
 .env
 

@@ -1,0 +1,168 @@
+﻿using Microsoft.Extensions.Localization;
+using System.Diagnostics.CodeAnalysis;
+using TorrentIsland.Application.Contracts;
+using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Presentation.Console.Renderers;
+
+namespace TorrentIsland.Presentation.Console.EntryPoint
+{
+    internal sealed class EntryPoint(ITorrentRepository _repository, IIniciarStreamTorrent _iniciarStream, IIniciarDownload _iniciarDownload, IStringLocalizer<EntryPoint> localizer, ConsoleLogRenderer renderer)
+    {
+        private Guid torrentId;
+        public async Task Executar(string[] args)
+        {
+            var id = _repository.Todos().Select(x => x.Id).FirstOrDefault();
+            var nome = _repository.Todos().Select(x => x.Nome).FirstOrDefault();
+            var estado = _repository.Todos().Select(x => x.Estado).FirstOrDefault();
+            renderer.Painel.Adicionar("[cyan]Torrent Island - Console[/]");
+            renderer.Painel.Adicionar($"([cyan]{id}[/]) {nome} - Status: {estado}");
+            renderer.Painel.Adicionar("[cyan]Pressione Ctrl+C para encerrar.[/]");
+
+
+            args = ["stream", "magnet:?xt=urn:btih:A2405A183F1451C0DE8963D4EC408A1194628331&dn=Lioness+2023+S03E01+1080p+HEVC+x265-MeGusta&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce&tr=udp%3A%2F%2Fexplodie.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.ololosh.space%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dump.cl%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.bittor.pw%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker-udp.gbitt.info%3A80%2Fannounce&tr=udp%3A%2F%2Fretracker01-msk-virt.corbina.net%3A80%2Fannounce&tr=udp%3A%2F%2Fopen.free-tracker.ga%3A6969%2Fannounce&tr=udp%3A%2F%2Fns-1.x-fins.com%3A6969%2Fannounce&tr=udp%3A%2F%2Fleet-tracker.moe%3A1337%2Fannounce&tr=udp%3A%2F%2Fp4p.arenabg.com%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.open-internet.nl%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Fdenis.stalker.upeer.me%3A6969%2Fannounce"];
+
+
+            if (args.Length == 0)
+            {
+                System.Console.WriteLine(localizer["Console_Uso"]);
+                return;
+            }
+
+            try
+            {
+                switch (args[0].ToUpperInvariant())
+                {
+                    case "VIDEO":
+                        await BaixarVideo(args).ConfigureAwait(false);
+                        break;
+                    case "AUDIO":
+                        await BaixarAudio(args).ConfigureAwait(false);
+                        break;
+                    case "PLAYLIST":
+                        await BaixarPlaylist(args).ConfigureAwait(false);
+                        break;
+                    case "MOSTRAR":
+                        await MostrarPlaylist(args).ConfigureAwait(false);
+                        break;
+                    case "TORRENT":
+                        await BaixarTorrent(args).ConfigureAwait(false);
+                        break;
+                    case "STREAM":
+                        await StreamarTorrent(args).ConfigureAwait(false);
+                        break;
+                    case "HELP" or "-H" or "--HELP":
+                        System.Console.WriteLine(localizer["Console_Uso"]);
+                        break;
+                    default:
+                        System.Console.WriteLine(localizer["Console_ComandoInvalido", args[0]]);
+                        System.Console.WriteLine(localizer["Console_Uso"]);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Erros de download ou de rede chegam aqui; exibe mensagem amigável.
+                System.Console.WriteLine(localizer["Console_Erro", ex.Message]);
+                throw;
+            }
+        }
+
+        private async Task BaixarVideo(string[] args)
+        {
+            string? url = ObterUrl(args, "Console_UsoVideo");
+            if (url is null)
+            {
+                return;
+            }
+            //await ydl.VideoDLAsync(url).ConfigureAwait(false);
+            return;
+        }
+
+        private async Task BaixarAudio(string[] args)
+        {
+            string? url = ObterUrl(args, "Console_UsoAudio");
+            if (url is null)
+            {
+                return;
+            }
+
+            //await ys.DownloadAudioAsync(url).ConfigureAwait(false);
+        }
+
+        private async Task BaixarPlaylist(string[] args)
+        {
+            string? url = ObterUrl(args, "Console_UsoPlaylist");
+            if (url is null)
+            {
+                return;
+            }
+
+            //await ydl.VideoDLAsync(url).ConfigureAwait(false);
+        }
+
+        private async Task MostrarPlaylist(string[] args)
+        {
+            string? url = ObterUrl(args, "Console_UsoMostrar");
+            if (url is null)
+            {
+                return;
+            }
+
+            //await ys.MostrarPlaylistAsync(url).ConfigureAwait(false);
+        }
+
+        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "O fallback de pasta não pode interromper o fluxo quando a entrada não é um magnet válido.")]
+        private async Task BaixarTorrent(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                System.Console.WriteLine(localizer["Console_UsoTorrent"]);
+                return;
+            }
+
+            string input = args[1];
+
+            if (input.StartsWith("magnet:?xt=urn:btih:"))
+            {
+                torrentId = await _iniciarDownload.DownloadAsync(input).ConfigureAwait(false);
+                return;
+            }
+            torrentId = await _iniciarDownload.PastaDownload(input).ConfigureAwait(false);
+        }
+
+        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Falhas de streaming são reportadas como mensagem amigável ao usuário.")]
+        private async Task StreamarTorrent(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                System.Console.WriteLine(localizer["Console_UsoStream"]);
+                return;
+            }
+            torrentId = await _iniciarStream.StreamAsync(args[1]).ConfigureAwait(false);
+        }
+
+        private string? ObterUrl(string[] args, string chaveUso)
+        {
+            if (args.Length < 2)
+            {
+                System.Console.WriteLine(localizer[chaveUso]);
+                return null;
+            }
+
+            if (!EhUrlValida(args[1]))
+            {
+                System.Console.WriteLine(localizer["Console_UrlInvalida", args[1]]);
+                return null;
+            }
+
+            return args[1];
+        }
+
+        private static bool EhUrlValida(string url)
+        {
+            return Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) &&
+                   (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        }
+
+    }
+}

@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TorrentIsland.Application\TorrentIsland.Application.csproj" />
+    <ProjectReference Include="..\TorrentIsland.Domain\TorrentIsland.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibVLCSharp" Version="3.10.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    <PackageReference Include="MonoTorrent" Version="3.9.0-alpha.unstable.rev0000" />
+  </ItemGroup>
+
+</Project>
