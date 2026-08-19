@@ -1,33 +1,35 @@
 using Microsoft.Extensions.Logging;
-using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Domain.DTOs;
+using TorrentIsland.Application.Medias.Commands;
+using TorrentIsland.Application.Medias.Queries;
 
 namespace TorrentIsland.Application.Services;
 
-public class TorrentService(ITorrentRepository repository, CommandsAndQueries commandsAndQueries, ILogger<TorrentService> logger) : ITorrentService
+public class TorrentService : ITorrentService
 {
-    private readonly ITorrentRepository _repository = repository;
-    private readonly CommandsAndQueries commandsAndQueries = commandsAndQueries;
-    private readonly ILogger<TorrentService> _logger = logger;
+    private readonly ITorrentRepository _repository;
+    private readonly ILogger<TorrentService> _logger;
+    private readonly IniciarTorrent IniciarTorrent;
+    private readonly ObterTorrent ObterTorrent;
 
-    public async Task<Guid> CriarTorrentAsync(string magnetLink, string savePath, CancellationToken ct)
+    public TorrentService(ITorrentRepository repository, ILogger<TorrentService> logger, IniciarTorrent iniciarTorrent, ObterTorrent obterTorrent)
     {
-        _logger.LogInformation("Criando torrent para: {MagnetLink}", magnetLink);
-
-        // Cria o DTO do Domain
-        var info = new TorrentCreationInfo(magnetLink, savePath);
-
-        // Chama o repositório
-        var torrentId = await _repository.AdicionarAsync(info, ct);
-
-        _logger.LogInformation("Torrent criado com ID: {TorrentId}", torrentId);
-
-        return torrentId;
+        _repository = repository;
+        _logger = logger;
+        IniciarTorrent = iniciarTorrent;
+        ObterTorrent = obterTorrent;
     }
-    public async Task<TorrentDto> ObterStatusAsync(Guid id)
+
+    public Task<Guid> CriarTorrentAsync(string input)
     {
-        return await commandsAndQueries.ObterStatusAsync(id).ConfigureAwait(false);
+        var id = IniciarTorrent.StartAsync(input);
+        return id;
+    }
+
+    public Task<TorrentDto> ObterTorrentAsync(Guid id)
+    {
+        var torrent = ObterTorrent.TorrentAsync(id);
+        return torrent;
     }
 }

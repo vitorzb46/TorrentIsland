@@ -1,14 +1,24 @@
-using TorrentIsland.Application.DTOs;
-using TorrentIsland.Domain.DTOs;
 using TorrentIsland.Domain.Entities;
+using TorrentIsland.Domain.Enums;
 
 namespace TorrentIsland.Application.Interfaces;
 
-public interface ITorrentRepository<TManager> where TManager : class
+public interface ITorrentRepository
 {
+    /// <summary>
+    /// Inicia o Engine. Se o magnet link for fornecido, parseia e adiciona o torrent ao motor.
+    /// Se o nome da pasta for fornecido, adiciona os torrents na pasta ao motor.
+    /// </summary>
+    /// <param name="magnetOrFolderName">Magnet link ou nome da pasta.</param>
+    /// <returns>A unique identifier for the added engine.</returns>
+    /// <returns>Um identificador único para o torrent.</returns>
     Task<Guid> AddEngineAsync(string magnetOrFolderName);
-    Task<TManager?> ObterManager(Guid id);
-    Task<Guid> RegristoIdAsync(Guid id, TManager manager);
+    IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)> EstadoDosTorrents();
+    /// <summary>
+    /// Obtém o torrent pelo id com as propriedades de progresso/velocidade/seeds preenchidas.
+    /// </summary>
+    Task<TorrentEntity?> ObterAsync(Guid id);
     Task StartAllTorrentAsync();
     Task StartTorrentAsync(Guid id);
+    Task TrackersAsync(Guid id);
 }

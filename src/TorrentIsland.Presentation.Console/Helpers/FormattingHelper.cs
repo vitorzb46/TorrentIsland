@@ -16,7 +16,7 @@ namespace TorrentIsland.Presentation.Console.Helpers
                 _ => $"{bytes:0} B",
             };
         }
-        public static string TempoEstimado(TorrentProgressDto p, double progresso)
+        public static string TempoEstimado(TorrentDto p, double progresso)
         {
             long bytesRestantes = p.TamanhoTotal - p.BytesRecebidos;
             double velocidade = p.VelocidadeDownload;

@@ -10,7 +10,7 @@ public class ObterTorrent(ITorrentRepository repository)
 
     public async Task<TorrentDto> TorrentAsync(Guid id)
     {
-        var torrent = await _repository.ObterPorIdAsync(id).ConfigureAwait(false);
-        return torrent == null ? throw new InvalidTorrentException() : TorrentDto.FromEntity(torrent);
+        var torrent = await _repository.ObterAsync(id).ConfigureAwait(false);
+        return torrent != null ? TorrentDto.FromEntity(torrent) : throw new InvalidTorrentException();
     }
 }

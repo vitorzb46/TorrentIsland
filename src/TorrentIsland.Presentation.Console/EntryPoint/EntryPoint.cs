@@ -1,21 +1,18 @@
 ﻿using Microsoft.Extensions.Localization;
-using System.Diagnostics.CodeAnalysis;
-using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Presentation.Console.Renderers;
 
 namespace TorrentIsland.Presentation.Console.EntryPoint
 {
-    internal sealed class EntryPoint(ITorrentRepository _repository, IIniciarStreamTorrent _iniciarStream, IIniciarDownload _iniciarDownload, IStringLocalizer<EntryPoint> localizer, ConsoleLogRenderer renderer)
+    internal sealed class EntryPoint(ITorrentService torrent, IStringLocalizer<EntryPoint> localizer, ConsoleLogRenderer renderer)
     {
         private Guid torrentId;
         public async Task Executar(string[] args)
         {
-            var id = _repository.Todos().Select(x => x.Id).FirstOrDefault();
-            var nome = _repository.Todos().Select(x => x.Nome).FirstOrDefault();
-            var estado = _repository.Todos().Select(x => x.Estado).FirstOrDefault();
+            var manager = await torrent.ObterTorrentAsync(torrentId).ConfigureAwait(false);
+
             renderer.Painel.Adicionar("[cyan]Torrent Island - Console[/]");
-            renderer.Painel.Adicionar($"([cyan]{id}[/]) {nome} - Status: {estado}");
+            renderer.Painel.Adicionar($"([cyan]{torrentId}[/]) {manager.Nome} - Status: {manager.Estado}");
             renderer.Painel.Adicionar("[cyan]Pressione Ctrl+C para encerrar.[/]");
 
 
@@ -111,7 +108,6 @@ namespace TorrentIsland.Presentation.Console.EntryPoint
             //await ys.MostrarPlaylistAsync(url).ConfigureAwait(false);
         }
 
-        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "O fallback de pasta não pode interromper o fluxo quando a entrada não é um magnet válido.")]
         private async Task BaixarTorrent(string[] args)
         {
             if (args.Length < 2)
@@ -122,15 +118,9 @@ namespace TorrentIsland.Presentation.Console.EntryPoint
 
             string input = args[1];
 
-            if (input.StartsWith("magnet:?xt=urn:btih:"))
-            {
-                torrentId = await _iniciarDownload.DownloadAsync(input).ConfigureAwait(false);
-                return;
-            }
-            torrentId = await _iniciarDownload.PastaDownload(input).ConfigureAwait(false);
+            torrentId = await torrent.CriarTorrentAsync(input).ConfigureAwait(false);
         }
 
-        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Falhas de streaming são reportadas como mensagem amigável ao usuário.")]
         private async Task StreamarTorrent(string[] args)
         {
             if (args.Length < 2)
@@ -138,7 +128,7 @@ namespace TorrentIsland.Presentation.Console.EntryPoint
                 System.Console.WriteLine(localizer["Console_UsoStream"]);
                 return;
             }
-            torrentId = await _iniciarStream.StreamAsync(args[1]).ConfigureAwait(false);
+            //torrentId = await torrent.CriarTorrentAsync(input).ConfigureAwait(false);
         }
 
         private string? ObterUrl(string[] args, string chaveUso)

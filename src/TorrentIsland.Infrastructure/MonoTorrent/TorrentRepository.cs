@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
@@ -5,15 +6,18 @@ using System.Collections.Concurrent;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Settings;
-using TorrentIsland.Domain.DTOs;
 using TorrentIsland.Domain.Entities;
+using TorrentIsland.Domain.Enums;
 using TorrentIsland.Domain.Exceptions;
+using TorrentIsland.Domain.Interfaces;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
-public class TorrentRepository<TManager>
+
+public class TorrentRepository : ITorrentRepository
 {
-    private readonly ILogger<TorrentRepository<TManager>> _logger;
-    private readonly Microsoft.Extensions.Localization.IStringLocalizer<TorrentRepository<TManager>> Localizer;
+    #region Fields + Constructor
+    private readonly ILogger<TorrentRepository> _logger;
+    private readonly Microsoft.Extensions.Localization.IStringLocalizer<TorrentRepository> Localizer;
     private readonly TorrentSettings _settings;
     private readonly ClientEngine _engine;
     private readonly AppSettings app;
@@ -21,16 +25,20 @@ public class TorrentRepository<TManager>
     private readonly ConcurrentDictionary<Guid, TorrentManager> _managers = [];
     private readonly string SavePath;
     private readonly string PastaTorrents;
+    private ITrackerService TrackerService { get; }
 
-    public TorrentRepository()
+    public TorrentRepository(ILogger<TorrentRepository> logger, IStringLocalizer<TorrentRepository> localizer, AppSettings app, ITrackerService trackerService)
     {
+        this.app = app;
+        TrackerService = trackerService;
+
         _settings = new TorrentSettingsBuilder
         {
             AllowDht = true,
             AllowInitialSeeding = true,
             AllowPeerExchange = true,
             CreateContainingDirectory = true,
-            MaximumConnections = app!.ConnectionsMaxima,
+            MaximumConnections = app.ConnectionsMaxima,
             UploadSlots = app.UploadSlotsMaximo,
             MaximumDownloadRate = app.TorrentLimiteDownload,
             MaximumUploadRate = app.TorrentLimiteUpload
@@ -38,18 +46,31 @@ public class TorrentRepository<TManager>
         _engine = new();
         SavePath = Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), app.PastaDownloads ?? "Downloads")).FullName;
         PastaTorrents = Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), app.PastaTorrents ?? "Downloads")).FullName;
+        _logger = logger;
+        Localizer = localizer;
     }
-    public async Task<Guid> RegristoIdAsync(Guid id, TorrentManager manager)
+    #endregion
+
+    private async Task<Guid> RegristoIdAsync(Guid id, TorrentManager manager)
     {
         _managers[id] = manager;
         _ = await ToEntity(id).ConfigureAwait(false);
         return id;
     }
-
-    public async Task<List<TorrentManager>> TodosManagersAsync() => [.. _managers.Values];
-    public async Task<TorrentManager?> ObterManager(Guid id)
+    private async Task<List<TorrentManager>> TodosManagers() => [.. _managers.Values];
+    private async Task<TorrentManager?> ObterManager(Guid id)
     {
         return _managers.TryGetValue(id, out var manager) ? manager : throw new InvalidManagerException();
+    }
+
+    public async Task<TorrentEntity?> ObterAsync(Guid id)
+    {
+        if (!_managers.ContainsKey(id))
+        {
+            throw new InvalidManagerException();
+        }
+
+        return await ToEntity(id).ConfigureAwait(false);
     }
 
     public async Task StartTorrentAsync(Guid id)
@@ -60,7 +81,7 @@ public class TorrentRepository<TManager>
 
     public async Task StartAllTorrentAsync()
     {
-        List<TorrentManager> listaTorrents = await TodosManagersAsync().ConfigureAwait(false);
+        List<TorrentManager> listaTorrents = await TodosManagers().ConfigureAwait(false);
         if (listaTorrents.Count == 0) throw new InvalidManagerException();
         listaTorrents.ForEach(async manager => await manager.StartAsync().ConfigureAwait(false));
     }
@@ -69,7 +90,7 @@ public class TorrentRepository<TManager>
     {
         ArgumentNullException.ThrowIfNull(magnetOrFolderName);
 
-        if (magnetOrFolderName.StartsWith("magnet"))
+        if (magnetOrFolderName.StartsWith("magnet:?"))
         {
             var magnet = MagnetLink.Parse(magnetOrFolderName);
             var manager = await _engine.AddAsync(magnet, SavePath, _settings).ConfigureAwait(false);
@@ -88,6 +109,39 @@ public class TorrentRepository<TManager>
             //MainLoop
         }
     }
+
+    public async Task TrackersAsync(Guid id)
+    {
+        var trackersGithub = await TrackerService!.ObterListaAsync().ConfigureAwait(false);
+        var trackersOriginais = _managers[id].TrackerManager.Tiers
+            .SelectMany(t => t.Trackers)
+            .Select(tracker => tracker.Uri.ToString());
+        var trackers = trackersOriginais.Union(trackersGithub).ToList();
+        try
+        {
+            foreach (var tracker in trackers)
+            {
+                if (Uri.TryCreate(tracker, UriKind.Absolute, out Uri? trackerUri))
+                    await _managers[id].TrackerManager.AddTrackerAsync(trackerUri).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.Message);
+            throw;
+        }
+    }
+
+    public IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)> EstadoDosTorrents()
+    {
+        return [.. _managers.Select(p => (
+        p.Key,
+        p.Value.Torrent?.Name ?? p.Value.Name ?? "?",
+        p.Value.Estado(),
+        p.Value.Peers.Seeds,
+        p.Value.Peers.Available))];
+    }
+
     private async Task<TorrentEntity> ToEntity(Guid id)
     {
         if (!_managers.TryGetValue(id, out var manager))
@@ -187,5 +241,50 @@ public class TorrentRepository<TManager>
 
         }
         return listaDeManagers;
+    }
+
+    private async Task Events(Guid id)
+    {
+        if (!_managers.TryGetValue(id, out var manager))
+        {
+            _logger.LogWarning("Events: torrent ([cyan]{TorrentId}[/]) não encontrado.", id);
+            return;
+        }
+
+        string Nome() => manager.Torrent?.Name ?? "Torrent desconhecido";
+
+        manager.PeersFound += (o, e) =>
+        {
+            _logger.LogInformation("{Nome} -> [cyan]{NovosPares}[/] novos pares encontrados ([cyan]{ParesExistentes} existentes[/]).",
+                Nome(), e.NewPeers, e.ExistingPeers);
+        };
+
+        manager.PeerConnected += (o, e) =>
+        {
+            _logger.LogDebug("{Nome} -> Par conectado: {Peer} ([cyan]{Direcao}[/]).",
+                Nome(), e.Peer, e.Direction);
+        };
+
+        manager.PeerDisconnected += (o, e) =>
+        {
+            _logger.LogDebug("{Nome} -> Par desconectado: {Peer}.", Nome(), e.Peer);
+        };
+
+        manager.PieceHashed += (o, e) =>
+        {
+            _logger.LogDebug("{Nome} -> Peça {PieceIndex} verificada - passou: {HashPassed} (progresso {Progresso:0.0}%).",
+                Nome(), e.PieceIndex, e.HashPassed, e.Progress);
+        };
+
+        manager.ConnectionAttemptFailed += (o, e) =>
+        {
+            _logger.LogWarning("{Nome} -> [yellow]Falha de conexão[/] com {Peer}: {Razao}.", Nome(), e.Peer, e.Reason);
+        };
+
+        manager.TorrentStateChanged += (o, e) =>
+        {
+            _logger.LogInformation("{Nome} -> Estado alterado: {Antigo} -> [cyan]{Novo}[/].",
+                Nome(), e.OldState, e.NewState);
+        };
     }
 }

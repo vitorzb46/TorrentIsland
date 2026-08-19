@@ -14,8 +14,4 @@
     <ProjectReference Include="..\TorrentIsland.Domain\TorrentIsland.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Medias\Queries\" />
-  </ItemGroup>
-
 </Project>

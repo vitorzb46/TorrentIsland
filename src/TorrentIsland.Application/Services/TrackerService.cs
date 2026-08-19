@@ -2,27 +2,25 @@ using TorrentIsland.Domain.Interfaces;
 
 namespace TorrentIsland.Application.Services;
 
-/// <summary>
-/// Obtém a lista de trackers públicos (best-effort) para enriquecer os magnet links.
-/// </summary>
 public sealed class TrackerService : ITrackerService
 {
-    private static readonly HttpClient Http = new()
+    public async Task<IList<string>> ObterListaAsync()
     {
-        Timeout = TimeSpan.FromSeconds(12)
-    };
-
-    public async Task<IList<string>> ObterListaAsync(CancellationToken cancellationToken = default)
-    {
+        HttpClient Http = new();
+        using var ctsGitHub = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         const string url = "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt";
         string trackers = string.Empty;
         try
         {
-            trackers = await Http.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
+            trackers = await Http.GetStringAsync(url, ctsGitHub.Token).ConfigureAwait(false);
+            if (trackers.Length == 0)
+            {
+                //fallback harded coded later
+            }
         }
         catch (OperationCanceledException)
         {
-            if (cancellationToken.IsCancellationRequested)
+            if (ctsGitHub.Token.IsCancellationRequested)
             {
                 Console.WriteLine("[[AVISO]] Tempo limite esgotado ao baixar a lista de trackers (Timeout). O download tentará iniciar apenas com os trackers originais.");
             }

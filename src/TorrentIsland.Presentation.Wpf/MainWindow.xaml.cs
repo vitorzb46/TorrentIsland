@@ -1,8 +1,7 @@
-using TorrentIsland.Domain.Interfaces;
-using TorrentIsland.Presentation.Wpf.Logging;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using TorrentIsland.Presentation.Wpf.Logging;
 
 namespace TorrentIsland.Presentation.Wpf;
 
@@ -11,13 +10,11 @@ namespace TorrentIsland.Presentation.Wpf;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private readonly IDownloadService _downloadService;
 
-    public MainWindow(WpfLogSink sink, IDownloadService downloadService)
+    public MainWindow(WpfLogSink sink)
     {
         InitializeComponent();
         LogsListBox.ItemsSource = sink.Entries;
-        _downloadService = downloadService;
     }
 
     private async void Streamar_Click(object sender, RoutedEventArgs e)
@@ -33,8 +30,8 @@ public partial class MainWindow : Window
         try
         {
             // O Uri devolvido é a URL HTTP servida pelo MonoTorrent para este torrent.
-            var uri = await _downloadService.StreamAsync(magnet);
-            AbrirNoPlayer(uri.ToString());
+            //var uri = await _downloadService.StreamAsync(magnet);
+            //AbrirNoPlayer(uri.ToString());
         }
         catch (Exception ex)
         {

@@ -27,22 +27,20 @@ public class PlayerMonitorRenderer(ITorrentRepository repository, ILogger<Player
 
             try
             {
-                var estados = _repository.Todos();
-
-                RenderizarEstados(estados, ref ultimoSeed);
+                RenderizarEstados(ref ultimoSeed);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao monitorar player");
             }
 
-            await Task.Delay(300, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
         }
 
         _logger.LogInformation("Player encerrado, monitoramento finalizado.");
     }
 
-    private void RenderizarEstados(IEnumerable<ITorrent> estados, ref int? ultimoSeed)
+    private void RenderizarEstados(ref int? ultimoSeed)
     {
         foreach (var (_, nome, estado, seeds, peers) in _repository.EstadoDosTorrents())
         {
@@ -52,7 +50,6 @@ public class PlayerMonitorRenderer(ITorrentRepository repository, ILogger<Player
                 _logger.LogInformation($"[[{nomeEscape}]] [cyan]{estado}[/] | seeds: {seeds} | peers: {peers}");
                 ultimoSeed = seeds;
             }
-            Task.Delay(1000).ConfigureAwait(false);
         }
     }
 }

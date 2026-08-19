@@ -18,9 +18,9 @@ public class TorrentDto
     public int ParesDisponiveis { get; init; }
     public IReadOnlyList<string> Trackers { get; init; } = [];
     public string SavePath { get; init; } = string.Empty;
-    public TimeSpan? TempoEstimado { get; init; }
+    public string? TempoEstimado { get; init; }
 
-    public static TorrentDto FromEntity(Torrent entity)
+    public static TorrentDto FromEntity(TorrentEntity entity)
     {
         return new TorrentDto
         {
@@ -34,7 +34,7 @@ public class TorrentDto
             VelocidadeUpload = entity.VelocidadeUpload,
             Seeds = entity.Seeds,
             ParesDisponiveis = entity.ParesDisponiveis,
-            Trackers = entity.Trackers,
+            Trackers = [.. entity.Trackers],
             SavePath = entity.SavePath,
             TempoEstimado = entity.TempoEstimado
         };
