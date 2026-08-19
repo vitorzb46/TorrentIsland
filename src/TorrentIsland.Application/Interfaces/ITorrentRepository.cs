@@ -4,9 +4,11 @@ using TorrentIsland.Domain.Entities;
 
 namespace TorrentIsland.Application.Interfaces;
 
-public interface ITorrentRepository
+public interface ITorrentRepository<TManager> where TManager : class
 {
-    Task<Guid> AdicionarAsync(TorrentCreationInfo info, CancellationToken ct);
-    Task<Torrent> ObterPorIdAsync(Guid id);
-    Task<TorrentDto> StartAsync(Guid id);
+    Task<Guid> AddEngineAsync(string magnetOrFolderName);
+    Task<TManager?> ObterManager(Guid id);
+    Task<Guid> RegristoIdAsync(Guid id, TManager manager);
+    Task StartAllTorrentAsync();
+    Task StartTorrentAsync(Guid id);
 }

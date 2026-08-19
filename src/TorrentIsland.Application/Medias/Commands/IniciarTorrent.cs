@@ -9,6 +9,6 @@ public class IniciarTorrent(ITorrentRepository repository)
 
     public async Task<TorrentDto> StartAsync(Guid id)
     {
-        return await Repository.StartAsync(id).ConfigureAwait(false);
+        return await Repository.StartTorrentAsync(id).ConfigureAwait(false);
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
 using System.Collections.Concurrent;
@@ -5,17 +6,21 @@ using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.DTOs;
-using Torrent = TorrentIsland.Domain.Entities.Torrent;
+using TorrentIsland.Domain.Entities;
+using TorrentIsland.Domain.Exceptions;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
-
-public class TorrentRepository : ITorrentRepository
+public class TorrentRepository<TManager>
 {
+    private readonly ILogger<TorrentRepository<TManager>> _logger;
+    private readonly Microsoft.Extensions.Localization.IStringLocalizer<TorrentRepository<TManager>> Localizer;
     private readonly TorrentSettings _settings;
     private readonly ClientEngine _engine;
     private readonly AppSettings app;
     private readonly ConcurrentDictionary<Guid, TorrentDto> _torrents = [];
     private readonly ConcurrentDictionary<Guid, TorrentManager> _managers = [];
+    private readonly string SavePath;
+    private readonly string PastaTorrents;
 
     public TorrentRepository()
     {
@@ -25,29 +30,65 @@ public class TorrentRepository : ITorrentRepository
             AllowInitialSeeding = true,
             AllowPeerExchange = true,
             CreateContainingDirectory = true,
-            MaximumConnections = app.ConnectionsMaxima,
+            MaximumConnections = app!.ConnectionsMaxima,
             UploadSlots = app.UploadSlotsMaximo,
             MaximumDownloadRate = app.TorrentLimiteDownload,
             MaximumUploadRate = app.TorrentLimiteUpload
         }.ToSettings();
         _engine = new();
+        SavePath = Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), app.PastaDownloads ?? "Downloads")).FullName;
+        PastaTorrents = Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), app.PastaTorrents ?? "Downloads")).FullName;
     }
-
-    public async Task<Guid> AdicionarAsync(TorrentCreationInfo info, CancellationToken ct)
+    public async Task<Guid> RegristoIdAsync(Guid id, TorrentManager manager)
     {
-        var magnet = MagnetLink.Parse(info.MagnetLink);
-        var path = Path.Combine(Directory.GetCurrentDirectory(), app.PastaDownloads ?? "Downloads");
-
-        var manager = await _engine.AddAsync(magnet, path, _settings).ConfigureAwait(false);
-        var id = Guid.NewGuid();
-
         _managers[id] = manager;
-
-        await manager.StartAsync().ConfigureAwait(false);
-
+        _ = await ToEntity(id).ConfigureAwait(false);
         return id;
     }
-    public async Task<Torrent> ObterPorIdAsync(Guid id)
+
+    public async Task<List<TorrentManager>> TodosManagersAsync() => [.. _managers.Values];
+    public async Task<TorrentManager?> ObterManager(Guid id)
+    {
+        return _managers.TryGetValue(id, out var manager) ? manager : throw new InvalidManagerException();
+    }
+
+    public async Task StartTorrentAsync(Guid id)
+    {
+        var manager = await ObterManager(id);
+        await manager!.StartAsync().ConfigureAwait(false);
+    }
+
+    public async Task StartAllTorrentAsync()
+    {
+        List<TorrentManager> listaTorrents = await TodosManagersAsync().ConfigureAwait(false);
+        if (listaTorrents.Count == 0) throw new InvalidManagerException();
+        listaTorrents.ForEach(async manager => await manager.StartAsync().ConfigureAwait(false));
+    }
+
+    public async Task<Guid> AddEngineAsync(string magnetOrFolderName)
+    {
+        ArgumentNullException.ThrowIfNull(magnetOrFolderName);
+
+        if (magnetOrFolderName.StartsWith("magnet"))
+        {
+            var magnet = MagnetLink.Parse(magnetOrFolderName);
+            var manager = await _engine.AddAsync(magnet, SavePath, _settings).ConfigureAwait(false);
+            Guid id = Guid.NewGuid();
+            return await RegristoIdAsync(id, manager).ConfigureAwait(false);
+        }
+        else
+        {
+            var managers = await AddTorrentsAsync().ConfigureAwait(false);
+            if (managers.Count == 0)
+            {
+                throw new CustomException(Localizer["Torrent_NenhumEncontrado", PastaTorrents])!;
+            }
+            return Guid.Empty;
+            //Event Handler
+            //MainLoop
+        }
+    }
+    private async Task<TorrentEntity> ToEntity(Guid id)
     {
         if (!_managers.TryGetValue(id, out var manager))
             throw new KeyNotFoundException("Torrent não encontrado.");
@@ -82,7 +123,7 @@ public class TorrentRepository : ITorrentRepository
         }
         var eta = tempoEstimado == TimeSpan.Zero ? "Infinito" : tempoEstimado.ToString(@"hh\:mm\:ss");
 
-        var torrent = new Torrent();
+        var torrent = new TorrentEntity();
         torrent.SetId(id);
         torrent.SetNome(nome);
         torrent.SetTamanhoTotal(tamanhoTotal);
@@ -99,8 +140,52 @@ public class TorrentRepository : ITorrentRepository
         return await Task.FromResult(torrent);
     }
 
-    public async Task<TorrentDto> StartAsync(Guid id)
+    private async Task<List<TorrentManager>> AddTorrentsAsync()
     {
-        throw new NotImplementedException();
+        var listaDeTorrents = new List<Torrent>();
+        Directory.CreateDirectory(PastaTorrents);
+        string[] arquivos = Directory.GetFiles(PastaTorrents, "*.torrent");
+        var tarefas = arquivos.Select(async arquivo =>
+        {
+            try
+            {
+                Torrent torrent = await Torrent.LoadAsync(arquivo).ConfigureAwait(false);
+                if (Path.GetExtension(torrent.Name) == ".scr") _logger.LogInformation(Localizer["Torrent_AvisoCache", Path.GetFileName(arquivo)]);
+                lock (listaDeTorrents)
+                    listaDeTorrents.Add(torrent);
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("torrent", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInformation(Localizer["Torrent_FalhaCarregar", Path.GetFileName(arquivo)]);
+                }
+                else
+                {
+                    _logger.LogInformation(Localizer["Torrent_ErroProcessar", Path.GetFileName(arquivo), ex.Message]);
+                }
+            }
+        });
+
+        await Task.WhenAll(tarefas).ConfigureAwait(false);
+
+        var listaDeManagers = new List<TorrentManager>();
+        _logger.LogInformation(Localizer["Torrent_Registrando", listaDeTorrents.Count]);
+        foreach (var torrent in listaDeTorrents)
+        {
+            try
+            {
+                Guid id = Guid.NewGuid();
+                var manager = await _engine.AddAsync(torrent, SavePath, _settings).ConfigureAwait(false);
+                await RegristoIdAsync(id, manager).ConfigureAwait(false);
+                listaDeManagers.Add(manager);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation(Localizer["Torrent_FalhaRegistrar", torrent.Name, ex.Message]);
+            }
+
+        }
+        return listaDeManagers;
     }
 }

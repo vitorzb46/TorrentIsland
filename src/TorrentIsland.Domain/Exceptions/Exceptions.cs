@@ -8,6 +8,10 @@ namespace TorrentIsland.Domain.Exceptions
     {
         public InvalidTorrentException() : base("Torrent nulo ou inexistente.") { }
     }
+    public class InvalidManagerException : Exception
+    {
+        public InvalidManagerException() : base("Não possui nenhum manager registrado!") { }
+    }
     public class ParamaterException : Exception
     {
         public ParamaterException() : base("Parâmetro fornecido não pode ser vazio.") { }
@@ -16,4 +20,5 @@ namespace TorrentIsland.Domain.Exceptions
     {
         public FolderException() : base("Pasta fornecida está vazia ou inexistente!") { }
     }
+    public class CustomException(string mensagem) : Exception($"{mensagem}") {}
 }
