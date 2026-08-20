@@ -1,4 +1,4 @@
-using System.Collections;
+using TorrentIsland.Application.DTOs;
 using TorrentIsland.Domain.Entities;
 using TorrentIsland.Domain.Enums;
 
@@ -13,12 +13,13 @@ public interface ITorrentRepository
     /// <param name="magnetOrFolderName">Magnet link ou nome da pasta.</param>
     /// <returns>A unique identifier for the added engine.</returns>
     /// <returns>Um identificador único para o torrent.</returns>
-    Task<Guid> AddEngineAsync(string magnetOrFolderName);
+    Task<List<Guid>> AddEngineAsync(string magnetOrFolderName);
     IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)> EstadoDosTorrents();
     /// <summary>
     /// Obtém o torrent pelo id com as propriedades de progresso/velocidade/seeds preenchidas.
     /// </summary>
     Task<TorrentEntity?> ObterAsync(Guid id);
+    Task<IReadOnlyDictionary<Guid, TorrentDto>> ObterManagersAsync();
     Task StartAllTorrentAsync();
     Task StartTorrentAsync(Guid id);
     Task TrackersAsync(Guid id);

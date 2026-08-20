@@ -36,8 +36,11 @@ public class TorrentEntity
     public void SetSeeds(int seeds) => Seeds = seeds;
     public void SetParesDisponiveis(int paresDisponiveis) => ParesDisponiveis = paresDisponiveis;
     public void SetTempoEstimado(string? tempoEstimado) => TempoEstimado = tempoEstimado;
+    public void SetCorEstado() => CorEstado = Cor();
 
-    private string SetCorEstado()
+
+
+    private string Cor()
     {
         return Estado switch
         {

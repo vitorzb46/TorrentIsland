@@ -18,6 +18,7 @@
     <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
     <PackageReference Include="MonoTorrent" Version="3.9.0-alpha.unstable.rev0000" />
+    <PackageReference Include="Spectre.Console" Version="0.57.2" />
   </ItemGroup>
 
 </Project>

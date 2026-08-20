@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using TorrentIsland.Application.Services;
 
 namespace TorrentIsland.Infrastructure.Configuration;
 

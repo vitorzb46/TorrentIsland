@@ -1,10 +1,11 @@
-﻿using TorrentIsland.Application.DTOs;
+﻿using TorrentIsland.Application.Contracts;
+using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Domain.Exceptions;
 
 namespace TorrentIsland.Application.Medias.Queries;
 
-public class ObterTorrent(ITorrentRepository repository)
+public class ObterTorrent(ITorrentRepository repository) : IObterTorrent
 {
     private readonly ITorrentRepository _repository = repository;
 

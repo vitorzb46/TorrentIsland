@@ -1,16 +1,15 @@
 ﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Presentation.Console.Renderers;
 
 namespace TorrentIsland.Presentation.Console.EntryPoint
 {
-    internal sealed class EntryPoint(ITorrentService torrent, IStringLocalizer<EntryPoint> localizer, ConsoleLogRenderer renderer)
+    internal sealed class EntryPoint(ITorrentService torrent, IStringLocalizer<EntryPoint> localizer, ILogger<EntryPoint> logger)
     {
-        private Guid torrentId;
+        public ILogger<EntryPoint> Logger { get; } = logger;
+
         public async Task Executar(string[] args)
         {
-            renderer.Painel.Adicionar("[cyan]Torrent Island - Console[/]");
-
 
             args = ["torrent", "magnet:?xt=urn:btih:A2405A183F1451C0DE8963D4EC408A1194628331&dn=Lioness+2023+S03E01+1080p+HEVC+x265-MeGusta&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce&tr=udp%3A%2F%2Fexplodie.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.ololosh.space%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dump.cl%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.bittor.pw%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker-udp.gbitt.info%3A80%2Fannounce&tr=udp%3A%2F%2Fretracker01-msk-virt.corbina.net%3A80%2Fannounce&tr=udp%3A%2F%2Fopen.free-tracker.ga%3A6969%2Fannounce&tr=udp%3A%2F%2Fns-1.x-fins.com%3A6969%2Fannounce&tr=udp%3A%2F%2Fleet-tracker.moe%3A1337%2Fannounce&tr=udp%3A%2F%2Fp4p.arenabg.com%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.open-internet.nl%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Fdenis.stalker.upeer.me%3A6969%2Fannounce"];
 
@@ -54,7 +53,7 @@ namespace TorrentIsland.Presentation.Console.EntryPoint
             catch (Exception ex)
             {
                 // Erros de download ou de rede chegam aqui; exibe mensagem amigável.
-                System.Console.WriteLine(localizer["Console_Erro", ex.Message]);
+                Logger.LogError(localizer["Console_Erro", ex.Message]);
                 throw;
             }
         }
@@ -107,20 +106,20 @@ namespace TorrentIsland.Presentation.Console.EntryPoint
         {
             if (args.Length < 2)
             {
-                System.Console.WriteLine(localizer["Console_UsoTorrent"]);
+                Logger.LogInformation(localizer["Console_UsoTorrent"]);
                 return;
             }
 
             string input = args[1];
 
-            torrentId = await torrent.CriarTorrentAsync(input).ConfigureAwait(false);
+            await torrent.CriarTorrentAsync(input).ConfigureAwait(false);
         }
 
         private async Task StreamarTorrent(string[] args)
         {
             if (args.Length < 2)
             {
-                System.Console.WriteLine(localizer["Console_UsoStream"]);
+                Logger.LogInformation(localizer["Console_UsoStream"]);
                 return;
             }
             //torrentId = await torrent.CriarTorrentAsync(input).ConfigureAwait(false);
@@ -130,13 +129,13 @@ namespace TorrentIsland.Presentation.Console.EntryPoint
         {
             if (args.Length < 2)
             {
-                System.Console.WriteLine(localizer[chaveUso]);
+                Logger.LogInformation(localizer[chaveUso]);
                 return null;
             }
 
             if (!EhUrlValida(args[1]))
             {
-                System.Console.WriteLine(localizer["Console_UrlInvalida", args[1]]);
+                Logger.LogWarning(localizer["Console_UrlInvalida", args[1]]);
                 return null;
             }
 

@@ -4,21 +4,24 @@ using TorrentIsland.Domain.Interfaces;
 
 namespace TorrentIsland.Application.Medias.Commands;
 
-public class IniciarTorrent(ITorrentRepository repository, ITrackerService tracker) : IIniciarTorrent
+public class IniciarTorrent(ITorrentRepository repository, ITorrentLoopRenderer renderer) : IIniciarTorrent
 {
     public ITorrentRepository Repository { get; } = repository;
-    public ITrackerService Tracker { get; } = tracker;
+    public ITorrentLoopRenderer Renderer { get; } = renderer;
 
-    public async Task<Guid> StartAsync(string input)
+    public async Task StartAsync(string input)
     {
-        var id = await Repository.AddEngineAsync(input).ConfigureAwait(false);
+        var torrents = await Repository.AddEngineAsync(input).ConfigureAwait(false);
 
-        await Repository.TrackersAsync(id).ConfigureAwait(false);
+        foreach (var id in torrents)
+        {
+            await Repository.TrackersAsync(id).ConfigureAwait(false);
 
-        await Repository.EventsAsync(id).ConfigureAwait(false);
+            await Repository.EventsAsync(id).ConfigureAwait(false);
 
-        await Repository.StartTorrentAsync(id).ConfigureAwait(false);
+            await Repository.StartTorrentAsync(id).ConfigureAwait(false);
+        }
 
-        return id;
+        await Renderer.TorrentInfoRender().ConfigureAwait(false);
     }
 }

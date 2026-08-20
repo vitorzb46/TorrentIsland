@@ -2,18 +2,18 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
+using MonoTorrent.Dht;
+using MonoTorrent.PieceWriter;
 using System.Net;
-using System.Net.Sockets;
 using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Medias.Commands;
+using TorrentIsland.Application.Medias.Queries;
 using TorrentIsland.Application.Services;
-using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Configuration;
 using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.MonoTorrent;
-using static System.Collections.Generic.Dictionary<TKey, TValue>;
 
 namespace TorrentIsland.Infrastructure.DependencyInjection;
 
@@ -37,16 +37,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ClientEngine>(sp =>
         {
             var settingBuilder = GetSettingBuilder();
-            var config = new AppSettings();
-            settingBuilder.DhtBootstrapRouters = config.Router();
             EngineSettings settings = settingBuilder.ToSettings();
             return new ClientEngine(settings);
         });
-
-        services.AddSingleton<TorrentRepository>();
+        services.AddSingleton<IIniciarTorrent, IniciarTorrent>();
+        services.AddSingleton<IObterTorrent, ObterTorrent>();
         services.AddSingleton<ITrackerService, TrackerService>();
         services.AddSingleton<ITorrentRepository, TorrentRepository>();
-        services.AddSingleton<IIniciarTorrent, IniciarTorrent>();
         services.AddSingleton<ITorrentService, TorrentService>();
 
         return services;
@@ -55,7 +52,7 @@ public static class ServiceCollectionExtensions
     private static EngineSettingsBuilder GetSettingBuilder()
     {
         var settings = new AppSettings();
-        
+
         return new EngineSettingsBuilder
         {
             // --- REDE E CONEXÕES ---
@@ -70,6 +67,7 @@ public static class ServiceCollectionExtensions
             MaximumConnections = settings.ConnectionsMaxima,
             ConnectionRetryDelays = settings.Retry,
             ConnectionTimeouts = settings.PeerTimeout,
+            DhtBootstrapRouters = DhtRouter(),
 
             // --- CACHE E ARQUIVOS ---
             AutoSaveLoadFastResume = settings.LoadFastResume,
@@ -77,7 +75,8 @@ public static class ServiceCollectionExtensions
             AutoSaveLoadDhtCache = settings.LoadDhtCache,
             CacheDirectory = settings.PastaCache,
             UsePartialFiles = settings.ArquivoParcial, // Desativado para ajudar o VLC a ler o arquivo direto
-            DiskCacheBytes = settings.CacheBytesEmDisco, // 50MB de RAM dedicada a cache
+            DiskCachePolicy = CachePolicy.ReadsAndWrites,
+            DiskCacheBytes = settings.CacheBytesEmDisco, // 150MB de RAM dedicada a cache
 
             // --- STREAMING E WEBSEEDS ---
             HttpStreamingPrefix = settings.StreamingPrefix,
@@ -85,5 +84,17 @@ public static class ServiceCollectionExtensions
             WebSeedSpeedTrigger = 0 // Baixa de fontes HTTP e P2P simultaneamente se disponível
 
         };
+    }
+
+    private static List<BootstrapRouter> DhtRouter()
+    {
+        return
+        [
+            new("router.bittorrent.com", 6881),
+            new("router.utorrent.com", 6881),
+            new("router.transmissionbt.com", 6881),
+            new("router.bitcomet.com", 6881),
+            new("dht.transmissionbt.com", 6881)
+        ];
     }
 }

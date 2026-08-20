@@ -5,6 +5,7 @@ namespace TorrentIsland.Application.DTOs;
 
 public class TorrentDto
 {
+    #region Properties Entity
     public Guid Id { get; init; }
     public string? Nome { get; init; }
     public TorrentEstado Estado { get; init; }
@@ -19,7 +20,8 @@ public class TorrentDto
     public IReadOnlyList<string> Trackers { get; init; } = [];
     public string SavePath { get; init; } = string.Empty;
     public string? TempoEstimado { get; init; }
-
+    public string? CorEstado { get; init; }
+    #endregion
     public static TorrentDto FromEntity(TorrentEntity entity)
     {
         return new TorrentDto
@@ -36,7 +38,8 @@ public class TorrentDto
             ParesDisponiveis = entity.ParesDisponiveis,
             Trackers = [.. entity.Trackers],
             SavePath = entity.SavePath,
-            TempoEstimado = entity.TempoEstimado
+            TempoEstimado = entity.TempoEstimado,
+            CorEstado = entity.CorEstado
         };
     }
 }

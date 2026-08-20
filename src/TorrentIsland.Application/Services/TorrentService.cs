@@ -1,30 +1,20 @@
 using Microsoft.Extensions.Logging;
+using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Application.Medias.Commands;
-using TorrentIsland.Application.Medias.Queries;
 
 namespace TorrentIsland.Application.Services;
 
-public class TorrentService : ITorrentService
+public class TorrentService(ITorrentRepository repository, ILogger<TorrentService> logger, IIniciarTorrent iniciarTorrent, IObterTorrent obterTorrent) : ITorrentService
 {
-    private readonly ITorrentRepository _repository;
-    private readonly ILogger<TorrentService> _logger;
-    private readonly IniciarTorrent IniciarTorrent;
-    private readonly ObterTorrent ObterTorrent;
+    private readonly ITorrentRepository _repository = repository;
+    private readonly ILogger<TorrentService> _logger = logger;
+    private readonly IIniciarTorrent IniciarTorrent = iniciarTorrent;
+    private readonly IObterTorrent ObterTorrent = obterTorrent;
 
-    public TorrentService(ITorrentRepository repository, ILogger<TorrentService> logger, IniciarTorrent iniciarTorrent, ObterTorrent obterTorrent)
+    public async Task CriarTorrentAsync(string input)
     {
-        _repository = repository;
-        _logger = logger;
-        IniciarTorrent = iniciarTorrent;
-        ObterTorrent = obterTorrent;
-    }
-
-    public Task<Guid> CriarTorrentAsync(string input)
-    {
-        var id = IniciarTorrent.StartAsync(input);
-        return id;
+        await IniciarTorrent.StartAsync(input);
     }
 
     public Task<TorrentDto> ObterTorrentAsync(Guid id)
