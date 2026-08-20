@@ -1,9 +1,12 @@
+using Microsoft.Extensions.Logging;
 using TorrentIsland.Domain.Interfaces;
 
 namespace TorrentIsland.Application.Services;
 
-public sealed class TrackerService : ITrackerService
+public sealed class TrackerService(ILogger<TrackerService> logger) : ITrackerService
 {
+    public ILogger<TrackerService> Logger { get; } = logger;
+
     public async Task<IList<string>> ObterListaAsync()
     {
         HttpClient Http = new();
@@ -20,19 +23,19 @@ public sealed class TrackerService : ITrackerService
         }
         catch (OperationCanceledException)
         {
-            if (ctsGitHub.Token.IsCancellationRequested)
+            if (!ctsGitHub.Token.IsCancellationRequested)
             {
-                Console.WriteLine("[[AVISO]] Tempo limite esgotado ao baixar a lista de trackers (Timeout). O download tentará iniciar apenas com os trackers originais.");
+                Logger.LogInformation("[yellow]Tempo limite esgotado ao baixar a lista de trackers (Timeout). O download tentará iniciar apenas com os trackers originais.[/]");
             }
             else
             {
-                Console.WriteLine("[[ERRO]] Operação cancelada pelo usuário.");
+                Logger.LogError("[red]Operação cancelada pelo usuário.[/]");
                 throw;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Falha ao obter lista de trackers: {ex.Message}");
+            Logger.LogDebug($"Falha ao obter lista de trackers: {ex.Message}");
         }
 
         return [.. trackers.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];

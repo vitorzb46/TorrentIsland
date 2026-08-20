@@ -87,7 +87,7 @@ public sealed class ConsoleLogRenderer : BackgroundService
         }
     }
 
-    private static string Multi(int vezes = 0, char c = '\t')
+    public string Multi(int vezes = 0, char c = '\t')
     {
         return $"{new string(c, vezes)}";
     }
@@ -104,5 +104,10 @@ public sealed class ConsoleLogRenderer : BackgroundService
         );
 
         return semAnsi;
+    }
+
+    internal object Multi(object numero, object c)
+    {
+        throw new NotImplementedException();
     }
 }

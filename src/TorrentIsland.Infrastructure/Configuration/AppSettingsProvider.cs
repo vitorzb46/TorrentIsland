@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using TorrentIsland.Application.Settings;
 
 namespace TorrentIsland.Infrastructure.Configuration;
 

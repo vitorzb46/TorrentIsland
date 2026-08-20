@@ -2,14 +2,16 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
+using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Entities;
 using TorrentIsland.Domain.Enums;
 using TorrentIsland.Domain.Exceptions;
 using TorrentIsland.Domain.Interfaces;
+using TorrentIsland.Infrastructure.Configuration;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
 
@@ -26,12 +28,13 @@ public class TorrentRepository : ITorrentRepository
     private readonly string SavePath;
     private readonly string PastaTorrents;
     private ITrackerService TrackerService { get; }
+    public ITorrentLoopRenderer TorrentLoop { get; }
 
-    public TorrentRepository(ILogger<TorrentRepository> logger, IStringLocalizer<TorrentRepository> localizer, AppSettings app, ITrackerService trackerService)
+    public TorrentRepository(ILogger<TorrentRepository> logger, IStringLocalizer<TorrentRepository> localizer, AppSettings app, ITrackerService trackerService, ITorrentLoopRenderer torrentLoop)
     {
         this.app = app;
         TrackerService = trackerService;
-
+        TorrentLoop = torrentLoop;
         _settings = new TorrentSettingsBuilder
         {
             AllowDht = true,
@@ -57,6 +60,13 @@ public class TorrentRepository : ITorrentRepository
         _ = await ToEntity(id).ConfigureAwait(false);
         return id;
     }
+    public ReadOnlyDictionary<Guid, TorrentManager> Managers
+    {
+        get
+        {
+            return new ReadOnlyDictionary<Guid, TorrentManager>(_managers);
+        }
+    }
     private async Task<List<TorrentManager>> TodosManagers() => [.. _managers.Values];
     private async Task<TorrentManager?> ObterManager(Guid id)
     {
@@ -77,6 +87,9 @@ public class TorrentRepository : ITorrentRepository
     {
         var manager = await ObterManager(id);
         await manager!.StartAsync().ConfigureAwait(false);
+        await manager.DhtAnnounceAsync().ConfigureAwait(false);
+        await manager.LocalPeerAnnounceAsync().ConfigureAwait(false);
+        await TorrentLoop.TorrentInfoRender().ConfigureAwait(false);
     }
 
     public async Task StartAllTorrentAsync()
@@ -105,8 +118,6 @@ public class TorrentRepository : ITorrentRepository
                 throw new CustomException(Localizer["Torrent_NenhumEncontrado", PastaTorrents])!;
             }
             return Guid.Empty;
-            //Event Handler
-            //MainLoop
         }
     }
 
@@ -243,11 +254,11 @@ public class TorrentRepository : ITorrentRepository
         return listaDeManagers;
     }
 
-    private async Task Events(Guid id)
+    public async Task EventsAsync(Guid id)
     {
         if (!_managers.TryGetValue(id, out var manager))
         {
-            _logger.LogWarning("Events: torrent ([cyan]{TorrentId}[/]) não encontrado.", id);
+            _logger.LogWarning("Torrent ([cyan]{TorrentId}[/]) não encontrado.", id);
             return;
         }
 

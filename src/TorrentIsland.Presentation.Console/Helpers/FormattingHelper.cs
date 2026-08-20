@@ -6,7 +6,7 @@ namespace TorrentIsland.Presentation.Console.Helpers
 {
     public class FormattingHelper
     {
-        public static string FormatarBytes(double bytes)
+        public string FormatarBytes(long bytes)
         {
             return bytes switch
             {

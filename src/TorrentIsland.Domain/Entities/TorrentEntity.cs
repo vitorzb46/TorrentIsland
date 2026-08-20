@@ -19,6 +19,7 @@ public class TorrentEntity
     public int Seeds { get; private set; }
     public int ParesDisponiveis { get; private set; }
     public string? TempoEstimado { get; private set; }
+    public string? CorEstado { get; private set; }
     #endregion
 
     // Métodos para modificar o estado
@@ -35,4 +36,18 @@ public class TorrentEntity
     public void SetSeeds(int seeds) => Seeds = seeds;
     public void SetParesDisponiveis(int paresDisponiveis) => ParesDisponiveis = paresDisponiveis;
     public void SetTempoEstimado(string? tempoEstimado) => TempoEstimado = tempoEstimado;
+
+    private string SetCorEstado()
+    {
+        return Estado switch
+        {
+            TorrentEstado.Concluido or TorrentEstado.Semeando => Verde,
+            TorrentEstado.Erro => Vermelho,
+            _ => Amarelo
+        };
+    }
+
+    private string Verde { get; } = "[green]";
+    private string Vermelho { get; } = "[red]";
+    private string Amarelo { get; } = "[yellow]";
 }

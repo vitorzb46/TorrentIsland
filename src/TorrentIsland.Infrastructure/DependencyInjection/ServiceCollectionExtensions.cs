@@ -8,10 +8,12 @@ using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Medias.Commands;
 using TorrentIsland.Application.Services;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Configuration;
 using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.MonoTorrent;
+using static System.Collections.Generic.Dictionary<TKey, TValue>;
 
 namespace TorrentIsland.Infrastructure.DependencyInjection;
 
@@ -22,7 +24,6 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddTorrentIsland(this IServiceCollection services, IConfiguration configuration, int maxLogs = 10)
     {
-        int portaLivre = ObterPortaLivre();
         services.AddLogging(builder =>
         {
             builder.ClearProviders();
@@ -35,8 +36,9 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ClientEngine>(sp =>
         {
-            var settingBuilder = GetSettingBuilder(portaLivre);
-
+            var settingBuilder = GetSettingBuilder();
+            var config = new AppSettings();
+            settingBuilder.DhtBootstrapRouters = config.Router();
             EngineSettings settings = settingBuilder.ToSettings();
             return new ClientEngine(settings);
         });
@@ -50,40 +52,38 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static EngineSettingsBuilder GetSettingBuilder(int portaLivre)
+    private static EngineSettingsBuilder GetSettingBuilder()
     {
+        var settings = new AppSettings();
+        
         return new EngineSettingsBuilder
         {
             // --- REDE E CONEXÕES ---
-            AllowPortForwarding = true,
-            AllowLocalPeerDiscovery = true,
-            DhtEndPoint = new IPEndPoint(IPAddress.Any, 0), // Porta UDP dinâmica para DHT
+            AllowPortForwarding = settings.RedirecionarPorta,
+            AllowLocalPeerDiscovery = settings.DescobertaPeerLocal,
+            DhtEndPoint = settings.IpV4, // Porta UDP dinâmica para DHT
             ListenEndPoints = new Dictionary<string, IPEndPoint>
                 {
-                    { "ipv4", new IPEndPoint(IPAddress.Any, 0) }, // Porta TCP/UDP dinâmica para Peers
-                    { "ipv6", new IPEndPoint(IPAddress.IPv6Any, 0) }
+                    { "ipv4", settings.IpV4 }, // Porta TCP/UDP dinâmica para Peers
+                    { "ipv6", settings.IpV6 }
                 },
-            MaximumConnections = 200,
+            MaximumConnections = settings.ConnectionsMaxima,
+            ConnectionRetryDelays = settings.Retry,
+            ConnectionTimeouts = settings.PeerTimeout,
 
             // --- CACHE E ARQUIVOS ---
-            AutoSaveLoadFastResume = true,
-            AutoSaveLoadMagnetLinkMetadata = true,
-            AutoSaveLoadDhtCache = true,
-            UsePartialFiles = false, // Desativado para ajudar o VLC a ler o arquivo direto
-            DiskCacheBytes = 50 * 1024 * 1024, // 50MB de RAM dedicada a cache
+            AutoSaveLoadFastResume = settings.LoadFastResume,
+            AutoSaveLoadMagnetLinkMetadata = settings.LoadMagnetLinkMetadata,
+            AutoSaveLoadDhtCache = settings.LoadDhtCache,
+            CacheDirectory = settings.PastaCache,
+            UsePartialFiles = settings.ArquivoParcial, // Desativado para ajudar o VLC a ler o arquivo direto
+            DiskCacheBytes = settings.CacheBytesEmDisco, // 50MB de RAM dedicada a cache
 
             // --- STREAMING E WEBSEEDS ---
-            HttpStreamingPrefix = $"http://127.0.0.1:{portaLivre}/torrent-stream/",
-            WebSeedConnectionTimeout = TimeSpan.FromSeconds(15),
+            HttpStreamingPrefix = settings.StreamingPrefix,
+            WebSeedConnectionTimeout = settings.ConexaoTimeout,
             WebSeedSpeedTrigger = 0 // Baixa de fontes HTTP e P2P simultaneamente se disponível
 
         };
-    }
-
-    private static int ObterPortaLivre()
-    {
-        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        socket.Bind(new IPEndPoint(IPAddress.Loopback, 0)); // '0' força o Windows a dar uma porta vazia
-        return ((IPEndPoint)socket.LocalEndPoint!).Port;
     }
 }

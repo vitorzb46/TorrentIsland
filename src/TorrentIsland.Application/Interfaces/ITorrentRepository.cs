@@ -1,3 +1,4 @@
+using System.Collections;
 using TorrentIsland.Domain.Entities;
 using TorrentIsland.Domain.Enums;
 
@@ -21,4 +22,5 @@ public interface ITorrentRepository
     Task StartAllTorrentAsync();
     Task StartTorrentAsync(Guid id);
     Task TrackersAsync(Guid id);
+    Task EventsAsync(Guid id);
 }

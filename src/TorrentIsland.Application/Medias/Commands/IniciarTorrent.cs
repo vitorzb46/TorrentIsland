@@ -15,6 +15,8 @@ public class IniciarTorrent(ITorrentRepository repository, ITrackerService track
 
         await Repository.TrackersAsync(id).ConfigureAwait(false);
 
+        await Repository.EventsAsync(id).ConfigureAwait(false);
+
         await Repository.StartTorrentAsync(id).ConfigureAwait(false);
 
         return id;
