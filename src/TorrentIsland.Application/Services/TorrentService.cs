@@ -5,16 +5,23 @@ using TorrentIsland.Application.Interfaces;
 
 namespace TorrentIsland.Application.Services;
 
-public class TorrentService(ITorrentRepository repository, ILogger<TorrentService> logger, IIniciarTorrent iniciarTorrent, IObterTorrent obterTorrent) : ITorrentService
+public class TorrentService(
+    IIniciarTorrent iniciarTorrent,
+    IIniciarStream iniciarStream,
+    IObterTorrent obterTorrent) : ITorrentService
 {
-    private readonly ITorrentRepository _repository = repository;
-    private readonly ILogger<TorrentService> _logger = logger;
     private readonly IIniciarTorrent IniciarTorrent = iniciarTorrent;
+    private readonly IIniciarStream IniciarStream = iniciarStream;
     private readonly IObterTorrent ObterTorrent = obterTorrent;
 
     public async Task CriarTorrentAsync(string input)
     {
         await IniciarTorrent.StartAsync(input);
+    }
+
+    public async Task CriarStreamAsync(string magnet)
+    {
+        await IniciarStream.StartAsync(magnet);
     }
 
     public Task<TorrentDto> ObterTorrentAsync(Guid id)

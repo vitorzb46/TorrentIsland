@@ -42,7 +42,7 @@ public class PlayerMonitorRenderer(ITorrentRepository repository, ILogger<Player
 
     private void RenderizarEstados(ref int? ultimoSeed)
     {
-        foreach (var (_, nome, estado, seeds, peers) in _repository.EstadoDosTorrents())
+        foreach (var (_, nome, estado, seeds, peers) in _repository.StreamTorrentEstado())
         {
             if (ultimoSeed == null || seeds != ultimoSeed)
             {

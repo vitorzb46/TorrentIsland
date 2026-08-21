@@ -10,6 +10,7 @@ using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Medias.Commands;
 using TorrentIsland.Application.Medias.Queries;
 using TorrentIsland.Application.Services;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Configuration;
 using TorrentIsland.Infrastructure.Logging;

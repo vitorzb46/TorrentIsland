@@ -12,6 +12,10 @@ namespace TorrentIsland.Domain.Exceptions
     {
         public InvalidManagerException() : base("Não possui nenhum manager registrado!") { }
     }
+    public class InvalidManyManagerException : Exception
+    {
+        public InvalidManyManagerException() : base("Somente um torrent é permitido!") { }
+    }
     public class ParamaterException : Exception
     {
         public ParamaterException() : base("Parâmetro fornecido não pode ser vazio.") { }

@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace TorrentIsland.Application.Services;
+namespace TorrentIsland.Application.Settings;
 
 public sealed class AppSettings
 {
