@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
@@ -19,14 +18,13 @@ public class TorrentService(
         await IniciarTorrent.StartAsync(input);
     }
 
-    public async Task CriarStreamAsync(string magnet)
+    public async Task StreamTorrentAsync(string magnet)
     {
         await IniciarStream.StartAsync(magnet);
     }
 
     public Task<TorrentDto> ObterTorrentAsync(Guid id)
     {
-        var torrent = ObterTorrent.TorrentAsync(id);
-        return torrent;
+        return ObterTorrent.TorrentAsync(id);
     }
 }

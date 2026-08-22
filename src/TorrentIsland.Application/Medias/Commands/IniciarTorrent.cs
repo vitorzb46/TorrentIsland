@@ -4,10 +4,11 @@ using TorrentIsland.Domain.Interfaces;
 
 namespace TorrentIsland.Application.Medias.Commands;
 
-public class IniciarTorrent(ITorrentRepository repository, ITorrentLoopRenderer renderer) : IIniciarTorrent
+public class IniciarTorrent(ITorrentRepository repository, ITorrentLoopRenderer renderer, IEventHandling handler) : IIniciarTorrent
 {
-    public ITorrentRepository Repository { get; } = repository;
-    public ITorrentLoopRenderer Renderer { get; } = renderer;
+    private ITorrentRepository Repository { get; } = repository;
+    private ITorrentLoopRenderer Renderer { get; } = renderer;
+    private IEventHandling Handler { get; } = handler;
 
     public async Task StartAsync(string input)
     {
@@ -17,7 +18,7 @@ public class IniciarTorrent(ITorrentRepository repository, ITorrentLoopRenderer 
         {
             await Repository.TrackersAsync(id).ConfigureAwait(false);
 
-            await Repository.EventsAsync(id).ConfigureAwait(false);
+            await Handler.EventsAsync(id).ConfigureAwait(false);
 
             await Repository.StartTorrentAsync(id).ConfigureAwait(false);
         }

@@ -13,8 +13,11 @@ using TorrentIsland.Application.Services;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Configuration;
+using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.MonoTorrent;
+using TorrentIsland.Infrastructure.Services;
+using TorrentIsland.Infrastructure.VLC;
 
 namespace TorrentIsland.Infrastructure.DependencyInjection;
 
@@ -41,11 +44,17 @@ public static class ServiceCollectionExtensions
             EngineSettings settings = settingBuilder.ToSettings();
             return new ClientEngine(settings);
         });
+        services.AddSingleton<IEventHandling, EventHandling>();
         services.AddSingleton<IIniciarTorrent, IniciarTorrent>();
+        services.AddSingleton<IIniciarStream, IniciarStream>();
         services.AddSingleton<IObterTorrent, ObterTorrent>();
         services.AddSingleton<ITrackerService, TrackerService>();
+        services.AddSingleton<IManagerFiles, ManagerFiles>();
+        services.AddSingleton<IManagers, Managers>();
+        services.AddSingleton<IEntityMapping, EntityMapping>();
         services.AddSingleton<ITorrentRepository, TorrentRepository>();
         services.AddSingleton<ITorrentService, TorrentService>();
+        services.AddSingleton<IPlayerLauncherService, PlayerLauncherService>();
 
         return services;
     }

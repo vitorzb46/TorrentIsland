@@ -4,9 +4,10 @@ using TorrentIsland.Domain.Exceptions;
 
 namespace TorrentIsland.Application.Medias.Commands;
 
-public class IniciarStream(ITorrentRepository repository) : IIniciarStream
+public class IniciarStream(ITorrentRepository repository, IEventHandling handler) : IIniciarStream
 {
-    public ITorrentRepository Repository { get; } = repository;
+    private ITorrentRepository Repository { get; } = repository;
+    private IEventHandling Handler { get; } = handler;
 
     public async Task StartAsync(string magnet)
     {
@@ -15,7 +16,7 @@ public class IniciarStream(ITorrentRepository repository) : IIniciarStream
         if (id.Count > 1) throw new InvalidManyManagerException();
 
         await Repository.TrackersAsync(id[0]).ConfigureAwait(false);
-        await Repository.EventsAsync(id[0]).ConfigureAwait(false);
+        await Handler.EventsAsync(id[0]).ConfigureAwait(false);
         await Repository.StartStreamAsync(id[0]).ConfigureAwait(false);
     }
 }

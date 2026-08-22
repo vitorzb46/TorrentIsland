@@ -16,8 +16,10 @@ public sealed class AppSettings
     public string? Cookies { get; } = string.Empty;
 
     // Torrent (MonoTorrent)
-    public string? PastaDownloads { get; } = "Downloads";
-    public string? PastaTorrents { get; } = "Torrents";
+    public bool OneStream { get; set; } = true;
+    public string PastaProjeto { get; } = "TorrentIsland";
+    public string PastaDownloads { get; } = "Downloads";
+    public string PastaTorrents { get; } = "Torrents";
 
     // Limites em bytes/s; 0 = ilimitado. Propriedades mantêm o default (0) até serem configuradas.
     public int TorrentLimiteDownload { get; }

@@ -24,22 +24,22 @@ namespace TorrentIsland.Presentation.Console.EntryPoint
                 switch (args[0].ToUpperInvariant())
                 {
                     case "VIDEO":
-                        await BaixarVideo(args).ConfigureAwait(false);
+                        await BaixarVideoAsync(args).ConfigureAwait(false);
                         break;
                     case "AUDIO":
-                        await BaixarAudio(args).ConfigureAwait(false);
+                        await BaixarAudioAsync(args).ConfigureAwait(false);
                         break;
                     case "PLAYLIST":
-                        await BaixarPlaylist(args).ConfigureAwait(false);
+                        await BaixarPlaylistAsync(args).ConfigureAwait(false);
                         break;
                     case "MOSTRAR":
-                        await MostrarPlaylist(args).ConfigureAwait(false);
+                        await MostrarPlaylistAsync(args).ConfigureAwait(false);
                         break;
                     case "TORRENT":
-                        await BaixarTorrent(args).ConfigureAwait(false);
+                        await BaixarTorrentAsync(args).ConfigureAwait(false);
                         break;
                     case "STREAM":
-                        await StreamarTorrent(args).ConfigureAwait(false);
+                        await StreamTorrentAsync(args).ConfigureAwait(false);
                         break;
                     case "HELP" or "-H" or "--HELP":
                         System.Console.WriteLine(localizer["Console_Uso"]);
@@ -58,71 +58,55 @@ namespace TorrentIsland.Presentation.Console.EntryPoint
             }
         }
 
-        private async Task BaixarVideo(string[] args)
+        private async Task BaixarVideoAsync(string[] args)
         {
             string? url = ObterUrl(args, "Console_UsoVideo");
-            if (url is null)
-            {
-                return;
-            }
+
+            if (url is null) return;
+
             //await ydl.VideoDLAsync(url).ConfigureAwait(false);
             return;
         }
 
-        private async Task BaixarAudio(string[] args)
+        private async Task BaixarAudioAsync(string[] args)
         {
             string? url = ObterUrl(args, "Console_UsoAudio");
-            if (url is null)
-            {
-                return;
-            }
+
+            if (url is null) return;
 
             //await ys.DownloadAudioAsync(url).ConfigureAwait(false);
         }
 
-        private async Task BaixarPlaylist(string[] args)
+        private async Task BaixarPlaylistAsync(string[] args)
         {
             string? url = ObterUrl(args, "Console_UsoPlaylist");
-            if (url is null)
-            {
-                return;
-            }
+
+            if (url is null) return;
 
             //await ydl.VideoDLAsync(url).ConfigureAwait(false);
         }
 
-        private async Task MostrarPlaylist(string[] args)
+        private async Task MostrarPlaylistAsync(string[] args)
         {
             string? url = ObterUrl(args, "Console_UsoMostrar");
-            if (url is null)
-            {
-                return;
-            }
+
+            if (url is null) return;
 
             //await ys.MostrarPlaylistAsync(url).ConfigureAwait(false);
         }
 
-        private async Task BaixarTorrent(string[] args)
+        private async Task BaixarTorrentAsync(string[] args)
         {
-            if (args.Length < 2)
-            {
-                Logger.LogInformation(localizer["Console_UsoTorrent"]);
-                return;
-            }
+            if (args.Length < 2) Logger.LogInformation(localizer["Console_UsoTorrent"]);
 
-            string input = args[1];
-
-            await torrent.CriarTorrentAsync(input).ConfigureAwait(false);
+            await torrent.CriarTorrentAsync(args[1]).ConfigureAwait(false);
         }
 
-        private async Task StreamarTorrent(string[] args)
+        private async Task StreamTorrentAsync(string[] args)
         {
-            if (args.Length < 2)
-            {
-                Logger.LogInformation(localizer["Console_UsoStream"]);
-                return;
-            }
-            //torrentId = await torrent.CriarTorrentAsync(input).ConfigureAwait(false);
+            if (args.Length < 2) Logger.LogInformation(localizer["Console_UsoStream"]);
+
+            await torrent.StreamTorrentAsync(args[1]).ConfigureAwait(false);
         }
 
         private string? ObterUrl(string[] args, string chaveUso)

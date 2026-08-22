@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.DependencyInjection;
 using TorrentIsland.Presentation.Console.EntryPoint;
@@ -14,6 +15,7 @@ builder.Services.AddSingleton<ConsoleLogRenderer>();
 builder.Services.AddSingleton<ITorrentLoopRenderer, TorrentLoopRenderer>();
 builder.Services.AddTransient<EntryPoint>();
 builder.Services.AddHostedService<TorrentLoopRenderer>();
+builder.Services.AddSingleton<IPlayerMonitorRenderer, PlayerMonitorRenderer>();
 
 var host = builder.Build();
 
