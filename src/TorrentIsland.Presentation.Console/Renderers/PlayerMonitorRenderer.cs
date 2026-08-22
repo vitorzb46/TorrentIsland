@@ -2,15 +2,18 @@
 using Spectre.Console;
 using System.Diagnostics;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Domain.Enums;
 
 namespace TorrentIsland.Presentation.Console.Renderers;
 
-public class PlayerMonitorRenderer(ITorrentRepository repository, ILogger<PlayerMonitorRenderer> logger) : IPlayerMonitorRenderer
+public class PlayerMonitorRenderer(ILogger<PlayerMonitorRenderer> logger) : IPlayerMonitorRenderer
 {
-    private readonly ITorrentRepository _repository = repository;
     private readonly ILogger<PlayerMonitorRenderer> _logger = logger;
 
-    public async Task MonitorPlayerAsync(Process? player, CancellationToken cancellationToken)
+    public async Task MonitorPlayerAsync(
+        Process? player,
+        Func<IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)>> obterEstados,
+        CancellationToken cancellationToken)
     {
         if (player is null)
         {
@@ -27,7 +30,7 @@ public class PlayerMonitorRenderer(ITorrentRepository repository, ILogger<Player
 
             try
             {
-                RenderizarEstados(ref ultimoSeed);
+                RenderizarEstados(ref ultimoSeed, obterEstados);
             }
             catch (Exception ex)
             {
@@ -40,9 +43,11 @@ public class PlayerMonitorRenderer(ITorrentRepository repository, ILogger<Player
         _logger.LogInformation("Player encerrado, monitoramento finalizado.");
     }
 
-    private void RenderizarEstados(ref int? ultimoSeed)
+    private void RenderizarEstados(
+        ref int? ultimoSeed,
+        Func<IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)>> obterEstados)
     {
-        foreach (var (_, nome, estado, seeds, peers) in _repository.StreamTorrentEstado())
+        foreach (var (_, nome, estado, seeds, peers) in obterEstados())
         {
             if (ultimoSeed == null || seeds != ultimoSeed)
             {
