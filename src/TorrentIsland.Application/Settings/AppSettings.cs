@@ -17,7 +17,8 @@ public sealed class AppSettings
 
     // Torrent (MonoTorrent)
     public bool OneStream { get; set; } = true;
-    public string PastaProjeto { get; } = "TorrentIsland";
+    public bool Semeando { get; set; } = true;
+    public static string PastaProjeto { get; } = "TorrentIsland";
     public string PastaDownloads { get; } = "Downloads";
     public string PastaTorrents { get; } = "Torrents";
 
@@ -26,6 +27,8 @@ public sealed class AppSettings
     public int TorrentLimiteUpload { get; }
 
     // Client Engine Settings
+    public string PastaEngineState { get; set; } = Path.Combine(PastaAppData, PastaProjeto, "EngineState");
+    public string PastaCache { get; } = Path.Combine(PastaAppData, PastaProjeto, "Cache");
     public bool RedirecionarPorta { get; } = true;
     public bool DescobertaPeerLocal { get; } = true;
     public IPEndPoint IpV4 { get; } = new(IPAddress.Any, 0);
@@ -34,8 +37,8 @@ public sealed class AppSettings
     public bool LoadFastResume { get; } = true;
     public bool LoadMagnetLinkMetadata { get; } = true;
     public bool LoadDhtCache { get; } = true;
-    public string PastaAppData { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-    public string PastaCache { get; } = "Cache";
+    public static string PastaAppData { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+    
     public bool ArquivoParcial { get; } = false;
     public int CacheBytesEmDisco { get; } = 150 * 1024 * 1024;
     public string StreamingPrefix { get; } = $"http://127.0.0.1:{portaLivre}/torrent-stream/";
@@ -54,8 +57,7 @@ public sealed class AppSettings
         TimeSpan.FromSeconds(7),
         TimeSpan.FromSeconds(9),
         TimeSpan.FromSeconds(13)
-    ];
-
+    ];    
 
     private static int ObterPortaLivre()
     {
