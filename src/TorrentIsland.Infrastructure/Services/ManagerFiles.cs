@@ -9,20 +9,19 @@ public class ManagerFiles : IManagerFiles
 {
     private string AppDataPath;
     private string CurrentDirectory;
-    public string CacheFolder { get; private set; }
     public string DownloadFolder { get; private set; }
     public string TorrentsFolder { get; private set; }
     public ManagerFiles(AppSettings app)
     {
-        AppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), app.PastaProjeto);
+        AppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppSettings.PastaProjeto);
         CurrentDirectory = Directory.GetCurrentDirectory();
-        CacheFolder = Path.Combine(AppDataPath, app.PastaCache);
         DownloadFolder = Path.Combine(CurrentDirectory, app.PastaDownloads);
         TorrentsFolder = Path.Combine(CurrentDirectory, app.PastaTorrents);
         Directory.CreateDirectory(AppDataPath);
-        Directory.CreateDirectory(CacheFolder);
+        Directory.CreateDirectory(app.PastaCache);
         Directory.CreateDirectory(DownloadFolder);
         Directory.CreateDirectory(TorrentsFolder);
+        Directory.CreateDirectory(app.PastaEngineState);
     }
 
     public ITorrentManagerFile ArquivoMaiorPrimeiro(TorrentManager manager) => manager.Files.OrderBy(t => t.Length).Last();

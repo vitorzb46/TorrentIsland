@@ -5,7 +5,6 @@ namespace TorrentIsland.Infrastructure.Interfaces
 {
     public interface IManagerFiles
     {
-        string CacheFolder { get; }
         string DownloadFolder { get; }
         string TorrentsFolder { get; }
 
