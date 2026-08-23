@@ -2,7 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
 using Spectre.Console;
-using System.Runtime.InteropServices;
+using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Enums;
 using TorrentIsland.Domain.Interfaces;
@@ -11,15 +11,20 @@ using TorrentIsland.Presentation.Console.Helpers;
 
 namespace TorrentIsland.Presentation.Console.Renderers;
 
-internal sealed class TorrentLoopRenderer(ClientEngine engine, ConsoleLogRenderer renderer, ILogger<TorrentLoopRenderer> logger, IEntityMapping map, AppSettings app) : BackgroundService, ITorrentLoopRenderer
+internal sealed class TorrentLoopRenderer(ClientEngine engine,
+                                          ConsoleLogRenderer renderer,
+                                          ILogger<TorrentLoopRenderer> logger,
+                                          IEntityMapping map,
+                                          AppSettings app,
+                                          IFormattingHelper fb) : BackgroundService, ITorrentLoopRenderer
 {
     private readonly ILogger<TorrentLoopRenderer> Logger = logger;
     private readonly AppSettings app = app;
+    private readonly IFormattingHelper fb = fb;
 
     public ClientEngine Engine { get; } = engine;
     public ConsoleLogRenderer Renderer { get; } = renderer;
     public IEntityMapping Map { get; } = map;
-    private FormattingHelper FB { get; } = new FormattingHelper();
 
     public async Task TorrentInfoRender(IProgress<double>? progress = null)
     {
@@ -28,65 +33,82 @@ internal sealed class TorrentLoopRenderer(ClientEngine engine, ConsoleLogRendere
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken = default)
     {
+        System.Console.Clear();
+
         // Mantém o serviço rodando em background
-        while (!stoppingToken.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested && Engine.IsRunning)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            var managers = await Map.ObterManagersAsync().ConfigureAwait(false);
+
+            if (DeveEncerrarEngine(managers))
             {
-                System.Console.WindowWidth = 110;
-                System.Console.WindowHeight = 25;
-                System.Console.BufferWidth = 110;
+                await EncerrarEngineAsync(stoppingToken);
+                break;
             }
 
-            System.Console.Clear();
+            RenderizarInterface(managers);
 
-            while (Engine.IsRunning)
-            {
-                var managers = await Map.ObterManagersAsync();
+            if (stoppingToken.IsCancellationRequested) break;
 
-                if (app.Semeando == false && managers.Count == 0 && managers.Select(m => m.Value.Estado)
-                                                                       .All(s => s == TorrentEstado.Semeando || s == TorrentEstado.Pausado))
-                {
-                    Logger.LogInformation("Nenhum torrent ativo, encerrando...");
-                    
-                    await Engine.SaveStateAsync(app.PastaEngineState).ConfigureAwait(false);
-                    
-                    await Task.Delay(1000).ConfigureAwait(false);
-                    break;
-                }
+            await AguardarProximoCicloAsync(ConsoleLogRenderer.TempoRender, stoppingToken).ConfigureAwait(false);
 
-                Renderer.Painel.Limpar();
+        }
+    }
 
-                string headerFormat = $" [cyan]{managers.Count} torrent(s) ativo(s) | ↓ {FB.FormatarBytes(Engine.TotalDownloadRate)}/s | ↑ {FB.FormatarBytes(Engine.TotalUploadRate)}/s[/]".PadRight(110);
+    private bool DeveEncerrarEngine(IReadOnlyDictionary<Guid, TorrentDto> managers)
+    {
+        return app.Semeando == false &&
+               managers.Count == 0 &&
+               managers.Select(m => m.Value.Estado).All(s => s == TorrentEstado.Parado || s == TorrentEstado.Pausado);
+    }
 
-                Renderer.Painel.Adicionar($"[cyan]{Renderer.Multi(110, '=')}[/]");
-                Renderer.Painel.Adicionar(headerFormat);
-                Renderer.Painel.Adicionar("");
-                Renderer.Painel.Adicionar("  [[Q]] Abortar todos | [[A]] Abortar por id | Ctrl+C para sair");
-                Renderer.Painel.Adicionar(" >: ");
-                Renderer.Painel.Adicionar($"[cyan]{Renderer.Multi(110, '=')}[/]");
+    private async Task EncerrarEngineAsync(CancellationToken stoppingToken)
+    {
+        Logger.LogInformation("Nenhum torrent ativo, encerrando...");
+        await Engine.SaveStateAsync(app.PastaEngineState).ConfigureAwait(false);
+        await AguardarProximoCicloAsync(1000, stoppingToken);
+    }
 
-                foreach (var (id, p) in managers)
-                {
-                    var nome = p?.Nome ?? "Desconhecido";
-                    var nomeEscape = Markup.Escape(nome);
-                    var progresso = p?.Progresso ?? 0.0;
-                    var download = p!.VelocidadeDownload;
-                    var upload = p!.VelocidadeUpload;
-                    var seeds = p?.Seeds ?? 0;
-                    var peers = p?.ParesDisponiveis ?? 0;
-                    var eta = p?.TempoEstimado ?? "Desconhecido";
-                    var estado = p?.Estado ?? TorrentEstado.Aguardando;
-                    var cor = p!.CorEstado ?? "white";
-                    string msg = $"{id} | {nomeEscape} \nStatus: {estado} {progresso}% | {eta} | {FB.FormatarBytes(download)}/s | {FB.FormatarBytes(upload)}/s | Peers: {seeds}/{peers}";
-                    // Id | Nome | Estado | Progresso | TempoEstimado | VelocidadeDownload | VelocidadeUpload | Seeds/Peers
-                    Renderer.Painel.Adicionar(msg);
-                }
+    private static async Task AguardarProximoCicloAsync(int milissegundos, CancellationToken token)
+    {
+        if (token.IsCancellationRequested) return;
 
-                await Task.Delay(1000).ConfigureAwait(false);
-            }
+        // Aguarda o delay ou o cancelamento, sem estourar exceção para o console
+        await Task.Delay(milissegundos, CancellationToken.None)
+                  .WaitAsync(token)
+                  .ContinueWith(_ => { }, CancellationToken.None);
+    }
 
-            Logger.LogInformation("Loop de eventos encerrado.");
+    private void RenderizarInterface(IReadOnlyDictionary<Guid, TorrentDto> managers)
+    {
+        Renderer.Painel.Limpar();
+
+        int largura = Renderer.Largura;
+
+        string headerFormat = $" [cyan]{managers.Count} torrent(s) ativo(s) | ↓ {fb.FormatarBytes(Engine.TotalDownloadRate)}/s | ↑ {fb.FormatarBytes(Engine.TotalUploadRate)}/s[/]".PadRight(largura);
+
+        Renderer.Painel.Adicionar($"[cyan]{Renderer.Multi(largura, '=')}[/]");
+        Renderer.Painel.Adicionar(headerFormat);
+        Renderer.Painel.Adicionar("".PadRight(largura));
+        Renderer.Painel.Adicionar("  [[Q]] Abortar todos | [[A]] Abortar por id | Ctrl+C para sair".PadRight(largura));
+        Renderer.Painel.Adicionar(" >: ".PadRight(largura));
+        Renderer.Painel.Adicionar($"[cyan]{Renderer.Multi(largura, '=')}[/]");
+
+        foreach (var (id, p) in managers)
+        {
+            var nome = p?.Nome ?? "Desconhecido";
+            var nomeEscape = Markup.Escape(nome);
+            var progresso = p?.Progresso ?? 0.0;
+            var download = p!.VelocidadeDownload;
+            var upload = p!.VelocidadeUpload;
+            var seeds = p?.Seeds ?? 0;
+            var peers = p?.ParesDisponiveis ?? 0;
+            var eta = p?.TempoEstimado ?? "Desconhecido";
+            var estado = p?.Estado ?? TorrentEstado.Aguardando;
+            var cor = p!.CorEstado ?? "[white]";
+
+            string msg = $"[LightSalmon1]{id}[/] | [cyan]{nomeEscape}[/] \n[cyan]Status:[/] {cor}{estado} {progresso:0.0}%[/] | {eta} | {fb.FormatarBytes(download)}/s ↓ | {fb.FormatarBytes(upload)}/s ↑ | Peers: {seeds}/{peers}".PadRight(largura);
+            Renderer.Painel.Adicionar(msg);
         }
     }
 }

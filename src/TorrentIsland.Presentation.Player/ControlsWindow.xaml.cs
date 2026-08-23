@@ -8,12 +8,12 @@ namespace TorrentIsland.Presentation.Player;
 public partial class ControlsWindow : Window
 {
     private readonly PlayerViewModel _viewModel;
-    private bool _isSeeking;
+    private bool _isSeeking { get; set; }
 
     /// <summary>Dispara quando o usuário alternar tela cheia (a janela de vídeo executa).</summary>
     public event EventHandler? FullscreenRequested;
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
-    public event EventHandler? ActivityDetected;    
+    public event EventHandler? ActivityDetected;
 
     public ControlsWindow(PlayerViewModel viewModel)
     {

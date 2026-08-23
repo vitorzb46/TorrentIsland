@@ -11,12 +11,14 @@ namespace TorrentIsland.Presentation.Console.Renderers;
 /// </summary>
 public sealed class ConsoleLogRenderer : BackgroundService
 {
-    private const int Largura = 110;
+    public int Vazio = ObterLargura() / 4;
+    public int Largura = ObterLargura();
+    public static int TempoRender = 100;
     private readonly RingBufferLoggerProvider _buffer;
     private readonly object _sync = new();
     private string _cliAtual = string.Empty;
     private DateTime _ultimaRenderizacao = DateTime.MinValue;
-    private static readonly TimeSpan IntervaloMinimo = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan IntervaloMinimo = TimeSpan.FromMilliseconds(TempoRender);
 
     public LogPainel Painel { get; } = new();
 
@@ -39,6 +41,8 @@ public sealed class ConsoleLogRenderer : BackgroundService
     {
         lock (_sync)
         {
+            AtualizarDimensoes();
+
             var agora = DateTime.UtcNow;
             if (agora - _ultimaRenderizacao < IntervaloMinimo)
             {
@@ -54,7 +58,7 @@ public sealed class ConsoleLogRenderer : BackgroundService
             sb.AppendLine();
             sb.Append($"[cyan]{Multi(Largura - 1, '-')}[/]");
             sb.AppendLine();
-            sb.Append($"{Multi(30, ' ')}[cyan]=== ÚLTIMOS LOGS DO SISTEMA ===[/]".PadRight(Largura));
+            sb.Append($"{Multi(Vazio, ' ')}[cyan]=== ÚLTIMOS LOGS DO SISTEMA ===[/]".PadRight(Largura));
             sb.AppendLine();
 
             foreach (var log in logs.Reverse().Take(_buffer.MaxLogs))
@@ -72,7 +76,7 @@ public sealed class ConsoleLogRenderer : BackgroundService
             int vazias = _buffer.MaxLogs - Math.Min(logs.Length, _buffer.MaxLogs);
             for (int i = 0; i < vazias; i++)
             {
-                sb.AppendLine(new string(' ', Largura - 7));
+                sb.AppendLine(new string(' ', Largura - 1));
             }
 
             var saida = sb.ToString();
@@ -94,11 +98,11 @@ public sealed class ConsoleLogRenderer : BackgroundService
     private static string RemoverTodaFormatacao(string texto)
     {
         // Remove tags Spectre ([color], [/], etc)
-        var semTags = System.Text.RegularExpressions.Regex.Replace(texto, @"\[/?[a-z]+\]", "");
+        //var semTags = System.Text.RegularExpressions.Regex.Replace(texto, @"\[/?[a-z]+\]", "");
 
         // Remove códigos ANSI
         var semAnsi = System.Text.RegularExpressions.Regex.Replace(
-            semTags,
+            texto,
             @"\x1b\[[0-9;]*[mK]",
             string.Empty
         );
@@ -106,8 +110,32 @@ public sealed class ConsoleLogRenderer : BackgroundService
         return semAnsi;
     }
 
-    internal object Multi(object numero, object c)
+    static int ObterLargura()
     {
-        throw new NotImplementedException();
+        try
+        {
+            // Console Windows
+            if (!System.Console.IsOutputRedirected)
+            {
+                return System.Console.WindowWidth;
+            }
+
+        }
+        catch (Exception)
+        {
+            string? envColumns = Environment.GetEnvironmentVariable("COLUMNS");
+            if (int.TryParse(envColumns, out int columns))
+            {
+                return columns;
+            }
+        }
+
+        return 110;
+    }
+
+    private void AtualizarDimensoes()
+    {
+        Largura = ObterLargura();
+        Vazio = Largura / 4;
     }
 }

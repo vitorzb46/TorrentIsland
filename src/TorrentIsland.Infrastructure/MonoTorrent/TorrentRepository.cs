@@ -18,9 +18,9 @@ public class TorrentRepository : ITorrentRepository
 {
     #region Fields + Constructor
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<TorrentRepository> Localizer;
-    private readonly AppSettings? app;
 
     private ClientEngine Engine { get; set; }
+    public AppSettings App { get; set; }
     private IManagerFiles ManagerFiles { get; }
     private IManagers Managers { get; }
     private IEntityMapping Map { get; }
@@ -56,6 +56,7 @@ public class TorrentRepository : ITorrentRepository
             MaximumUploadRate = app.TorrentLimiteUpload
         }.ToSettings();
         Engine = engine;
+        App = app;
         ManagerFiles = managerFiles;
         Managers = managers;
         Map = map;
@@ -68,7 +69,7 @@ public class TorrentRepository : ITorrentRepository
     public async Task<List<Guid>> AddEngineAsync(string magnetOrFolderName, bool isStream = false)
     {
         ArgumentNullException.ThrowIfNull(magnetOrFolderName);
-        
+
         if (magnetOrFolderName.StartsWith("magnet:?"))
         {
             var magnet = MagnetLink.Parse(magnetOrFolderName);
@@ -184,7 +185,7 @@ public class TorrentRepository : ITorrentRepository
                 try
                 {
                     ids.Add(Guid.NewGuid());
-                    var manager = await Engine.AddAsync(torrent, ManagerFiles.DownloadFolder, Settings).ConfigureAwait(false);    
+                    var manager = await Engine.AddAsync(torrent, ManagerFiles.DownloadFolder, Settings).ConfigureAwait(false);
                     await Map.RegristoIdAsync(ids[i], manager).ConfigureAwait(false);
                 }
                 catch (Exception ex)
@@ -203,10 +204,10 @@ public class TorrentRepository : ITorrentRepository
     {
         var manager = await Managers.ObterManagerIdAsync(id);
         var torrent = ManagerFiles.ArquivoMaiorPrimeiro(manager!);
-        var stream = app?.OneStream == true ? await StreamHttp(manager!, torrent!) :
+        var stream = App?.OneStream == true ? await StreamHttp(manager!, torrent!) :
                                       throw new CustomException("Não é possível iniciar um segundo stream.");
 
-        app.OneStream = false;
+        App.OneStream = false;
         await StreamBuffer(manager!);
         var process = await Player.LaunchPlayerAsync(stream.FullUri, CancellationToken.None);
         await PlayerMonitor.MonitorPlayerAsync(process, StreamTorrentEstado, CancellationToken.None).ConfigureAwait(false);
