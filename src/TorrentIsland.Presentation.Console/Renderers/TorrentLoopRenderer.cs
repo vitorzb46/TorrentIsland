@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
 using Spectre.Console;
 using System.Runtime.InteropServices;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Enums;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
@@ -10,9 +11,10 @@ using TorrentIsland.Presentation.Console.Helpers;
 
 namespace TorrentIsland.Presentation.Console.Renderers;
 
-internal sealed class TorrentLoopRenderer(ClientEngine engine, ConsoleLogRenderer renderer, ILogger<TorrentLoopRenderer> logger, IEntityMapping map) : BackgroundService, ITorrentLoopRenderer
+internal sealed class TorrentLoopRenderer(ClientEngine engine, ConsoleLogRenderer renderer, ILogger<TorrentLoopRenderer> logger, IEntityMapping map, AppSettings app) : BackgroundService, ITorrentLoopRenderer
 {
     private readonly ILogger<TorrentLoopRenderer> Logger = logger;
+    private readonly AppSettings app = app;
 
     public ClientEngine Engine { get; } = engine;
     public ConsoleLogRenderer Renderer { get; } = renderer;
@@ -36,17 +38,24 @@ internal sealed class TorrentLoopRenderer(ClientEngine engine, ConsoleLogRendere
                 System.Console.BufferWidth = 110;
             }
 
+            System.Console.Clear();
+
             while (Engine.IsRunning)
             {
                 var managers = await Map.ObterManagersAsync();
 
-                if (managers is null || managers.Count == 0 || managers.Select(m => m.Value.Estado)
+                if (app.Semeando == false && managers.Count == 0 && managers.Select(m => m.Value.Estado)
                                                                        .All(s => s == TorrentEstado.Semeando || s == TorrentEstado.Pausado))
                 {
                     Logger.LogInformation("Nenhum torrent ativo, encerrando...");
+                    
+                    await Engine.SaveStateAsync(app.PastaEngineState).ConfigureAwait(false);
+                    
                     await Task.Delay(1000).ConfigureAwait(false);
                     break;
                 }
+
+                Renderer.Painel.Limpar();
 
                 string headerFormat = $" [cyan]{managers.Count} torrent(s) ativo(s) | ↓ {FB.FormatarBytes(Engine.TotalDownloadRate)}/s | ↑ {FB.FormatarBytes(Engine.TotalUploadRate)}/s[/]".PadRight(110);
 
@@ -69,10 +78,12 @@ internal sealed class TorrentLoopRenderer(ClientEngine engine, ConsoleLogRendere
                     var eta = p?.TempoEstimado ?? "Desconhecido";
                     var estado = p?.Estado ?? TorrentEstado.Aguardando;
                     var cor = p!.CorEstado ?? "white";
-                    string msg = $"{id} | {nomeEscape} \n Status: {cor}{estado}[/] {progresso}% | {eta} | {FB.FormatarBytes(download)}/s | {FB.FormatarBytes(upload)}/s | Peers: {seeds}/{peers}";
+                    string msg = $"{id} | {nomeEscape} \nStatus: {estado} {progresso}% | {eta} | {FB.FormatarBytes(download)}/s | {FB.FormatarBytes(upload)}/s | Peers: {seeds}/{peers}";
                     // Id | Nome | Estado | Progresso | TempoEstimado | VelocidadeDownload | VelocidadeUpload | Seeds/Peers
                     Renderer.Painel.Adicionar(msg);
                 }
+
+                await Task.Delay(1000).ConfigureAwait(false);
             }
 
             Logger.LogInformation("Loop de eventos encerrado.");
