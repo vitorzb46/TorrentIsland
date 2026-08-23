@@ -48,7 +48,9 @@ public static class ServiceCollectionExtensions
                 {
                     return ClientEngine.RestoreStateAsync(engineState).GetAwaiter().GetResult();
                 }
-            }catch (Exception) {}
+
+            }
+            catch (Exception) { }
 
             var settingBuilder = GetSettingBuilder();
             EngineSettings settings = settingBuilder.ToSettings();
