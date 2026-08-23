@@ -1,10 +1,9 @@
 ﻿using System.Globalization;
-using TorrentIsland.Application.DTOs;
 using TorrentIsland.Domain.Enums;
 
 namespace TorrentIsland.Presentation.Console.Helpers
 {
-    public class FormattingHelper
+    public class FormattingHelper : IFormattingHelper
     {
         public string FormatarBytes(long bytes)
         {
@@ -16,20 +15,20 @@ namespace TorrentIsland.Presentation.Console.Helpers
                 _ => $"{bytes:0} B",
             };
         }
-        public static string TempoEstimado(TorrentDto p, double progresso)
+        public string TempoEstimado(long TamanhoTotal, long BytesRecebidos, double VelocidadeDownload, TorrentEstado Estado, double Progresso)
         {
-            long bytesRestantes = p.TamanhoTotal - p.BytesRecebidos;
-            double velocidade = p.VelocidadeDownload;
+            long bytesRestantes = TamanhoTotal - BytesRecebidos;
+            double velocidade = VelocidadeDownload;
             double etaSegundos = velocidade > 0 ? bytesRestantes / velocidade : double.PositiveInfinity;
 
             string etaTexto;
-            if (p.Estado is TorrentEstado.Semeando or TorrentEstado.Concluido || progresso >= 100.0)
+            if (Estado is TorrentEstado.Semeando or TorrentEstado.Concluido || Progresso >= 100.0)
             {
                 etaTexto = "Concluído ";
             }
             else if (double.IsPositiveInfinity(etaSegundos))
             {
-                etaTexto = p.Estado == TorrentEstado.Baixando ? "Buscando peers... " : "Parado ";
+                etaTexto = Estado == TorrentEstado.Baixando ? "Buscando peers... " : "Parado ";
             }
             else
             {
