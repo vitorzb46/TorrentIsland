@@ -4,11 +4,14 @@ using System.Collections.ObjectModel;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Domain.Entities;
 using TorrentIsland.Infrastructure.Interfaces;
+using TorrentIsland.Presentation.Console.Helpers;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
 
-public class EntityMapping(IManagers managers) : IEntityMapping
+public class EntityMapping(IManagers managers, IFormattingHelper fb) : IEntityMapping
 {
+    private readonly IFormattingHelper fb = fb;
+
     private IManagers Managers { get; } = managers;
 
     public async Task RegristoIdAsync(Guid id, TorrentManager manager)
@@ -52,23 +55,11 @@ public class EntityMapping(IManagers managers) : IEntityMapping
         var peers = manager.Peers.Available;
         var bytesRestantes = tamanhoTotal - bytesRecebidos;
 
-        TimeSpan tempoEstimado = TimeSpan.Zero;
-
-        if (velocidadeDownload > 0 && bytesRestantes > 0)
-        {
-            double segundosRestantes = (double)bytesRestantes / velocidadeDownload;
-
-            // Evita valores absurdos caso a velocidade mude bruscamente
-            if (segundosRestantes < double.MaxValue && segundosRestantes > 0)
-            {
-                tempoEstimado = TimeSpan.FromSeconds(segundosRestantes);
-            }
-        }
-        var eta = tempoEstimado == TimeSpan.Zero ? "Infinito" : tempoEstimado.ToString(@"hh\:mm\:ss");
+        var eta = fb.TempoEstimado(tamanhoTotal, bytesRecebidos, velocidadeDownload, estado, progresso);
 
         var torrent = new TorrentEntity();
         torrent.SetId(id);
-        torrent.SetNome(nome);
+        torrent.SetNome(Markup.Escape(nome));
         torrent.SetTamanhoTotal(tamanhoTotal);
         torrent.SetTrackers(trackers);
         torrent.SetSavePath(savePath);
