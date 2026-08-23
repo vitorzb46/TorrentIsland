@@ -23,7 +23,7 @@ public sealed class RingBufferLoggerProvider : ILoggerProvider
     public ILogger CreateLogger(string categoryName) => new Logger(this);
 
     /// <summary>Cópia pontual das mensagens atualmente no buffer.</summary>
-    public string[] Snapshot() => _entries.ToArray();
+    public string[] Snapshot() => [.. _entries];
 
     internal void Enqueue(string message)
     {
@@ -61,7 +61,7 @@ public sealed class RingBufferLoggerProvider : ILoggerProvider
                 message = $"{message} :: {exception}";
             }
 
-            _provider.Enqueue($"{DateTime.Now:HH:mm:ss.fff} [[{logLevel}]] {message}".PadRight(110));
+            _provider.Enqueue($"{DateTime.Now:HH:mm:ss.fff} {message}".PadRight(110));
         }
     }
 }
