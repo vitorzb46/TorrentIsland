@@ -3,6 +3,8 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+.vscode/
+
 # script
 gerar_contexto.bat
 ./graphify-out
