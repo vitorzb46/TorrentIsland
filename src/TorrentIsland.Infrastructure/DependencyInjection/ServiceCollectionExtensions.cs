@@ -40,6 +40,16 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ClientEngine>(sp =>
         {
+            var engineState = sp.GetRequiredService<AppSettings>().PastaEngineState;
+
+            try
+            {
+                if (Directory.Exists(engineState))
+                {
+                    return ClientEngine.RestoreStateAsync(engineState).GetAwaiter().GetResult();
+                }
+            }catch (Exception) {}
+
             var settingBuilder = GetSettingBuilder();
             EngineSettings settings = settingBuilder.ToSettings();
             return new ClientEngine(settings);
