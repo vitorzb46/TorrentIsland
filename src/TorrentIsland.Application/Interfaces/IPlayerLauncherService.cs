@@ -4,5 +4,5 @@ namespace TorrentIsland.Application.Interfaces;
 
 public interface IPlayerLauncherService
 {
-    Task<Process?> LaunchPlayerAsync(string url, CancellationToken cancellationToken);
+    Task<Process?> LaunchPlayerAsync(string url, CancellationToken cancellationToken = default);
 }

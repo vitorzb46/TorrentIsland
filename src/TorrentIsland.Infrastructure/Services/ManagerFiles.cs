@@ -9,6 +9,7 @@ public class ManagerFiles : IManagerFiles
 {
     private string AppDataPath;
     private string CurrentDirectory;
+
     public string DownloadFolder { get; private set; }
     public string TorrentsFolder { get; private set; }
     public ManagerFiles(AppSettings app)
@@ -22,6 +23,7 @@ public class ManagerFiles : IManagerFiles
         Directory.CreateDirectory(DownloadFolder);
         Directory.CreateDirectory(TorrentsFolder);
         Directory.CreateDirectory(app.PastaEngineState);
+        if (!File.Exists(app.ArquivoEngineState)) File.Create(Path.Combine(app.PastaEngineState, app.ArquivoEngineState));
     }
 
     public ITorrentManagerFile ArquivoMaiorPrimeiro(TorrentManager manager) => manager.Files.OrderBy(t => t.Length).Last();

@@ -69,24 +69,30 @@ public class TorrentRepository : ITorrentRepository
     public async Task<List<Guid>> AddEngineAsync(string magnetOrFolderName, bool isStream = false)
     {
         ArgumentNullException.ThrowIfNull(magnetOrFolderName);
-
+        IList<TorrentManager> managers;
         if (magnetOrFolderName.StartsWith("magnet:?"))
         {
             var magnet = MagnetLink.Parse(magnetOrFolderName);
-
-            var manager = isStream == true ? await Managers.StreamingAsync(magnet, ManagerFiles.DownloadFolder, Settings) :
-                                             await Managers.TorrentDownloadAsync(magnet, ManagerFiles.DownloadFolder, Settings);
+            if (isStream) 
+                managers = await Managers.StreamingAsync(magnet, ManagerFiles.DownloadFolder, Settings);
+            else
+                managers = await Managers.TorrentDownloadAsync(magnet, ManagerFiles.DownloadFolder, Settings);
 
             await Task.Delay(3000).ConfigureAwait(false);
-            while (manager.State == TorrentState.Metadata)
+            while (managers.Select(m => m.State).All(s => s == TorrentState.Metadata))
             {
                 Logger.LogInformation("Aguardando metadata...");
                 await Task.Delay(1000).ConfigureAwait(false);
             }
 
-            var id = new List<Guid> { Guid.NewGuid() };
-            await Map.RegristoIdAsync(id[0], manager).ConfigureAwait(false);
-            return id;
+            List<Guid> ids = [];
+            for (var i = 0; i < managers.Count; i++)
+            {
+                ids.Add(Guid.NewGuid());
+                await Map.RegistroIdAsync(ids[i], managers[i]).ConfigureAwait(false);
+            }
+            
+            return ids;
         }
         else
         {
@@ -186,7 +192,7 @@ public class TorrentRepository : ITorrentRepository
                 {
                     ids.Add(Guid.NewGuid());
                     var manager = await Engine.AddAsync(torrent, ManagerFiles.DownloadFolder, Settings).ConfigureAwait(false);
-                    await Map.RegristoIdAsync(ids[i], manager).ConfigureAwait(false);
+                    await Map.RegistroIdAsync(ids[i], manager).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -209,8 +215,8 @@ public class TorrentRepository : ITorrentRepository
 
         App.OneStream = false;
         await StreamBuffer(manager!);
-        var process = await Player.LaunchPlayerAsync(stream.FullUri, CancellationToken.None);
-        await PlayerMonitor.MonitorPlayerAsync(process, StreamTorrentEstado, CancellationToken.None).ConfigureAwait(false);
+        var process = await Player.LaunchPlayerAsync(stream.FullUri);
+        await PlayerMonitor.MonitorPlayerAsync(process, StreamTorrentEstado).ConfigureAwait(false);
     }
 
     public IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)> StreamTorrentEstado()

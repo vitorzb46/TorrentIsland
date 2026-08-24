@@ -14,7 +14,7 @@ public class EntityMapping(IManagers managers, IFormattingHelper fb) : IEntityMa
 
     private IManagers Managers { get; } = managers;
 
-    public async Task RegristoIdAsync(Guid id, TorrentManager manager)
+    public async Task RegistroIdAsync(Guid id, TorrentManager manager)
     {
         Managers.All[id] = manager;
         ToEntity(id);

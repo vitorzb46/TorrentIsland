@@ -13,7 +13,7 @@ public class PlayerMonitorRenderer(ILogger<PlayerMonitorRenderer> logger) : IPla
     public async Task MonitorPlayerAsync(
         Process? player,
         Func<IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)>> obterEstados,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         if (player is null)
         {
@@ -51,8 +51,7 @@ public class PlayerMonitorRenderer(ILogger<PlayerMonitorRenderer> logger) : IPla
         {
             if (ultimoSeed == null || seeds != ultimoSeed)
             {
-                string nomeEscape = Markup.Escape(nome);
-                _logger.LogInformation($"[[{nomeEscape}]] [cyan]{estado}[/] | seeds: {seeds} | peers: {peers}");
+                _logger.LogInformation($"{nome} - [cyan]{estado}[/] | seeds: {seeds} | peers: {peers}");
                 ultimoSeed = seeds;
             }
         }

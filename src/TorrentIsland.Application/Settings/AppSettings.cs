@@ -27,7 +27,8 @@ public sealed class AppSettings
     public int TorrentLimiteUpload { get; }
 
     // Client Engine Settings
-    public string PastaEngineState { get; set; } = Path.Combine(PastaAppData, PastaProjeto, "EngineState");
+    public string ArquivoEngineState { get; } = "EngineState";
+    public string PastaEngineState { get; } = Path.Combine(PastaAppData!, PastaProjeto, "EngineState");
     public string PastaCache { get; } = Path.Combine(PastaAppData, PastaProjeto, "Cache");
     public bool RedirecionarPorta { get; } = true;
     public bool DescobertaPeerLocal { get; } = true;

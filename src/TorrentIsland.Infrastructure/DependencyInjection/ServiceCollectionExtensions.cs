@@ -40,15 +40,15 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ClientEngine>(sp =>
         {
-            var engineState = sp.GetRequiredService<AppSettings>().PastaEngineState;
+            var engineState = sp.GetRequiredService<AppSettings>().ArquivoEngineState;
+            var pasta = sp.GetRequiredService<AppSettings>().PastaEngineState;
 
             try
             {
-                if (Directory.Exists(engineState))
+                if (File.Exists(Path.Combine(pasta, engineState)))
                 {
                     return ClientEngine.RestoreStateAsync(engineState).GetAwaiter().GetResult();
                 }
-
             }
             catch (Exception) { }
 

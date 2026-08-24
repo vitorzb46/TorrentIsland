@@ -8,6 +8,6 @@ namespace TorrentIsland.Application.Interfaces
         Task MonitorPlayerAsync(
             Process? player,
             Func<IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)>> obterEstados,
-            CancellationToken cancellationToken);
+            CancellationToken cancellationToken = default);
     }
 }

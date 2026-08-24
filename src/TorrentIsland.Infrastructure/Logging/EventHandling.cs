@@ -1,19 +1,24 @@
 using Microsoft.Extensions.Logging;
+using MonoTorrent.Client;
 using Spectre.Console;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.MonoTorrent;
 
 namespace TorrentIsland.Infrastructure.Logging;
 
-public class EventHandling(IManagers managers, ILogger<TorrentRepository> logger, CancellationToken token = default) : IEventHandling
+public class EventHandling(ClientEngine engine, AppSettings app, IManagers managers, ILogger<TorrentRepository> logger, CancellationToken token = default) : IEventHandling
 {
+    private readonly ClientEngine engine = engine;
+    private readonly AppSettings app = app;
+
     private IManagers Managers { get; } = managers;
     private ILogger<TorrentRepository> Logger { get; } = logger;
 
     public async Task EventsAsync(Guid id)
     {
-        Console.WriteLine("Iniciando depêndencias.");
+        Console.WriteLine("Iniciando eventos.");
 
         if (!Managers.All.TryGetValue(id, out var manager))
         {
@@ -53,7 +58,7 @@ public class EventHandling(IManagers managers, ILogger<TorrentRepository> logger
 
         manager.TorrentStateChanged += (o, e) =>
         {
-            Logger.LogInformation("{Nome} -> Estado alterado: {Antigo} -> {Novo}",
+            Logger.LogInformation("{Nome} \n --> Estado alterado: {Antigo} -> {Novo}",
                 Nome(), e.OldState, e.NewState);
         };
 
@@ -61,6 +66,8 @@ public class EventHandling(IManagers managers, ILogger<TorrentRepository> logger
         AppDomain.CurrentDomain.ProcessExit += async (sender, e) =>
         {
             Logger.LogInformation("[red]Encerrando processo...[/]");
+
+            await SaveEngineAsync(app.ArquivoEngineState);
 
             await Task.Delay(2000, token).ConfigureAwait(false);
         };
@@ -71,9 +78,19 @@ public class EventHandling(IManagers managers, ILogger<TorrentRepository> logger
 
             Logger.LogInformation("[red]Ctrl + c pressionado. Aguarde...[/]");
 
-            await Task.Delay(2000, token).ConfigureAwait(false);
+            await SaveEngineAsync(app.ArquivoEngineState);
 
             Environment.Exit(0);
         };
+    }
+
+    private async Task SaveEngineAsync(string fileName)
+    {
+        try
+        {
+            var bytes = await engine.SaveStateAsync().ConfigureAwait(false);
+            File.WriteAllBytes(Path.Combine(app.PastaEngineState, fileName), bytes);
+        }
+        catch (Exception) {}
     }
 }

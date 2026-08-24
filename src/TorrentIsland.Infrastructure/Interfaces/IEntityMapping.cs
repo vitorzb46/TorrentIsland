@@ -7,7 +7,7 @@ namespace TorrentIsland.Infrastructure.Interfaces
     public interface IEntityMapping
     {
         Task<IReadOnlyDictionary<Guid, TorrentDto>> ObterManagersAsync();
-        Task RegristoIdAsync(Guid id, TorrentManager manager);
+        Task RegistroIdAsync(Guid id, TorrentManager manager);
         TorrentEntity ToEntity(Guid id);
     }
 }

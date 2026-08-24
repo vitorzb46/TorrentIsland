@@ -8,7 +8,7 @@ public class PlayerLauncherService(ILogger<PlayerLauncherService> logger) : IPla
 {
     private readonly ILogger<PlayerLauncherService> _logger = logger;
 
-    public Task<Process?> LaunchPlayerAsync(string url, CancellationToken cancellationToken)
+    public Task<Process?> LaunchPlayerAsync(string url, CancellationToken cancellationToken = default)
     {
         var playerExe = Path.Combine(AppContext.BaseDirectory, "TorrentIsland.Presentation.Player.exe");
         if (!File.Exists(playerExe))

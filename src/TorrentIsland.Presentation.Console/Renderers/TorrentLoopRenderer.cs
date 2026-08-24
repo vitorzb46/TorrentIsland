@@ -65,7 +65,7 @@ internal sealed class TorrentLoopRenderer(ClientEngine engine,
     private async Task EncerrarEngineAsync(CancellationToken stoppingToken)
     {
         Logger.LogInformation("Nenhum torrent ativo, encerrando...");
-        await Engine.SaveStateAsync(app.PastaEngineState).ConfigureAwait(false);
+        await Engine.SaveStateAsync(app.ArquivoEngineState).ConfigureAwait(false);
         await AguardarProximoCicloAsync(1000, stoppingToken);
     }
 
