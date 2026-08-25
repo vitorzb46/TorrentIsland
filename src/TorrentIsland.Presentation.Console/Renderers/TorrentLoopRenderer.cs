@@ -3,16 +3,16 @@ using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
 using Spectre.Console;
 using TorrentIsland.Application.DTOs;
+using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Enums;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
-using TorrentIsland.Presentation.Console.Helpers;
 
 namespace TorrentIsland.Presentation.Console.Renderers;
 
 internal sealed class TorrentLoopRenderer(ClientEngine engine,
-                                          ConsoleLogRenderer renderer,
+                                          IConsoleLogRenderer renderer,
                                           ILogger<TorrentLoopRenderer> logger,
                                           IEntityMapping map,
                                           AppSettings app,
@@ -23,7 +23,7 @@ internal sealed class TorrentLoopRenderer(ClientEngine engine,
     private readonly IFormattingHelper fb = fb;
 
     public ClientEngine Engine { get; } = engine;
-    public ConsoleLogRenderer Renderer { get; } = renderer;
+    public IConsoleLogRenderer Renderer { get; } = renderer;
     public IEntityMapping Map { get; } = map;
 
     public async Task TorrentInfoRender(IProgress<double>? progress = null)
@@ -50,7 +50,7 @@ internal sealed class TorrentLoopRenderer(ClientEngine engine,
 
             if (stoppingToken.IsCancellationRequested) break;
 
-            await AguardarProximoCicloAsync(ConsoleLogRenderer.TempoRender, stoppingToken).ConfigureAwait(false);
+            await AguardarProximoCicloAsync(Renderer.TempoRender, stoppingToken).ConfigureAwait(false);
 
         }
     }

@@ -2,9 +2,9 @@ using MonoTorrent.Client;
 using Spectre.Console;
 using System.Collections.ObjectModel;
 using TorrentIsland.Application.DTOs;
+using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Domain.Entities;
 using TorrentIsland.Infrastructure.Interfaces;
-using TorrentIsland.Presentation.Console.Helpers;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
 

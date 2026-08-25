@@ -1,8 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using TorrentIsland.Infrastructure.DependencyInjection;
-using TorrentIsland.Presentation.Wpf.Logging;
 using System.Windows;
+using TorrentIsland.Infrastructure.DependencyInjection;
+using TorrentIsland.Infrastructure.Interfaces;
+using TorrentIsland.Presentation.Wpf.Logging;
 
 namespace TorrentIsland.Presentation.Wpf;
 
@@ -18,7 +19,9 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
 
         var builder = Host.CreateApplicationBuilder(e.Args);
-        builder.Services.AddTorrentIsland(builder.Configuration, maxLogs: 50);
+
+        var consoleLog = builder.Services.BuildServiceProvider().GetRequiredService<IConsoleLogRenderer>();
+        builder.Services.AddTorrentIsland(builder.Configuration, consoleLog, maxLogs: 50);
 
         builder.Services.AddSingleton<WpfLogSink>();
         builder.Services.AddSingleton<MainWindow>();

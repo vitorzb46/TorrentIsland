@@ -1,11 +1,12 @@
 using System.Text;
+using TorrentIsland.Infrastructure.Interfaces;
 
 namespace TorrentIsland.Presentation.Console.Renderers;
 
 /// <summary>
 /// Painel estático montado pelo MainLoop do aplicativo (ex-SB/Adicionar do antigo Log estático).
 /// </summary>
-public sealed class LogPainel
+public sealed class LogPainel : ILogPainel
 {
     private readonly object _sync = new();
     private readonly StringBuilder _sb = new();

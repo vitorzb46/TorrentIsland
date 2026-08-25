@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using TorrentIsland.Infrastructure.Interfaces;
 
 namespace TorrentIsland.Infrastructure.Logging;
 
@@ -10,17 +11,19 @@ namespace TorrentIsland.Infrastructure.Logging;
 public sealed class RingBufferLoggerProvider : ILoggerProvider
 {
     private readonly ConcurrentQueue<string> _entries = new();
-
-    public event Action? Changed;
+    private readonly IConsoleLogRenderer renderer1;
 
     public int MaxLogs { get; }
 
-    public RingBufferLoggerProvider(int maxLogs = 10)
+    public RingBufferLoggerProvider(IConsoleLogRenderer renderer1, int maxLogs = 10)
     {
         MaxLogs = Math.Max(1, maxLogs);
+        this.renderer1 = renderer1;
     }
 
-    public ILogger CreateLogger(string categoryName) => new Logger(this);
+    public event Action? Changed;
+
+    public ILogger CreateLogger(string categoryName) => new Logger(this, renderer1);
 
     /// <summary>Cópia pontual das mensagens atualmente no buffer.</summary>
     public string[] Snapshot() => [.. _entries];
@@ -40,14 +43,10 @@ public sealed class RingBufferLoggerProvider : ILoggerProvider
     {
     }
 
-    private sealed class Logger : ILogger
+    private sealed class Logger(RingBufferLoggerProvider provider, IConsoleLogRenderer renderer) : ILogger
     {
-        private readonly RingBufferLoggerProvider _provider;
-
-        public Logger(RingBufferLoggerProvider provider)
-        {
-            _provider = provider;
-        }
+        private readonly RingBufferLoggerProvider _provider = provider;
+        private readonly IConsoleLogRenderer renderer = renderer;
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -61,7 +60,7 @@ public sealed class RingBufferLoggerProvider : ILoggerProvider
                 message = $"{message} :: {exception}";
             }
 
-            _provider.Enqueue($"{DateTime.Now:HH:mm:ss.fff} {message}".PadRight(110));
+            _provider.Enqueue($"{message}".PadRight(renderer.Largura));
         }
     }
 }

@@ -26,12 +26,12 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registra logging, configuração e os serviços de torrent (Application + Infrastructure).
     /// </summary>
-    public static IServiceCollection AddTorrentIsland(this IServiceCollection services, IConfiguration configuration, int maxLogs = 10)
+    public static IServiceCollection AddTorrentIsland(this IServiceCollection services, IConfiguration configuration, IConsoleLogRenderer renderer, int maxLogs = 10)
     {
         services.AddLogging(builder =>
         {
             builder.ClearProviders();
-            builder.AddRingBuffer(maxLogs);
+            builder.AddRingBuffer(renderer, maxLogs);
             builder.AddFileLogger();
         });
 

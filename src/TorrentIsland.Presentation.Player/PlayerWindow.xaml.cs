@@ -6,7 +6,7 @@ using System.Windows.Threading;
 using TorrentIsland.Infrastructure.VLC;
 namespace TorrentIsland.Presentation.Player;
 
-public partial class PlayerWindow : Window
+public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 {
     private readonly PlayerViewModel _viewModel;
     private readonly ControlsWindow _controls;
@@ -116,7 +116,7 @@ public partial class PlayerWindow : Window
             _controls.Width = SystemParameters.PrimaryScreenWidth;
             _controls.Left = 0; // Zera a propriedade esquerda permanentemente na tela cheia
             _controls.Top = SystemParameters.PrimaryScreenHeight - _controls.Height;
-        } 
+        }
         // Janela Maximizada (Botão maximizar do windows (do player))
         else if (this.WindowState == WindowState.Maximized)
         {
@@ -176,14 +176,20 @@ public partial class PlayerWindow : Window
             MouseDetected?.Invoke(this, EventArgs.Empty);
         }
     }
+
     private void ToggleFullscreen()
-    {    
+    {
         if (WindowState == WindowState.Normal)
         {
             // Entra em tela cheia
             WindowStyle = WindowStyle.None;
             WindowState = WindowState.Maximized;
             _viewModel.IsFullscreen = true;
+
+            if (MyTitleBar != null)
+            {
+                MyTitleBar.Visibility = Visibility.Collapsed;
+            }
         }
         else
         {
@@ -191,16 +197,23 @@ public partial class PlayerWindow : Window
             WindowStyle = WindowStyle.SingleBorderWindow;
             WindowState = WindowState.Normal;
             _viewModel.IsFullscreen = false;
+
+            if (MyTitleBar != null)
+            {
+                MyTitleBar.Visibility = Visibility.Visible;
+            }
         }
-        
+
         _viewModel.IsFullscreen = WindowState == WindowState.Maximized;
 
         // Executa o posicionamento um milissegundo depois, garantindo que o Windows já mudou de tamanho
-        Dispatcher.BeginInvoke(new Action(() => {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
             PosicionarControles();
             ShowControls();
         }), DispatcherPriority.Render);
     }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);

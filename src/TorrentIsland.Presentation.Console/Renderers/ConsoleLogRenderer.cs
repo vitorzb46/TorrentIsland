@@ -1,6 +1,8 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectre.Console;
 using System.Text;
+using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
 
 namespace TorrentIsland.Presentation.Console.Renderers;
@@ -9,28 +11,36 @@ namespace TorrentIsland.Presentation.Console.Renderers;
 /// Renderiza no console o painel estático + as últimas linhas do buffer em anel.
 /// Serializado por lock e com coalescência de ticks
 /// </summary>
-public sealed class ConsoleLogRenderer : BackgroundService
+public sealed class ConsoleLogRenderer : BackgroundService, IConsoleLogRenderer
 {
     public int Vazio = ObterLargura() / 4;
-    public int Largura = ObterLargura();
-    public static int TempoRender = 100;
-    private readonly RingBufferLoggerProvider _buffer;
+    public int Largura { get; set; } = ObterLargura();
+
+    private static int tempoRender = 100;
+    private readonly IServiceProvider _services;
     private readonly object _sync = new();
     private string _cliAtual = string.Empty;
     private DateTime _ultimaRenderizacao = DateTime.MinValue;
-    private static readonly TimeSpan IntervaloMinimo = TimeSpan.FromMilliseconds(TempoRender);
+    private static readonly TimeSpan IntervaloMinimo = TimeSpan.FromMilliseconds(tempoRender);
 
-    public LogPainel Painel { get; } = new();
+    private RingBufferLoggerProvider? _buffer;
 
-    public ConsoleLogRenderer(RingBufferLoggerProvider buffer)
+    public ILogPainel Painel { get; }
+    public int TempoRender { get => tempoRender; }
+
+    public ConsoleLogRenderer(IServiceProvider services, ILogPainel painel)
     {
-        _buffer = buffer;
-        _buffer.Changed += OnBufferChanged;
+        _services = services;
+        Painel = painel;
     }
+
+    private RingBufferLoggerProvider Buffer =>
+        _buffer ??= _services.GetRequiredService<RingBufferLoggerProvider>();
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        stoppingToken.Register(() => _buffer.Changed -= OnBufferChanged);
+        Buffer.Changed += OnBufferChanged;
+        stoppingToken.Register(() => Buffer.Changed -= OnBufferChanged);
         Render();
         return Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
     }
@@ -42,7 +52,6 @@ public sealed class ConsoleLogRenderer : BackgroundService
         lock (_sync)
         {
             AtualizarDimensoes();
-
             var agora = DateTime.UtcNow;
             if (agora - _ultimaRenderizacao < IntervaloMinimo)
             {
@@ -51,7 +60,7 @@ public sealed class ConsoleLogRenderer : BackgroundService
 
             _ultimaRenderizacao = agora;
 
-            var logs = _buffer.Snapshot();
+            var logs = Buffer.Snapshot();
 
             var sb = new StringBuilder();
             sb.Append(Painel.Conteudo());
@@ -61,19 +70,19 @@ public sealed class ConsoleLogRenderer : BackgroundService
             sb.Append($"{Multi(Vazio, ' ')}[cyan]=== ÚLTIMOS LOGS DO SISTEMA ===[/]".PadRight(Largura));
             sb.AppendLine();
 
-            foreach (var log in logs.Reverse().Take(_buffer.MaxLogs))
+            foreach (var log in logs.Reverse().Take(Buffer.MaxLogs))
             {
                 var textoLimpo = RemoverTodaFormatacao(log);
 
                 // Trunca se necessário
                 var linha = textoLimpo.Length > Largura - 1
-                    ? textoLimpo.Substring(0, Largura - 3) + "..."
+                    ? string.Concat(textoLimpo.AsSpan(0, Largura - 3), "...")
                     : textoLimpo.PadRight(Largura - 1);
 
                 sb.Append($" {linha}\n");
             }
 
-            int vazias = _buffer.MaxLogs - Math.Min(logs.Length, _buffer.MaxLogs);
+            int vazias = Buffer.MaxLogs - Math.Min(logs.Length, Buffer.MaxLogs);
             for (int i = 0; i < vazias; i++)
             {
                 sb.AppendLine(new string(' ', Largura - 1));
@@ -85,7 +94,16 @@ public sealed class ConsoleLogRenderer : BackgroundService
             if (saida != _cliAtual)
             {
                 System.Console.SetCursorPosition(0, 0);
-                AnsiConsole.Markup(saida);
+
+                try
+                {
+                    AnsiConsole.Markup(saida);
+                }
+                catch (InvalidOperationException)
+                {
+                    AnsiConsole.Markup(Markup.Escape(saida));
+                }
+
                 _cliAtual = saida;
             }
         }

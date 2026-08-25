@@ -1,6 +1,6 @@
 ﻿using TorrentIsland.Domain.Enums;
 
-namespace TorrentIsland.Presentation.Console.Helpers
+namespace TorrentIsland.Application.Interfaces
 {
     public interface IFormattingHelper
     {

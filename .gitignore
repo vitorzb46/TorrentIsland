@@ -4,6 +4,11 @@
 ## Get latest from `dotnet new gitignore`
 
 .vscode/
+.github/
+README.md
+TorrentIsland.Application.Tests/
+graphify-out/
+src/.github/
 
 # script
 gerar_contexto.bat

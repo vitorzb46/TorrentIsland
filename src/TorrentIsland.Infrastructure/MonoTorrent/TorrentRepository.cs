@@ -73,14 +73,19 @@ public class TorrentRepository : ITorrentRepository
         if (magnetOrFolderName.StartsWith("magnet:?"))
         {
             var magnet = MagnetLink.Parse(magnetOrFolderName);
-            if (isStream) 
+            if (isStream)
                 managers = await Managers.StreamingAsync(magnet, ManagerFiles.DownloadFolder, Settings);
             else
                 managers = await Managers.TorrentDownloadAsync(magnet, ManagerFiles.DownloadFolder, Settings);
 
             await Task.Delay(3000).ConfigureAwait(false);
-            while (managers.Select(m => m.State).All(s => s == TorrentState.Metadata))
+            while (managers.All(m => m.State == TorrentState.Metadata || m.State == TorrentState.Stopped))
             {
+                foreach (var manager in managers.Where(m => m.State == TorrentState.Stopped))
+                {
+                    var start = manager.StartAsync();
+                    await start.ConfigureAwait(false);
+                }
                 Logger.LogInformation("Aguardando metadata...");
                 await Task.Delay(1000).ConfigureAwait(false);
             }
@@ -91,7 +96,7 @@ public class TorrentRepository : ITorrentRepository
                 ids.Add(Guid.NewGuid());
                 await Map.RegistroIdAsync(ids[i], managers[i]).ConfigureAwait(false);
             }
-            
+
             return ids;
         }
         else
@@ -158,19 +163,23 @@ public class TorrentRepository : ITorrentRepository
             try
             {
                 Torrent torrent = await Torrent.LoadAsync(arquivo).ConfigureAwait(false);
-                if (Path.GetExtension(torrent.Name) == ".scr") Logger.LogInformation(Localizer["Torrent_AvisoCache", Path.GetFileName(arquivo)]);
+                if (Path.GetExtension(torrent.Name) == ".scr")
+                    Logger.LogInformation(Localizer["Torrent_AvisoCache", Markup.Escape(Path.GetFileName(arquivo))]);
                 lock (listaDeTorrents)
                     listaDeTorrents.Add(torrent);
             }
             catch (Exception ex)
             {
+                var arquivoEscapado = Markup.Escape(Path.GetFileName(arquivo));
+                var mensagemEscapada = Markup.Escape(ex.Message);
+
                 if (ex.Message.Contains("torrent", StringComparison.OrdinalIgnoreCase))
                 {
-                    Logger.LogInformation(Localizer["Torrent_FalhaCarregar", Path.GetFileName(arquivo)]);
+                    Logger.LogInformation(Localizer["Torrent_FalhaCarregar", arquivoEscapado]);
                 }
                 else
                 {
-                    Logger.LogInformation(Localizer["Torrent_ErroProcessar", Path.GetFileName(arquivo), ex.Message]);
+                    Logger.LogInformation(Localizer["Torrent_ErroProcessar", arquivoEscapado, mensagemEscapada]);
                 }
             }
         });

@@ -30,11 +30,11 @@ public partial class App : System.Windows.Application
         {
             MessageBox.Show("Uso: TorrentIsland.Presentation.Player.exe <url-do-stream>", "Player",
                 MessageBoxButton.OK, MessageBoxImage.Information);
-            Shutdown(1);
-            return;
+            //Shutdown(1);
+            //return;
         }
 
-        var window = new PlayerWindow(mediaUrl);
+        var window = new PlayerWindow(mediaUrl!);
         window.Show();
     }
 }

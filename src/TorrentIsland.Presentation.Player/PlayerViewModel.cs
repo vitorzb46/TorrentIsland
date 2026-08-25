@@ -3,9 +3,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
-using System.Windows;
 using System.Windows.Input;
+using TorrentIsland.Application.DTOs;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -21,13 +20,20 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private bool _isPlaying;
     private double _position;
     private int _volume = 100;
+    private long _duracaoTotalMs;
+    private long _posicaoMs;
+    public ObservableCollection<TrackItem> AudioTracks { get; } = [];
+    public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
+    private ICommand TogglePlayCommand { get; }
+    private ICommand ToggleFullscreenCommand { get; }
+    private ICommand LoadExternalSubtitleCommand { get; }
+    public LibVLC LibVLC => _libVLC;
 
     public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer)
     {
         Log.Salvar("PlayerViewModel iniciado");
         _libVLC = libVLC;
         _mediaPlayer = mediaPlayer;
-
         _mediaPlayer.PositionChanged += OnPositionChanged;
         _mediaPlayer.Playing += OnPlaying;
         _mediaPlayer.Paused += OnPaused;
@@ -47,19 +53,20 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             catch { /* log é best-effort */ }
         };
 
+        _mediaPlayer.LengthChanged += (sender, args) =>
+        {
+            long duracaoDoFilmeMs = args.Length;
+
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                InicializarDuracaoDoVideo(duracaoDoFilmeMs);
+            });
+        };
+
         TogglePlayCommand = new RelayCommand(TogglePlay);
         ToggleFullscreenCommand = new RelayCommand(ToggleFullscreen);
         LoadExternalSubtitleCommand = new RelayCommand(LoadExternalSubtitle);
     }
-
-    public ObservableCollection<TrackItem> AudioTracks { get; } = [];
-    public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
-
-    public LibVLC LibVLC => _libVLC;
-
-    public ICommand TogglePlayCommand { get; }
-    public ICommand ToggleFullscreenCommand { get; }
-    public ICommand LoadExternalSubtitleCommand { get; }
 
     public bool IsLoading
     {
@@ -103,6 +110,23 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public long DuracaoTotalEmMilissegundos
+    {
+        get => _duracaoTotalMs;
+        set { _duracaoTotalMs = value; OnPropertyChanged(); }
+    }
+
+    public long PosicaoEmMilissegundos
+    {
+        get => _posicaoMs;
+        set { _posicaoMs = value; OnPropertyChanged(); }
+    }
+
+    public void InicializarDuracaoDoVideo(long totalMilliseconds)
+    {
+        DuracaoTotalEmMilissegundos = totalMilliseconds;
+    }
+
     public void SetMedia(Media media)
     {
         _media?.Dispose();
@@ -112,7 +136,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         Log.Salvar($"Play() chamado | State={_mediaPlayer.State}");
         IsLoading = true;
     }
-
+    public void SeekTo2(TimeSpan timeSpan) => _mediaPlayer.SeekTo(timeSpan);
     public void SeekTo(double percent)
     {
         Log.Salvar($"SeekTo | percent={percent:0.0}");
@@ -144,7 +168,14 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
 
     public void SelectSubtitleTrack(int spuId)
     {
-        _mediaPlayer.SetSpu(spuId);
+        try
+        {
+            _mediaPlayer.SetSpu(spuId);
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro ao injetar trilha de legenda no LibVLC: {ex.Message}");
+        }
     }
 
     public void LoadExternalSubtitle(object? filePath)
@@ -199,67 +230,98 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
         }
 
-        var spuTracks = _mediaPlayer.SpuDescription ?? [];
+        var spuTracks = _mediaPlayer.SpuDescription;
         SubtitleTracks.Clear();
 
-        
-        
-        var metadadosLegendas = (_mediaPlayer.Media?.Tracks ?? [])
-            .Where(t => t.TrackType == TrackType.Text)
-            .ToDictionary(t => t.Id, t => (t.Language, t.Description));
+        var metadadosLegendas = _mediaPlayer.Media?.Tracks.Where(m => m.TrackType == TrackType.Text)
+                                                          .ToDictionary(t => t.Id, t => (t.Language, t.Description));
 
-        // Exclui legendas com idioma indefinido (ex.: "und") — deixa visível apenas legendas reais.
-        // O NomeDaFaixa retorna "Legenda N" como fallback quando não há idioma/descrição válidos.
-        var legendasProcessadas = spuTracks
-        .Where(t => t.Id >= 0)
-        .Select(t => new TrackItem(t.Id, NomeDaFaixa(t.Name, "Legenda", t.Id, metadadosLegendas.TryGetValue(t.Id, out var meta) ? meta.Language : null, metadadosLegendas.TryGetValue(t.Id, out meta) ? meta.Description : null)))
-        // Filtra o fallback "Legenda N" (idioma indefinido) — não é uma legenda real.
-        .Where(t => !Regex.IsMatch(t.Name, @"^Legenda \d+$"))
-        // Modificado: Agrupa por ID + Nome para evitar apagar faixas legítimas repetidas
-        .GroupBy(t => new { t.Id, t.Name })
-        .Select(g => g.First())
-        // Prioriza Português e Inglês no topo
-        .OrderByDescending(t => t.Name.Contains("Português"))
-        .ThenByDescending(t => t.Name.Contains("Inglês"))
-        // CORREÇÃO DA ORDENAÇÃO NUMÉRICA (Ex: Legenda 2 aparece antes de Legenda 19)
-        .ThenBy(t => Regex.IsMatch(t.Name, @"\d+")
-            ? int.Parse(Regex.Match(t.Name, @"\d+").Value)
-            : int.MaxValue)
-        .ThenBy(t => t.Name);
-        
+        Log.Salvar($"Número de legendas: {spuTracks!.Length}");
+        foreach (var legenda in spuTracks!)
+        {
+            Log.Salvar($"LEGENDAS: {legenda.Name} | {legenda.Id}");
+            SubtitleTracks.Add(new TrackItem(legenda.Id, NomeDaFaixa(
+                legenda.Name,
+                "Legenda",
+                legenda.Id,
+                metadadosLegendas!.TryGetValue(legenda.Id, out var meta) ? meta.Language : null,
+                metadadosLegendas!.TryGetValue(legenda.Id, out meta) ? meta.Description : null)));
+        }
+
         SubtitleTracks.Add(new TrackItem(-1, "❌ Desativar Legendas"));
 
-        if (!legendasProcessadas.Any())
-        {
-            Log.Salvar("Nenhuma legenda real encontrada.");
-        }
+        //var metadadosLegendas = (_mediaPlayer.Media?.Tracks ?? [])
+        //    .Where(t => t.TrackType == TrackType.Text)
+        //    .ToDictionary(t => t.Id, t => (t.Language, t.Description));
 
-        foreach (var item in legendasProcessadas)
-        {            
-            Log.Salvar($"SubtitleTrack: {item.Name}");
-            SubtitleTracks.Add(item);
-        }
+        //var legendasProcessadas = spuTracks
+        //.Where(t => t.Id >= 0)
+        //.Select(t => new TrackItem(t.Id, NomeDaFaixa(
+        //    t.Name,
+        //    "Legenda",
+        //    t.Id,
+        //    metadadosLegendas.TryGetValue(t.Id, out var meta) ? meta.Language : null,
+        //    metadadosLegendas.TryGetValue(t.Id, out meta) ? meta.Description : null)))
+        //.Where(t => !Regex.IsMatch(t.Name, @"^Legenda \d+$"))
+        //.GroupBy(t => new { t.Id, t.Name })
+        //.Select(g => g.First())
+        //.OrderByDescending(t => t.Name.Contains("Português"))
+        //.ThenByDescending(t => t.Name.Contains("Inglês"))
+        //.ThenBy(t => Regex.IsMatch(t.Name, @"\d+")
+        //    ? int.Parse(Regex.Match(t.Name, @"\d+").Value)
+        //    : int.MaxValue)
+        //.ThenBy(t => t.Name);
+
+        //SubtitleTracks.Add(new TrackItem(-1, "❌ Desativar Legendas"));
+
+        //if (!legendasProcessadas.Any())
+        //{
+        //    Log.Salvar("Nenhuma legenda real encontrada.");
+        //}
+
+        //foreach (var item in legendasProcessadas)
+        //{
+        //    Log.Salvar($"SubtitleTrack: {item.Name}");
+        //    SubtitleTracks.Add(item);
+        //}
 
         IsLoading = false;
     }
 
     private static readonly Dictionary<string, string> Idiomas = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["pt"] = "Português", ["por"] = "Português", ["pt-br"] = "Português (BR)",
-        ["en"] = "Inglês", ["eng"] = "Inglês",
-        ["es"] = "Espanhol", ["spa"] = "Espanhol",
-        ["fr"] = "Francês", ["fre"] = "Francês", ["fra"] = "Francês",
-        ["de"] = "Alemão", ["ger"] = "Alemão", ["deu"] = "Alemão",
-        ["it"] = "Italiano", ["ita"] = "Italiano",
-        ["ja"] = "Japonês", ["jpn"] = "Japonês",
-        ["ko"] = "Coreano", ["kor"] = "Coreano",
-        ["zh"] = "Chinês", ["zho"] = "Chinês",
-        ["ru"] = "Russo", ["rus"] = "Russo",
-        ["ar"] = "Árabe", ["ara"] = "Árabe",
+        ["pt"] = "Português",
+        ["por"] = "Português",
+        ["pt-br"] = "Português (BR)",
+        ["en"] = "Inglês",
+        ["eng"] = "Inglês",
+        ["es"] = "Espanhol",
+        ["spa"] = "Espanhol",
+        ["fr"] = "Francês",
+        ["fre"] = "Francês",
+        ["fra"] = "Francês",
+        ["de"] = "Alemão",
+        ["ger"] = "Alemão",
+        ["deu"] = "Alemão",
+        ["it"] = "Italiano",
+        ["ita"] = "Italiano",
+        ["ja"] = "Japonês",
+        ["jpn"] = "Japonês",
+        ["ko"] = "Coreano",
+        ["kor"] = "Coreano",
+        ["zh"] = "Chinês",
+        ["zho"] = "Chinês",
+        ["ru"] = "Russo",
+        ["rus"] = "Russo",
+        ["ar"] = "Árabe",
+        ["ara"] = "Árabe",
         ["hi"] = "Hindi",
-        ["nl"] = "Holandês", ["nld"] = "Holandês",
-        ["sv"] = "Sueco", ["swe"] = "Sueco",
-        ["pl"] = "Polonês", ["pol"] = "Polonês",
+        ["nl"] = "Holandês",
+        ["nld"] = "Holandês",
+        ["sv"] = "Sueco",
+        ["swe"] = "Sueco",
+        ["pl"] = "Polonês",
+        ["pol"] = "Polonês",
     };
 
     /// <summary>
@@ -420,7 +482,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             if (cachePreenchido < 100)
             {
                 IsLoading = true;
-                Log.Salvar($"[ALERTA REDE] Preenchendo buffer: {cachePreenchido:0.0}%");
+                //Log.Salvar($"[ALERTA REDE] Preenchendo buffer: {cachePreenchido:0.0}%");
             }
             else
             {
@@ -428,7 +490,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                 Log.Salvar("[ALERTA REDE] Buffer cheio. Continuando reprodução.");
             }
         });
-    }   
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? name = null)
     {
@@ -448,7 +510,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.Stopped -= OnStopped;
         _mediaPlayer.EndReached -= OnEndReached;
         _mediaPlayer.Buffering -= OnPlayerBuffering;
-        
+
         try
         {
             if (_mediaPlayer.IsPlaying)
@@ -469,5 +531,18 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         }
 
         Log.Salvar("Dispose do ViewModel concluído");
+    }
+
+    internal void LoadExternalTorrent(string fileName)
+    {
+        throw new NotImplementedException();
+    }
+
+    public event Action<TorrentDto>? TorrentStatus;
+    public void AtualizarTorrent(TorrentDto torrentDto)
+    {
+        _mediaPlayer.SeekTo(torrentDto.TempoTotal);
+
+        TorrentStatus?.Invoke(torrentDto);
     }
 }

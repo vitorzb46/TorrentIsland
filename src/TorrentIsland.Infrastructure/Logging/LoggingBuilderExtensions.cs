@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using TorrentIsland.Infrastructure.Interfaces;
 
 namespace TorrentIsland.Infrastructure.Logging;
 
@@ -9,9 +10,9 @@ public static class LoggingBuilderExtensions
     /// Registra o buffer em anel como provider de log e como singleton — consumidores
     /// (renderer de console, sink WPF) resolvem a mesma instância usada pelo LoggerFactory.
     /// </summary>
-    public static ILoggingBuilder AddRingBuffer(this ILoggingBuilder builder, int maxLogs = 10)
+    public static ILoggingBuilder AddRingBuffer(this ILoggingBuilder builder, IConsoleLogRenderer renderer, int maxLogs = 10)
     {
-        var provider = new RingBufferLoggerProvider(maxLogs);
+        var provider = new RingBufferLoggerProvider(renderer, maxLogs);
         builder.Services.AddSingleton(provider);
         builder.AddProvider(provider);
         return builder;

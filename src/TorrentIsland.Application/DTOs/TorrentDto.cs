@@ -21,6 +21,7 @@ public class TorrentDto
     public string SavePath { get; init; } = string.Empty;
     public string? TempoEstimado { get; init; }
     public string? CorEstado { get; init; }
+    public TimeSpan TempoTotal { get; set; }
     #endregion
     public static TorrentDto FromEntity(TorrentEntity entity)
     {

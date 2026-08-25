@@ -3,12 +3,15 @@ using Spectre.Console;
 using System.Diagnostics;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Domain.Enums;
+using TorrentIsland.Infrastructure.Interfaces;
 
 namespace TorrentIsland.Presentation.Console.Renderers;
 
-public class PlayerMonitorRenderer(ILogger<PlayerMonitorRenderer> logger) : IPlayerMonitorRenderer
+public class PlayerMonitorRenderer(ILogger<PlayerMonitorRenderer> logger, IConsoleLogRenderer renderer, IEntityMapping map) : IPlayerMonitorRenderer
 {
     private readonly ILogger<PlayerMonitorRenderer> _logger = logger;
+    private readonly IConsoleLogRenderer renderer = renderer;
+    private readonly IEntityMapping map = map;
 
     public async Task MonitorPlayerAsync(
         Process? player,
@@ -22,6 +25,12 @@ public class PlayerMonitorRenderer(ILogger<PlayerMonitorRenderer> logger) : IPla
         }
 
         _logger.LogInformation("Iniciando monitoramento do player...");
+
+        System.Console.Clear();
+
+        renderer.Painel.Limpar();
+
+        renderer.Painel.Adicionar("Ctrl + c para encerrar o monitoramento.".PadRight(renderer.Largura));
 
         int? ultimoSeed = null;
         while (!player.HasExited)
@@ -40,7 +49,7 @@ public class PlayerMonitorRenderer(ILogger<PlayerMonitorRenderer> logger) : IPla
             await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
         }
 
-        _logger.LogInformation("Player encerrado, monitoramento finalizado.");
+        _logger.LogInformation("[red]Player encerrado, monitoramento finalizado.[/]");
     }
 
     private void RenderizarEstados(
@@ -51,7 +60,7 @@ public class PlayerMonitorRenderer(ILogger<PlayerMonitorRenderer> logger) : IPla
         {
             if (ultimoSeed == null || seeds != ultimoSeed)
             {
-                _logger.LogInformation($"{nome} - [cyan]{estado}[/] | seeds: {seeds} | peers: {peers}");
+                _logger.LogInformation($"{Markup.Escape(nome)} - [cyan]{estado}[/] | seeds: {seeds} | peers: {peers}");
                 ultimoSeed = seeds;
             }
         }

@@ -26,39 +26,41 @@ public class EventHandling(ClientEngine engine, AppSettings app, IManagers manag
             return;
         }
 
+
         string Nome() => Markup.Escape(manager.Torrent?.Name ?? "Torrent desconhecido");
 
         manager.PeersFound += (o, e) =>
         {
-            Logger.LogInformation("{Nome} -> {NovosPares} novos pares encontrados ({ParesExistentes} existentes).",
+            Logger.LogInformation("{Nome} - {NovosPares} novos pares encontrados ({ParesExistentes} existentes).",
                 Nome(), e.NewPeers, e.ExistingPeers);
         };
 
         manager.PeerConnected += async (o, e) =>
         {
-            Logger.LogDebug("{Nome} -> Par conectado: {Peer} ({Direcao}).",
+            Logger.LogDebug("{Nome} - Par conectado: {Peer} ({Direcao}).",
                 Nome(), e.Peer, e.Direction);
         };
 
         manager.PeerDisconnected += async (o, e) =>
         {
-            Logger.LogDebug("{Nome} -> Par desconectado: {Peer}.", Nome(), e.Peer);
+            Logger.LogDebug("{Nome} - Par desconectado: {Peer}.", Nome(), e.Peer);
         };
 
         manager.PieceHashed += async (o, e) =>
         {
-            Logger.LogDebug("{Nome} -> Peça {PieceIndex} verificada - passou: {HashPassed} (progresso {Progresso:0.0}%).",
+            Logger.LogDebug("{Nome} - Peça {PieceIndex} verificada - passou: {HashPassed} (progresso {Progresso:0.0}%).",
                 Nome(), e.PieceIndex, e.HashPassed, e.Progress);
         };
 
         manager.ConnectionAttemptFailed += async (o, e) =>
         {
-            Logger.LogDebug("{Nome} -> [yellow]Falha de conexão[/] com {Peer}: {Razao}.", Nome(), e.Peer, e.Reason);
+            Logger.LogDebug("{Nome} - [yellow]Falha de conexão[/] com {Peer}: {Razao}.",
+                Nome(), Markup.Escape(e.Peer.ToString() ?? ""), Markup.Escape(e.Reason.ToString()));
         };
 
         manager.TorrentStateChanged += (o, e) =>
         {
-            Logger.LogInformation("{Nome} \n --> Estado alterado: {Antigo} -> {Novo}",
+            Logger.LogInformation("{Nome} - Estado alterado: {Antigo} -> {Novo}",
                 Nome(), e.OldState, e.NewState);
         };
 
@@ -91,6 +93,6 @@ public class EventHandling(ClientEngine engine, AppSettings app, IManagers manag
             var bytes = await engine.SaveStateAsync().ConfigureAwait(false);
             File.WriteAllBytes(Path.Combine(app.PastaEngineState, fileName), bytes);
         }
-        catch (Exception) {}
+        catch (Exception) { }
     }
 }
