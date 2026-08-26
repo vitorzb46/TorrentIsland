@@ -201,6 +201,25 @@ public partial class ControlsWindow : Window
 
 
     // --- Botões ---
+    // Habilitar ou desabilitar AudioTrack é mais eficiente. Altero se der problema no futuro
+    private void MuteButton_Click(object sender, RoutedEventArgs e)
+    {
+        Log.Salvar("MuteButton_Click");
+        _viewModel.ToggleMute();
+        MuteButton.Content = _viewModel.IsMuted ? "🔇" : "🔊";
+    }
+
+    private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        Log.Salvar("VolumeSlider_ValueChanged");
+        if (_viewModel.IsMuted && _viewModel.Volume > 0)
+        {
+            _viewModel.SetMute(false);
+            MuteButton.Content = "🔊";
+            Log.Salvar("MuteButton desativado");
+        }
+    }
+
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.TogglePlay();

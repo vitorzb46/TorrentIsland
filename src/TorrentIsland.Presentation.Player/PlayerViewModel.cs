@@ -14,10 +14,10 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private readonly MediaPlayer _mediaPlayer;
     private Media? _media;
     private bool _disposed;
-
     private bool _isLoading;
     private bool _isFullscreen;
     private bool _isPlaying;
+    private bool _isMuted;
     private double _position;
     private int _volume = 100;
     private long _duracaoTotalMs;
@@ -27,6 +27,8 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private ICommand TogglePlayCommand { get; }
     private ICommand ToggleFullscreenCommand { get; }
     private ICommand LoadExternalSubtitleCommand { get; }
+    private string _tempoAtualFormatado = "00:00:00";
+    private string _tempoTotalFormatado = "00:00:00";
     public LibVLC LibVLC => _libVLC;
 
     public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer)
@@ -37,6 +39,8 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.PositionChanged += OnPositionChanged;
         _mediaPlayer.Playing += OnPlaying;
         _mediaPlayer.Paused += OnPaused;
+        _mediaPlayer.Muted += OnMute;
+        _mediaPlayer.Unmuted += OnMute;
         _mediaPlayer.Stopped += OnStopped;
         _mediaPlayer.EndReached += OnEndReached;
         _mediaPlayer.Buffering += OnPlayerBuffering;
@@ -86,6 +90,12 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         set { _isPlaying = value; OnPropertyChanged(); }
     }
 
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set { _isMuted = value; OnPropertyChanged(); }
+    }
+
     public double Position
     {
         get => _position;
@@ -122,9 +132,22 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         set { _posicaoMs = value; OnPropertyChanged(); }
     }
 
+    public string TempoAtualFormatado
+    {
+        get => _tempoAtualFormatado;
+        private set { _tempoAtualFormatado = value; OnPropertyChanged(); }
+    }
+
+    public string TempoTotalFormatado
+    {
+        get => _tempoTotalFormatado;
+        private set { _tempoTotalFormatado = value; OnPropertyChanged(); }
+    }
+
     public void InicializarDuracaoDoVideo(long totalMilliseconds)
     {
         DuracaoTotalEmMilissegundos = totalMilliseconds;
+        TempoTotalFormatado = FormatarTempo(totalMilliseconds);
     }
 
     public void SetMedia(Media media)
@@ -141,6 +164,30 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     {
         Log.Salvar($"SeekTo | percent={percent:0.0}");
         _mediaPlayer.Position = (float)Math.Clamp(percent / 100.0, 0.0, 1.0);
+    }
+
+    public void SetMute(bool mute)
+    {
+        Log.Salvar($"SetMute | mute={mute}");
+        _mediaPlayer.Mute = mute;
+        IsMuted = mute;
+    }
+
+    public void ToggleMute()
+    {
+        // _mediaPlayer.ToggleMute();
+        IsMuted = _mediaPlayer.Mute;
+        Log.Salvar($"ToggleMute | IsMuted={IsMuted}");
+        if (IsMuted)
+        {
+            _mediaPlayer.Mute = false;
+            Log.Salvar("MuteButton desativado");
+        }
+        else
+        {
+            _mediaPlayer.Mute = true;
+            Log.Salvar("MuteButton ativado");
+        }
     }
 
     public void TogglePlay()
@@ -247,43 +294,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                 metadadosLegendas!.TryGetValue(legenda.Id, out var meta) ? meta.Language : null,
                 metadadosLegendas!.TryGetValue(legenda.Id, out meta) ? meta.Description : null)));
         }
-
-        SubtitleTracks.Add(new TrackItem(-1, "❌ Desativar Legendas"));
-
-        //var metadadosLegendas = (_mediaPlayer.Media?.Tracks ?? [])
-        //    .Where(t => t.TrackType == TrackType.Text)
-        //    .ToDictionary(t => t.Id, t => (t.Language, t.Description));
-
-        //var legendasProcessadas = spuTracks
-        //.Where(t => t.Id >= 0)
-        //.Select(t => new TrackItem(t.Id, NomeDaFaixa(
-        //    t.Name,
-        //    "Legenda",
-        //    t.Id,
-        //    metadadosLegendas.TryGetValue(t.Id, out var meta) ? meta.Language : null,
-        //    metadadosLegendas.TryGetValue(t.Id, out meta) ? meta.Description : null)))
-        //.Where(t => !Regex.IsMatch(t.Name, @"^Legenda \d+$"))
-        //.GroupBy(t => new { t.Id, t.Name })
-        //.Select(g => g.First())
-        //.OrderByDescending(t => t.Name.Contains("Português"))
-        //.ThenByDescending(t => t.Name.Contains("Inglês"))
-        //.ThenBy(t => Regex.IsMatch(t.Name, @"\d+")
-        //    ? int.Parse(Regex.Match(t.Name, @"\d+").Value)
-        //    : int.MaxValue)
-        //.ThenBy(t => t.Name);
-
-        //SubtitleTracks.Add(new TrackItem(-1, "❌ Desativar Legendas"));
-
-        //if (!legendasProcessadas.Any())
-        //{
-        //    Log.Salvar("Nenhuma legenda real encontrada.");
-        //}
-
-        //foreach (var item in legendasProcessadas)
-        //{
-        //    Log.Salvar($"SubtitleTrack: {item.Name}");
-        //    SubtitleTracks.Add(item);
-        //}
 
         IsLoading = false;
     }
@@ -450,6 +460,13 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         if (double.IsNaN(e.Position) || double.IsInfinity(e.Position)) return;
 
         Position = e.Position * 100.0;
+
+        if (_duracaoTotalMs > 0)
+        {
+            long posicaoMs = (long)(e.Position * _duracaoTotalMs);
+            PosicaoEmMilissegundos = posicaoMs;
+            TempoAtualFormatado = FormatarTempo(posicaoMs);
+        }
     }
 
     private void OnPlaying(object? sender, EventArgs e)
@@ -457,6 +474,11 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         Log.Salvar($"EVENT Playing | State={_mediaPlayer.State}");
         IsPlaying = true;
         IsLoading = false;
+    }
+    private void OnMute(object? sender, EventArgs e)
+    {
+        Log.Salvar($"EVENT Muted");
+        IsMuted = _mediaPlayer.Mute;
     }
     private void OnPaused(object? sender, EventArgs e)
     {
@@ -497,6 +519,17 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
+    private static string FormatarTempo(long milissegundos)
+    {
+        TimeSpan tempo = TimeSpan.FromMilliseconds(milissegundos);
+        
+        if (tempo.TotalHours >= 1)
+        {
+            return tempo.ToString(@"hh\:mm\:ss");
+        }
+        return tempo.ToString(@"mm\:ss");
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -507,6 +540,8 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.PositionChanged -= OnPositionChanged;
         _mediaPlayer.Playing -= OnPlaying;
         _mediaPlayer.Paused -= OnPaused;
+        _mediaPlayer.Muted -= OnMute;
+        _mediaPlayer.Unmuted -= OnMute;
         _mediaPlayer.Stopped -= OnStopped;
         _mediaPlayer.EndReached -= OnEndReached;
         _mediaPlayer.Buffering -= OnPlayerBuffering;
@@ -544,5 +579,5 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.SeekTo(torrentDto.TempoTotal);
 
         TorrentStatus?.Invoke(torrentDto);
-    }
+    }    
 }
