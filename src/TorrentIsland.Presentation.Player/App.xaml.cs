@@ -24,15 +24,7 @@ public partial class App : System.Windows.Application
         }
 
         // Uso: TorrentIsland.Presentation.Player.exe <url-do-stream>
-        // O FullUri vem do StreamResult gerado pelo TorrentService (streaming do MonoTorrent).
         var mediaUrl = e.Args.Length > 0 ? e.Args[0] : null;
-        if (string.IsNullOrWhiteSpace(mediaUrl))
-        {
-            MessageBox.Show("Uso: TorrentIsland.Presentation.Player.exe <url-do-stream>", "Player",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            //Shutdown(1);
-            //return;
-        }
 
         var window = new PlayerWindow(mediaUrl!);
         window.Show();
