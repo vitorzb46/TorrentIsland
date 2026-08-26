@@ -202,6 +202,16 @@ public partial class ControlsWindow : Window
 
     // --- Botões ---
     // Habilitar ou desabilitar AudioTrack é mais eficiente. Altero se der problema no futuro
+    private void RetrocederButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.RetrocederTempo();
+    }
+
+    private void AvancarButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.AvancarTempo();
+    }
+
     private void MuteButton_Click(object sender, RoutedEventArgs e)
     {
         Log.Salvar("MuteButton_Click");

@@ -29,6 +29,12 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private ICommand LoadExternalSubtitleCommand { get; }
     private string _tempoAtualFormatado = "00:00:00";
     private string _tempoTotalFormatado = "00:00:00";
+    private int _cliquesAvancar = 0;
+    private int _cliquesRetroceder = 0;
+    private DateTime _ultimoCliqueAvancar = DateTime.MinValue;
+    private DateTime _ultimoCliqueRetroceder = DateTime.MinValue;
+    private string _feedbackTempo = "";
+    private bool _mostrarFeedback = false;
     public LibVLC LibVLC => _libVLC;
 
     public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer)
@@ -143,6 +149,18 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         get => _tempoTotalFormatado;
         private set { _tempoTotalFormatado = value; OnPropertyChanged(); }
     }
+    
+    public string FeedbackTempo
+    {
+        get => _feedbackTempo;
+        private set { _feedbackTempo = value; OnPropertyChanged(); }
+    }
+
+    public bool MostrarFeedback
+    {
+        get => _mostrarFeedback;
+        private set { _mostrarFeedback = value; OnPropertyChanged(); }
+    }
 
     public void InicializarDuracaoDoVideo(long totalMilliseconds)
     {
@@ -236,6 +254,87 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         //    SubtitleTracks.Add(new TrackItem(-99, Path.GetFileName(path)));
         //    OnPropertyChanged(nameof(SubtitleTracks));
         //}
+    }
+
+    public void AvancarTempo()
+    {
+        var agora = DateTime.Now;
+        
+        if ((agora - _ultimoCliqueAvancar).TotalSeconds > 2)
+        {
+            _cliquesAvancar = 0;
+        }
+        
+        _cliquesAvancar++;
+        _ultimoCliqueAvancar = agora;
+        
+        int segundosParaAvancar = ObterSegundosProgressivos(_cliquesAvancar);
+        
+        var posicaoAtual = _mediaPlayer.Position;
+        var duracaoTotal = _mediaPlayer.Length;
+        
+        if (duracaoTotal > 0)
+        {
+            var novaPosicao = Math.Min(1.0f, posicaoAtual + (segundosParaAvancar * 1000.0f / duracaoTotal));
+            _mediaPlayer.Position = novaPosicao;
+            
+            PosicaoEmMilissegundos = (long)(novaPosicao * duracaoTotal);
+            TempoAtualFormatado = FormatarTempo(PosicaoEmMilissegundos);
+            
+            MostrarFeedbackTempo($"⏩ +{segundosParaAvancar}s", segundosParaAvancar);
+        }
+    }
+
+    public void RetrocederTempo()
+    {
+        var agora = DateTime.Now;
+        
+        if ((agora - _ultimoCliqueRetroceder).TotalSeconds > 2)
+        {
+            _cliquesRetroceder = 0;
+        }
+        
+        _cliquesRetroceder++;
+        _ultimoCliqueRetroceder = agora;
+        
+        int segundosParaRetroceder = ObterSegundosProgressivos(_cliquesRetroceder);
+        
+        var posicaoAtual = _mediaPlayer.Position;
+        var duracaoTotal = _mediaPlayer.Length;
+        
+        if (duracaoTotal > 0)
+        {
+            var novaPosicao = Math.Max(0.0f, posicaoAtual - (segundosParaRetroceder * 1000.0f / duracaoTotal));
+            _mediaPlayer.Position = novaPosicao;
+            
+            PosicaoEmMilissegundos = (long)(novaPosicao * duracaoTotal);
+            TempoAtualFormatado = FormatarTempo(PosicaoEmMilissegundos);
+            
+            MostrarFeedbackTempo($"⏪ -{segundosParaRetroceder}s", -segundosParaRetroceder);
+        }
+    }
+
+    private int ObterSegundosProgressivos(int cliques)
+    {
+        return cliques switch
+        {
+            1 => 5,
+            2 => 15,
+            3 => 30,
+            _ => 60 // 4 ou mais cliques
+        };
+    }
+
+    // Método para mostrar feedback visual
+    private async void MostrarFeedbackTempo(string texto, int segundos)
+    {
+        FeedbackTempo = texto;
+        MostrarFeedback = true;
+        
+        // Aguarda 1.5 segundos e esconde o feedback
+        await Task.Delay(1500);
+        
+        MostrarFeedback = false;
     }
 
     public async Task PopulateTracksAsync(CancellationToken ct = default)

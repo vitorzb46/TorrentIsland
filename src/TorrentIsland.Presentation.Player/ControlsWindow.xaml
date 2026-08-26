@@ -88,6 +88,24 @@
             <Setter Property="Foreground" Value="White" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+
+        <Style x:Key="FeedbackStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Bahnschrift" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect
+                        BlurRadius="10"
+                        Opacity="0.8"
+                        ShadowDepth="0"
+                        Color="Black" />
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border
@@ -132,10 +150,12 @@
                     VerticalAlignment="Center"
                     Orientation="Horizontal">
                     <Button
+                        x:Name="RetrocederButton"
+                        Click="RetrocederButton_Click"
                         Content="⏪"
                         FontSize="13"
                         Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Voltar 10s" />
+                        ToolTip="Voltar (clique múltiplo: 5s, 15s, 30s, 60s)" />
                     <Button
                         x:Name="PlayPauseButton"
                         Click="PlayPauseButton_Click"
@@ -144,14 +164,16 @@
                         Style="{StaticResource PlayerButtonStyle}"
                         ToolTip="Reproduzir / Pausar" />
                     <Button
+                        x:Name="AvancarButton"
+                        Click="AvancarButton_Click"
                         Content="⏩"
                         FontSize="13"
                         Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Avançar 10s" />
+                        ToolTip="Avançar (clique múltiplo: 5s, 15s, 30s, 60s)" />
                     <Button
                         x:Name="MuteButton"
-                        Click="MuteButton_Click"
                         Width="35"
+                        Click="MuteButton_Click"
                         Content="🔊"
                         Style="{StaticResource PlayerButtonStyle}"
                         ToolTip="Mutar" />
@@ -176,8 +198,7 @@
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
 
-                        <TextBlock Style="{StaticResource TimeTextStyle}" 
-                            Text="{Binding TempoAtualFormatado}" />
+                        <TextBlock Style="{StaticResource TimeTextStyle}" Text="{Binding TempoAtualFormatado}" />
                         <TextBlock
                             Foreground="#99FFFFFF"
                             Style="{StaticResource TimeTextStyle}"
@@ -269,6 +290,22 @@
                             Symbol="FullScreenMaximize24" />
                     </Button>
                 </StackPanel>
+            </Grid>
+            <Grid
+                Grid.Row="1"
+                Grid.RowSpan="2"
+                IsHitTestVisible="False"
+                Visibility="{Binding MostrarFeedback, Converter={StaticResource BoolToVisibilityConverter}}">
+
+                <Border
+                    Padding="24,16"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="#CC000000"
+                    CornerRadius="12">
+
+                    <TextBlock Style="{StaticResource FeedbackStyle}" Text="{Binding FeedbackTempo}" />
+                </Border>
             </Grid>
         </Grid>
     </Border>
