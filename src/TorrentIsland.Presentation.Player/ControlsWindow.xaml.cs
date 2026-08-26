@@ -35,7 +35,8 @@ public partial class ControlsWindow : Window
         }
 
         var tempoAlvo = TimeSpan.FromMilliseconds(TimelineSlider.Value);
-        _viewModel.SeekTo2(tempoAlvo);
+
+        _viewModel.SeekTo(tempoAlvo);
     }
 
     private void TimelineSlider_MouseMove(object sender, MouseEventArgs e)
@@ -43,8 +44,7 @@ public partial class ControlsWindow : Window
         // Só formata e mostra se o usuário estiver ativamente arrastando/clicando
         if (_isSeeking && _viewModel != null)
         {
-            double proporcaoMouse = e.GetPosition(TimelineSlider).X / TimelineSlider.ActualWidth;
-            double milissegundosAlvo = proporcaoMouse * TimelineSlider.Maximum;
+            double milissegundosAlvo = TimelineSlider.Value;
 
             milissegundosAlvo = Math.Max(0, Math.Min(milissegundosAlvo, TimelineSlider.Maximum));
 
@@ -216,8 +216,4 @@ public partial class ControlsWindow : Window
             ActivityDetected?.Invoke(this, EventArgs.Empty);
         }
     }
-
-
-
-
 }

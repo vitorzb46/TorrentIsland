@@ -22,6 +22,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private int _volume = 100;
     private long _duracaoTotalMs;
     private long _posicaoMs;
+    //private System.Threading.Timer? _diagnosticTimer;
     public ObservableCollection<TrackItem> AudioTracks { get; } = [];
     public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
     private ICommand TogglePlayCommand { get; }
@@ -76,6 +77,22 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         TogglePlayCommand = new RelayCommand(TogglePlay);
         ToggleFullscreenCommand = new RelayCommand(ToggleFullscreen);
         LoadExternalSubtitleCommand = new RelayCommand(LoadExternalSubtitle);
+
+        //#if DEBUG
+        //        Log.Salvar("DEBUG: TIMER DE SINCRONIA ATIVADO");
+        //        _diagnosticTimer = new System.Threading.Timer(
+        //        _ =>
+        //        {
+        //            try
+        //            {
+        //                //DiagnosticarSincronia("TIMER DE SINCRONIA CTOR - DEBUG");
+        //            }
+        //            catch { }
+        //        },
+        //        null,
+        //        TimeSpan.FromSeconds(3),
+        //        TimeSpan.FromSeconds(5));
+        //#endif
     }
 
     public bool IsLoading
@@ -135,7 +152,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     public long PosicaoEmMilissegundos
     {
         get => _posicaoMs;
-        set { _posicaoMs = value; OnPropertyChanged(); }
+        set { _posicaoMs = value; OnPropertyChanged(); TempoAtualFormatado = FormatarTempo(value); }
     }
 
     public string TempoAtualFormatado
@@ -149,7 +166,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         get => _tempoTotalFormatado;
         private set { _tempoTotalFormatado = value; OnPropertyChanged(); }
     }
-    
+
     public string FeedbackTempo
     {
         get => _feedbackTempo;
@@ -172,16 +189,16 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     {
         _media?.Dispose();
         _media = media;
-        Log.Salvar($"SetMedia | Mrl={media.Mrl}");
         _mediaPlayer.Play(_media);
-        Log.Salvar($"Play() chamado | State={_mediaPlayer.State}");
         IsLoading = true;
     }
-    public void SeekTo2(TimeSpan timeSpan) => _mediaPlayer.SeekTo(timeSpan);
-    public void SeekTo(double percent)
+    public void SeekTo(TimeSpan timeSpan)
     {
-        Log.Salvar($"SeekTo | percent={percent:0.0}");
-        _mediaPlayer.Position = (float)Math.Clamp(percent / 100.0, 0.0, 1.0);
+        if (_duracaoTotalMs > 0)
+        {
+            Position = (timeSpan.TotalMilliseconds / _duracaoTotalMs) * 100.0;
+        }
+        _mediaPlayer.SeekTo(timeSpan);
     }
 
     public void SetMute(bool mute)
@@ -259,28 +276,28 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     public void AvancarTempo()
     {
         var agora = DateTime.Now;
-        
+
         if ((agora - _ultimoCliqueAvancar).TotalSeconds > 2)
         {
             _cliquesAvancar = 0;
         }
-        
+
         _cliquesAvancar++;
         _ultimoCliqueAvancar = agora;
-        
+
         int segundosParaAvancar = ObterSegundosProgressivos(_cliquesAvancar);
-        
+
         var posicaoAtual = _mediaPlayer.Position;
         var duracaoTotal = _mediaPlayer.Length;
-        
+
         if (duracaoTotal > 0)
         {
             var novaPosicao = Math.Min(1.0f, posicaoAtual + (segundosParaAvancar * 1000.0f / duracaoTotal));
             _mediaPlayer.Position = novaPosicao;
-            
+
             PosicaoEmMilissegundos = (long)(novaPosicao * duracaoTotal);
-            TempoAtualFormatado = FormatarTempo(PosicaoEmMilissegundos);
-            
+            Position = novaPosicao * 100.0;
+
             MostrarFeedbackTempo($"⏩ +{segundosParaAvancar}s", segundosParaAvancar);
         }
     }
@@ -288,28 +305,28 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     public void RetrocederTempo()
     {
         var agora = DateTime.Now;
-        
+
         if ((agora - _ultimoCliqueRetroceder).TotalSeconds > 2)
         {
             _cliquesRetroceder = 0;
         }
-        
+
         _cliquesRetroceder++;
         _ultimoCliqueRetroceder = agora;
-        
+
         int segundosParaRetroceder = ObterSegundosProgressivos(_cliquesRetroceder);
-        
+
         var posicaoAtual = _mediaPlayer.Position;
         var duracaoTotal = _mediaPlayer.Length;
-        
+
         if (duracaoTotal > 0)
         {
             var novaPosicao = Math.Max(0.0f, posicaoAtual - (segundosParaRetroceder * 1000.0f / duracaoTotal));
             _mediaPlayer.Position = novaPosicao;
-            
+
             PosicaoEmMilissegundos = (long)(novaPosicao * duracaoTotal);
-            TempoAtualFormatado = FormatarTempo(PosicaoEmMilissegundos);
-            
+            Position = novaPosicao * 100.0;
+
             MostrarFeedbackTempo($"⏪ -{segundosParaRetroceder}s", -segundosParaRetroceder);
         }
     }
@@ -330,10 +347,10 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     {
         FeedbackTempo = texto;
         MostrarFeedback = true;
-        
+
         // Aguarda 1.5 segundos e esconde o feedback
         await Task.Delay(1500);
-        
+
         MostrarFeedback = false;
     }
 
@@ -564,7 +581,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         {
             long posicaoMs = (long)(e.Position * _duracaoTotalMs);
             PosicaoEmMilissegundos = posicaoMs;
-            TempoAtualFormatado = FormatarTempo(posicaoMs);
         }
     }
 
@@ -621,7 +637,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private static string FormatarTempo(long milissegundos)
     {
         TimeSpan tempo = TimeSpan.FromMilliseconds(milissegundos);
-        
+
         if (tempo.TotalHours >= 1)
         {
             return tempo.ToString(@"hh\:mm\:ss");
@@ -635,6 +651,9 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _disposed = true;
         Log.Salvar("Dispose do ViewModel iniciado");
 
+        //#if DEBUG
+        //        _diagnosticTimer?.Dispose();
+        //#endif
         // Remove imediatamente as inscrições de eventos para evitar callbacks fantasmas
         _mediaPlayer.PositionChanged -= OnPositionChanged;
         _mediaPlayer.Playing -= OnPlaying;
@@ -678,5 +697,20 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.SeekTo(torrentDto.TempoTotal);
 
         TorrentStatus?.Invoke(torrentDto);
-    }    
+    }
+
+    //public void DiagnosticarSincronia(string titulo)
+    //{
+    //    Log.Salvar($"@***===== {titulo} =====***@");
+    //    Log.Salvar("=== DIAGNÓSTICO DE SINCRONIA ===");
+    //    Log.Salvar($"MediaPlayer.Time: {_mediaPlayer.Time}");
+    //    Log.Salvar($"MediaPlayer.Position: {_mediaPlayer.Position:F6}");
+    //    Log.Salvar($"MediaPlayer.Length: {_mediaPlayer.Length}");
+    //    Log.Salvar($"DuracaoTotalEmMilissegundos: {DuracaoTotalEmMilissegundos}");
+    //    Log.Salvar($"PosicaoEmMilissegundos: {PosicaoEmMilissegundos}");
+    //    Log.Salvar($"TempoAtualFormatado: {TempoAtualFormatado}");
+    //    Log.Salvar($"TempoTotalFormatado: {TempoTotalFormatado}");
+    //    Log.Salvar($"Position (percentual): {Position:F4}%");
+    //    Log.Salvar("==============================");
+    //}
 }
