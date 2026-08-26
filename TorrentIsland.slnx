@@ -11,7 +11,4 @@
     <Project Path="src/TorrentIsland.Presentation.Wpf/TorrentIsland.Presentation.Wpf.csproj" />
     <Project Path="src/TorrentIsland.Presentation.Player/TorrentIsland.Presentation.Player.csproj" />
   </Folder>
-  <Folder Name="/Tests/">
-    <Project Path="TorrentIsland.Application.Tests/TorrentIsland.Application.Tests.csproj" Id="e899dc66-7ce3-4f66-9b3c-526c7d01f6dc" />
-  </Folder>
 </Solution>
