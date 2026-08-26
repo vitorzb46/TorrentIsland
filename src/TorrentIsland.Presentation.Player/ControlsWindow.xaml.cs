@@ -23,11 +23,8 @@ public partial class ControlsWindow : Window
         DataContext = viewModel;
     }
 
-    // --- Timeline (proteção contra loop) ---
-    private void TimelineSlider_PreviewMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        _isSeeking = true;
-    }
+    #region Timeline Slider
+    private void TimelineSlider_PreviewMouseDown(object sender, MouseButtonEventArgs e) => _isSeeking = true;
 
     private void TimelineSlider_PreviewMouseUp(object sender, MouseButtonEventArgs e)
     {
@@ -57,7 +54,7 @@ public partial class ControlsWindow : Window
             ? tempo.ToString(@"hh\:mm\:ss")
             : tempo.ToString(@"mm\:ss");
 
-            if (TimelineSlider.ToolTip == null || !(TimelineSlider.ToolTip is ToolTip))
+            if (TimelineSlider.ToolTip == null || TimelineSlider.ToolTip is not System.Windows.Controls.ToolTip)
             {
                 TimelineSlider.ToolTip = new ToolTip();
             }
@@ -105,111 +102,17 @@ public partial class ControlsWindow : Window
             tooltip.IsOpen = true;
         }
     }
+    #endregion
 
-    // --- Manipulador de clique para os sub-itens do menu de Áudio ---
-    //private void AudioMenuItem_Click(object sender, RoutedEventArgs e)
-    //{
-    //    if (sender is MenuItem menuItem && menuItem.DataContext is TrackItem track)
-    //    {
-    //        Log.Salvar($"ContextMenu Audio: faixa {track.Id} ({track.Name})");
+    #region Coluna 1 (Botoes de controle)
+    private void RetrocederButton_Click(object sender, RoutedEventArgs e) => _viewModel.RetrocederTempo();
 
-    //        _viewModel.SelectAudioTrack(track.Id);
+    private void AvancarButton_Click(object sender, RoutedEventArgs e) => _viewModel.AvancarTempo();
 
-    //        FecharMenuConfiguracoes(menuItem);
-    //    }
-    //}
-
-    // --- Manipulador de clique para os sub-itens do menu de Legendas ---
-    //private void SubtitleMenuItem_Click(object sender, RoutedEventArgs e)
-    //{
-    //    if (sender is MenuItem menuItem && menuItem.DataContext is TrackItem track)
-    //    {
-    //        Log.Salvar($"ContextMenu Subtitle: faixa {track.Id} ({track.Name})");
-    //        _viewModel.SelectSubtitleTrack(track.Id);
-
-    //        FecharMenuConfiguracoes(menuItem);
-    //    }
-    //}
-
-    private void SubtitleMenuGroup_Click(object sender, RoutedEventArgs e)
+    private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            if (e.OriginalSource is MenuItem menuItemReal)
-            {
-                if (menuItemReal.Header is TrackItem track)
-                {
-
-                    _viewModel.SelectSubtitleTrack(track.Id);
-
-                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        var playerWindow = System.Windows.Application.Current.Windows
-                            .OfType<PlayerWindow>()
-                            .FirstOrDefault();
-
-                        if (playerWindow != null)
-                        {
-                            playerWindow.VideoView.InvalidateVisual();
-                            Log.Salvar("WPF: Redesenho forçado no componente VideoView da PlayerWindow.");
-                        }
-                    });
-                    return;
-                }
-            }
-
-            Log.Salvar("Aviso: O cabeçalho da linha clicada não continha um objeto TrackItem válido.");
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro no clique de legenda: {ex.Message}");
-        }
-        finally
-        {
-            // Garante que o painel de controles escuro do WPF-UI continue aberto na tela
-            e.Handled = true;
-        }
-    }
-
-    private void AudioMenuGroup_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            Log.Salvar("=== INTERCEPTADO CLIQUE GLOBAL DE ÁUDIO ===");
-
-            if (e.OriginalSource is MenuItem menuItemReal)
-            {
-                // Mesma extração direta aplicada ao canal de áudio do filme
-                if (menuItemReal.Header is TrackItem track)
-                {
-                    Log.Salvar($"SUCESSO TOTAL DA SÉRIE: Ativando Áudio ID: {track.Id} | Nome: {track.Name}");
-                    _viewModel.SelectAudioTrack(track.Id);
-                    return;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro no clique de áudio: {ex.Message}");
-        }
-        finally
-        {
-            e.Handled = true;
-        }
-    }
-
-
-
-    // --- Botões ---
-    // Habilitar ou desabilitar AudioTrack é mais eficiente. Altero se der problema no futuro
-    private void RetrocederButton_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.RetrocederTempo();
-    }
-
-    private void AvancarButton_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.AvancarTempo();
+        _viewModel.TogglePlay();
+        PlayPauseButton.Content = _viewModel.IsPlaying ? "⏸" : "▶";
     }
 
     private void MuteButton_Click(object sender, RoutedEventArgs e)
@@ -229,16 +132,47 @@ public partial class ControlsWindow : Window
             Log.Salvar("MuteButton desativado");
         }
     }
+    #endregion
 
-    private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
+    #region Coluna 2 (Configurações e legendas)
+    private void FullscreenButton_Click(object sender, RoutedEventArgs e) => FullscreenRequested?.Invoke(this, EventArgs.Empty);
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel.TogglePlay();
-        PlayPauseButton.Content = _viewModel.IsPlaying ? "⏸" : "▶";
+        if (sender is not Button btn) return;
+        ConfigMenu.DataContext = this.DataContext;
+        ConfigMenu.PlacementTarget = btn;
+        ConfigMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+        ConfigMenu.HorizontalOffset = -120;
+        ConfigMenu.VerticalOffset = -25;
+        ConfigMenu.IsOpen = true;
     }
-    private bool IsFullscreen = false;
-    private void FullscreenButton_Click(object sender, RoutedEventArgs e)
+
+    private void SubtitleMenuGroup_Click(object sender, RoutedEventArgs e)
     {
-        FullscreenRequested?.Invoke(this, EventArgs.Empty);
+        if (e.OriginalSource is MenuItem { Header: TrackItem track })
+        {
+            _viewModel.SelectSubtitleTrack(track.Id);
+
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                var playerWindow = System.Windows.Application.Current.Windows
+                    .OfType<PlayerWindow>()
+                    .FirstOrDefault();
+
+                playerWindow?.VideoView.InvalidateVisual();
+            });
+            return;
+        }
+    }
+
+    private void AudioMenuGroup_Click(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is MenuItem { Header: TrackItem track })
+        {
+            _viewModel.SelectAudioTrack(track.Id);
+            return;
+        }
     }
 
     private void LoadSubtitleButton_Click(object sender, RoutedEventArgs e)
@@ -257,92 +191,33 @@ public partial class ControlsWindow : Window
         }
     }
 
+    private void TorrentMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        Log.Salvar("TorrentMenuItem_Click");
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Arquivos Torrent (*.torrent)|*.torrent",
+            Title = "Carregar arquivo torrent"
+        };
+        if (dialog.ShowDialog(this) == true)
+        {
+            Log.Salvar($"Torrent {dialog.FileName} aberto!");
+            _viewModel.LoadExternalTorrent(dialog.FileName);
+        }
+    }
+    #endregion
+
+
     // --- Modo cinema: qualquer movimento do mouse na janela de controles reinicia o timer de inatividade ---
     private void Window_MouseMove(object sender, MouseEventArgs e)
     {
         if (_viewModel.IsFullscreen)
         {
-            // Sinaliza atividade para a janela de vídeo reiniciar o timer de inatividade.
             ActivityDetected?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    //private void SettingsButton_Click(object sender, RoutedEventArgs e)
-    //{
-    //    if (sender is Button btn && btn.ContextMenu != null)
-    //    {
-    //        btn.ContextMenu.PlacementTarget = btn;
-    //        btn.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
-    //        btn.ContextMenu.HorizontalOffset = -120;
-    //        btn.ContextMenu.VerticalOffset = -25;
-    //        btn.ContextMenu.IsOpen = true;
-    //    }
-    //}
-
-    private void SettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            Log.Salvar("SettingsButton_Click disparado.");
-
-            if (sender is Button btn)
-            {
-                ConfigMenu.DataContext = this.DataContext;
-
-                ConfigMenu.PlacementTarget = btn;
-
-                ConfigMenu.IsOpen = true;
-
-                Log.Salvar("ContextMenu aberto e DataContext injetado via C# com sucesso!");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro ao abrir menu de configurações: {ex.Message}");
-        }
-    }
 
 
-    /// <summary>
-    /// Método auxiliar para encontrar o ContextMenu ancestral e fechá-lo de forma segura.
-    /// </summary>
-    private void FecharMenuConfiguracoes(DependencyObject elemento)
-    {
-        var atual = elemento;
 
-        // Sobe na árvore de elementos até encontrar o ContextMenu pai
-        while (atual != null && atual is not System.Windows.Controls.ContextMenu)
-        {
-            // Tenta pegar o pai lógico ou o pai visual usando um cast seguro
-            atual = (atual as FrameworkElement)?.Parent ?? VisualTreeHelper.GetParent(atual);
-        }
-
-        if (atual is ContextMenu menu)
-        {
-            menu.IsOpen = false;
-        }
-    }
-
-    private void TorrentMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            Log.Salvar("TorrentMenuItem_Click");
-            var dialog = new OpenFileDialog
-            {
-                Filter = "Arquivos Torrent (*.torrent)|*.torrent",
-                Title = "Carregar arquivo torrent"
-            };
-            if (dialog.ShowDialog(this) == true)
-            {
-                Log.Salvar($"Torrent {dialog.FileName} aberto!");
-                _viewModel.LoadExternalTorrent(dialog.FileName);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar(ex.Message);
-        }
-
-    }
 }
