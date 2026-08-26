@@ -4,12 +4,12 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using TorrentIsland.Application.DTOs;
 
 namespace TorrentIsland.Presentation.Player;
 
 public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
 {
+    #region Fields
     private readonly LibVLC _libVLC;
     private readonly MediaPlayer _mediaPlayer;
     private Media? _media;
@@ -37,7 +37,9 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private string _feedbackTempo = "";
     private bool _mostrarFeedback = false;
     public LibVLC LibVLC => _libVLC;
+    #endregion
 
+    #region Constructor
     public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer)
     {
         Log.Salvar("PlayerViewModel iniciado");
@@ -94,7 +96,9 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         //        TimeSpan.FromSeconds(5));
         //#endif
     }
+    #endregion
 
+    #region Properties
     public bool IsLoading
     {
         get => _isLoading;
@@ -178,6 +182,14 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         get => _mostrarFeedback;
         private set { _mostrarFeedback = value; OnPropertyChanged(); }
     }
+    #endregion
+
+    #region Public Methods
+    public void ToggleFullscreen() => IsFullscreen = !IsFullscreen;
+
+    public void SelectAudioTrack(int trackId) => _mediaPlayer.SetAudioTrack(trackId);
+
+    public void SelectSubtitleTrack(int spuId) => _mediaPlayer.SetSpu(spuId);
 
     public void InicializarDuracaoDoVideo(long totalMilliseconds)
     {
@@ -238,27 +250,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    public void ToggleFullscreen()
-    {
-        IsFullscreen = !IsFullscreen;
-    }
 
-    public void SelectAudioTrack(int trackId)
-    {
-        _mediaPlayer.SetAudioTrack(trackId);
-    }
-
-    public void SelectSubtitleTrack(int spuId)
-    {
-        try
-        {
-            _mediaPlayer.SetSpu(spuId);
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro ao injetar trilha de legenda no LibVLC: {ex.Message}");
-        }
-    }
 
     public void LoadExternalSubtitle(object? filePath)
     {
@@ -330,7 +322,9 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             MostrarFeedbackTempo($"⏪ -{segundosParaRetroceder}s", -segundosParaRetroceder);
         }
     }
+    #endregion
 
+    #region Private Methods
     private int ObterSegundosProgressivos(int cliques)
     {
         return cliques switch
@@ -352,6 +346,31 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         await Task.Delay(1500);
 
         MostrarFeedback = false;
+    }
+
+    /// <summary>Indica se o código de idioma é realmente um idioma (não "und"/"undetermined"/vazio).</summary>
+    private static bool EhIdiomaValido(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return false;
+        var limpo = valor.Trim().ToLower();
+        return limpo is not ("und" or "undetermined" or "unknown" or "mis" or "mul" or "zxx" or "???");
+    }
+
+    /// <summary>Indica se o valor representa "idioma indefinido" (ex.: "und").</summary>
+    private static bool EhIdiomaIndefinido(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return true;
+        return !EhIdiomaValido(valor);
+    }
+    private static string FormatarTempo(long milissegundos)
+    {
+        TimeSpan tempo = TimeSpan.FromMilliseconds(milissegundos);
+
+        if (tempo.TotalHours >= 1)
+        {
+            return tempo.ToString(@"hh\:mm\:ss");
+        }
+        return tempo.ToString(@"mm\:ss");
     }
 
     public async Task PopulateTracksAsync(CancellationToken ct = default)
@@ -453,7 +472,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Gera um nome legível para uma faixa: prioriza o idioma/descrição reais dos metadados
     /// (Media.Tracks), mapeia códigos de idioma (ex.: "por" → "Português"),
-    /// converte "Track N" genérico em "Áudio N"/"Legenda N" e preserva descrições reais (ex.: "AC-3").
+    /// converte "Track N" genérico em "Áudio N"/"Legenda N" e preserva descrições reais.
     /// </summary>
     private static string NomeDaFaixa(string? nome, string tipo, int id, string? idiomaReal = null, string? descricaoReal = null)
     {
@@ -491,21 +510,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
 
         // Retorna o nome do idioma acompanhado do número da faixa para o usuário conseguir diferenciar
         return idiomaDetectado is null ? $"{tipo} {id}" : $"{idiomaDetectado} [{id}]";
-    }
-
-    /// <summary>Indica se o código de idioma é realmente um idioma (não "und"/"undetermined"/vazio).</summary>
-    private static bool EhIdiomaValido(string? valor)
-    {
-        if (string.IsNullOrWhiteSpace(valor)) return false;
-        var limpo = valor.Trim().ToLower();
-        return limpo is not ("und" or "undetermined" or "unknown" or "mis" or "mul" or "zxx" or "???");
-    }
-
-    /// <summary>Indica se o valor representa "idioma indefinido" (ex.: "und").</summary>
-    private static bool EhIdiomaIndefinido(string? valor)
-    {
-        if (string.IsNullOrWhiteSpace(valor)) return true;
-        return !EhIdiomaValido(valor);
     }
 
     private static string? TraduzirIdioma(string valor)
@@ -562,7 +566,40 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         }
         return null;
     }
+    #endregion
 
+    #region Events Handlers
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    private void OnMute(object? sender, EventArgs e) => IsMuted = _mediaPlayer.Mute;
+    private void OnPaused(object? sender, EventArgs e) => IsPlaying = false;
+    private void OnStopped(object? sender, EventArgs e) => IsPlaying = false;
+    private void OnEndReached(object? sender, EventArgs e) => IsPlaying = false;
+    private void OnPlaying(object? sender, EventArgs e)
+    {
+        Log.Salvar($"EVENT Playing | State={_mediaPlayer.State}");
+        IsPlaying = true;
+        IsLoading = false;
+    }
+    private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
+    {
+        System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            float cachePreenchido = e.Cache;
+
+            if (cachePreenchido < 100)
+            {
+                IsLoading = true;
+                //Log.Salvar($"[ALERTA REDE] Preenchendo buffer: {cachePreenchido:0.0}%");
+            }
+            else
+            {
+                IsLoading = false;
+                Log.Salvar("[ALERTA REDE] Buffer cheio. Continuando reprodução.");
+            }
+        });
+    }
     private void OnPositionChanged(object? sender, MediaPlayerPositionChangedEventArgs e)
     {
         // O VLC dispara em thread própria: marshall para a UI thread antes de tocar no binding.
@@ -583,67 +620,8 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             PosicaoEmMilissegundos = posicaoMs;
         }
     }
+    #endregion
 
-    private void OnPlaying(object? sender, EventArgs e)
-    {
-        Log.Salvar($"EVENT Playing | State={_mediaPlayer.State}");
-        IsPlaying = true;
-        IsLoading = false;
-    }
-    private void OnMute(object? sender, EventArgs e)
-    {
-        Log.Salvar($"EVENT Muted");
-        IsMuted = _mediaPlayer.Mute;
-    }
-    private void OnPaused(object? sender, EventArgs e)
-    {
-        Log.Salvar("EVENT Paused");
-        IsPlaying = false;
-    }
-    private void OnStopped(object? sender, EventArgs e)
-    {
-        Log.Salvar("EVENT Stopped");
-        IsPlaying = false;
-    }
-    private void OnEndReached(object? sender, EventArgs e)
-    {
-        Log.Salvar("EVENT EndReached");
-        IsPlaying = false;
-    }
-    private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
-    {
-        System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
-        {
-            float cachePreenchido = e.Cache;
-
-            if (cachePreenchido < 100)
-            {
-                IsLoading = true;
-                //Log.Salvar($"[ALERTA REDE] Preenchendo buffer: {cachePreenchido:0.0}%");
-            }
-            else
-            {
-                IsLoading = false;
-                Log.Salvar("[ALERTA REDE] Buffer cheio. Continuando reprodução.");
-            }
-        });
-    }
-    public event PropertyChangedEventHandler? PropertyChanged;
-    private void OnPropertyChanged([CallerMemberName] string? name = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-    }
-
-    private static string FormatarTempo(long milissegundos)
-    {
-        TimeSpan tempo = TimeSpan.FromMilliseconds(milissegundos);
-
-        if (tempo.TotalHours >= 1)
-        {
-            return tempo.ToString(@"hh\:mm\:ss");
-        }
-        return tempo.ToString(@"mm\:ss");
-    }
 
     public void Dispose()
     {
@@ -689,14 +667,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     internal void LoadExternalTorrent(string fileName)
     {
         throw new NotImplementedException();
-    }
-
-    public event Action<TorrentDto>? TorrentStatus;
-    public void AtualizarTorrent(TorrentDto torrentDto)
-    {
-        _mediaPlayer.SeekTo(torrentDto.TempoTotal);
-
-        TorrentStatus?.Invoke(torrentDto);
     }
 
     //public void DiagnosticarSincronia(string titulo)
