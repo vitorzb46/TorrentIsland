@@ -56,14 +56,15 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.EncounteredError += (_, _) =>
         {
             Log.Salvar($"EncounteredError | State={_mediaPlayer.State} | Mrl={_mediaPlayer.Media?.Mrl}");
-            // Diagnóstico visível: escreve o erro do VLC em um arquivo de log local.
-            try
+            
+            if (_mediaPlayer.Media != null)
             {
-                File.AppendAllText(
-                    Path.Combine(AppContext.BaseDirectory, "vlc-errors.log"),
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] EncounteredError | State={_mediaPlayer.State} | Mrl={_mediaPlayer.Media?.Mrl}{Environment.NewLine}");
+                Log.Salvar($"Media Type: {_mediaPlayer.Media.Type}");
+                Log.Salvar($"Media State: {_mediaPlayer.Media.State}");
+                Log.Salvar($"Media Duration: {_mediaPlayer.Media.Duration}");
+                Log.Salvar($"Media Tracks: {_mediaPlayer.Media.Tracks?.Length ?? 0}");
             }
-            catch { /* log é best-effort */ }
+            
         };
 
         _mediaPlayer.LengthChanged += (sender, args) =>
