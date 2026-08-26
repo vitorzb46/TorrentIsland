@@ -53,19 +53,14 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         };
         Loaded += async (_, _) =>
         {
-            try
+            if (!string.IsNullOrWhiteSpace(mediaUrl))
             {
-                await IniciarAsync(mediaUrl);
-                Log.Salvar("IniciarAsync concluído");
+                await CarregarMidia(mediaUrl);
             }
-            catch (Exception ex)
+            else
             {
-                Log.Salvar($"IniciarAsync EXCEPTION: {ex}");
-                File.AppendAllText(
-                    Path.Combine(AppContext.BaseDirectory, "vlc-errors.log"),
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] IniciarAsync EXCEPTION: {ex}{Environment.NewLine}");
-                MessageBox.Show($"Falha ao iniciar o player:\n{ex.Message}", "Player",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                // Talvez overlay no futuro
+                Log.Salvar("Nenhuma mídia inicial fornecida.");
             }
         };
         Closed += (_, _) =>
@@ -83,26 +78,85 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         StateChanged += (_, _) => PosicionarControles();
     }
 
-    private async Task IniciarAsync(string mediaUrl)
+    // private async Task IniciarAsync(string mediaUrl)
+    // {
+    //     _viewModel.IsLoading = true;
+    //     Log.Salvar("Criando Media");
+        
+    //     var media = new Media(_viewModel.LibVLC, mediaUrl, FromType.FromLocation);
+
+    //     // Opções de rede para streaming
+    //     media.AddOption(":network-caching=3000");
+    //     media.AddOption(":file-caching=3000");
+    //     media.AddOption(":live-caching=3000");
+    //     media.AddOption(":skip-frames");
+    //     media.AddOption(":clock-synchro=0");
+    //     media.AddOption(":clock-jitter=5000");
+
+    //     _viewModel.SetMedia(media);
+    //     await _viewModel.PopulateTracksAsync();
+    //     ShowControls();
+    // }
+
+    private async Task CarregarMidia(string caminhoOuUrl)
     {
-        _viewModel.IsLoading = true;
-        Log.Salvar("Criando Media");
-        // Sem 'using': o PlayerViewModel é o dono do Media e faz o Dispose no fechamento.
-        var media = new Media(_viewModel.LibVLC, mediaUrl, FromType.FromLocation);
+        try
+        {
+            _viewModel.IsLoading = true;
+            Log.Salvar($"Carregando mídia: {caminhoOuUrl}");
 
-        // Opções de rede para streaming (buffering + sync) — essencial para URL/stream.
-        media.AddOption(":network-caching=3000");
-        media.AddOption(":file-caching=3000");
-        media.AddOption(":live-caching=3000");
-        media.AddOption(":skip-frames");
-        media.AddOption(":clock-synchro=0");
-        media.AddOption(":clock-jitter=5000");
+            Media media;
+            if (File.Exists(caminhoOuUrl))
+            {
+                var infoArquivo = new FileInfo(caminhoOuUrl);
+                long tamanhoBytes = infoArquivo.Length;
+                string tamanhoFormatado;
 
-        _viewModel.SetMedia(media);
-        Log.Salvar("SetMedia + Play chamados");
-        await _viewModel.PopulateTracksAsync();
-        Log.Salvar("PopulateTracksAsync concluído");
-        ShowControls();
+                if (tamanhoBytes >= 1024 * 1024 * 1024) // 1 GB
+                {
+                    tamanhoFormatado = $"{tamanhoBytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
+                }
+                else
+                {
+                    tamanhoFormatado = $"{tamanhoBytes / (1024.0 * 1024.0):F2} MB";
+                }
+
+                Log.Salvar($"Arquivo existe. Tamanho: {tamanhoFormatado} bytes");
+                media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
+            }
+            else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
+            {
+                Log.Salvar("Origem é uma URL");
+                media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
+            }
+            else
+            {
+                MessageBox.Show("Caminho de mídia inválido.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // Opções de rede para streaming
+            media.AddOption(":network-caching=3000");
+            media.AddOption(":file-caching=3000");
+            media.AddOption(":live-caching=3000");
+            media.AddOption(":skip-frames");
+            media.AddOption(":clock-synchro=0");
+            media.AddOption(":clock-jitter=5000");
+
+            _viewModel.SetMedia(media);
+            await _viewModel.PopulateTracksAsync();
+            ShowControls();
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro ao carregar mídia: {ex.Message}");
+            MessageBox.Show($"Não foi possível carregar a mídia: {caminhoOuUrl}", "Player",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _viewModel.IsLoading = false;
+        }
     }
 
     /// <summary>Posiciona a janela de controles na parte inferior da janela de vídeo.</summary>
@@ -214,6 +268,58 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }), DispatcherPriority.Render);
     }
 
+    private void PlayerWindow_DragEnter(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            string[] arquivos = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (arquivos != null && arquivos.Length > 0 &&
+                ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void PlayerWindow_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            string[] arquivos = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (arquivos != null && arquivos.Length > 0 &&
+                ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+        }
+    }
+
+    private async void PlayerWindow_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            string[] arquivos = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (arquivos != null && arquivos.Length > 0)
+            {
+                string caminhoArquivo = arquivos[0];
+                string extensao = Path.GetExtension(caminhoArquivo).ToLowerInvariant();
+
+                if (ExtensoesVideo.Contains(extensao))
+                {
+                    Log.Salvar($"Arquivo de vídeo solto: {caminhoArquivo}");
+                    await CarregarMidia(caminhoArquivo);
+                }
+                else
+                {
+                    MessageBox.Show("Formato de arquivo não suportado.", "Player",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+        }
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
@@ -225,4 +331,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     }
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? MouseDetected;
+
+    private static readonly string[] ExtensoesVideo = {
+    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
+    ".m4v", ".ts", ".m2ts", ".vob", ".mpg", ".mpeg", ".3gp", ".ogv"
+};
 }
