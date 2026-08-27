@@ -63,26 +63,34 @@ public class TorrentRepository : ITorrentRepository
     public async Task<List<Guid>> AddEngineAsync(string magnetOrFolderName, bool isStream = false)
     {
         ArgumentNullException.ThrowIfNull(magnetOrFolderName);
-        IList<TorrentManager> managers;
-        if (magnetOrFolderName.StartsWith("magnet:?"))
-        {
-            var magnet = MagnetLink.Parse(magnetOrFolderName);
-            if (isStream)
-                managers = await Managers.StreamingAsync(magnet, ManagerFiles.DownloadFolder, Settings);
-            else
-                managers = await Managers.TorrentDownloadAsync(magnet, ManagerFiles.DownloadFolder, Settings);
 
-            await Task.Delay(3000).ConfigureAwait(false);
-            while (managers.All(m => m.State == TorrentState.Metadata || m.State == TorrentState.Stopped))
+        if (magnetOrFolderName.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) ||
+            Path.GetExtension(magnetOrFolderName).Equals(".torrent", StringComparison.OrdinalIgnoreCase))
+        {
+            object torrentSource = magnetOrFolderName.StartsWith("magnet:?")
+                ? (object)MagnetLink.Parse(magnetOrFolderName)
+                : (object)await Torrent.LoadAsync(magnetOrFolderName);
+
+            IList<TorrentManager> managers;
+
+            managers = isStream switch
             {
-                foreach (var manager in managers.Where(m => m.State == TorrentState.Stopped))
+                true => torrentSource switch
                 {
-                    var start = manager.StartAsync();
-                    await start.ConfigureAwait(false);
+                    MagnetLink m => await Managers.StreamingAsync(m, ManagerFiles.DownloadFolder, Settings),
+                    Torrent t => await Managers.StreamingAsync(t, ManagerFiles.DownloadFolder, Settings),
+                    _ => throw new InvalidOperationException("Tipo de torrent desconhecido.")
+                },
+                false => torrentSource switch
+                {
+                    MagnetLink m => await Managers.TorrentDownloadAsync(m, ManagerFiles.DownloadFolder, Settings),
+                    Torrent t => await Managers.TorrentDownloadAsync(t, ManagerFiles.DownloadFolder, Settings),
+                    _ => throw new InvalidOperationException("Tipo de torrent desconhecido.")
                 }
-                Logger.LogInformation("Aguardando metadata...");
-                await Task.Delay(1000).ConfigureAwait(false);
-            }
+            };
+
+            //await Task.Delay(3000).ConfigureAwait(false);
+            await AguardarMetadata(managers).ConfigureAwait(false);
 
             List<Guid> ids = [];
             for (var i = 0; i < managers.Count; i++)
@@ -212,13 +220,14 @@ public class TorrentRepository : ITorrentRepository
     public async Task<string> StartStreamAsync(Guid id)
     {
         var manager = await Managers.ObterManagerIdAsync(id);
+        await AguardarMetadata(manager!).ConfigureAwait(false);
         var torrent = ManagerFiles.ArquivoMaiorPrimeiro(manager!);
         var stream = App?.OneStream == true ? await StreamHttp(manager!, torrent!) :
                                       throw new CustomException("Não é possível iniciar um segundo stream.");
 
         App.OneStream = false;
         await StreamBuffer(manager!);
-        return stream.FullUri;        
+        return stream.FullUri;
     }
 
     public IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)> StreamTorrentEstado()
@@ -250,5 +259,22 @@ public class TorrentRepository : ITorrentRepository
     }
 
     #endregion
+
+    private async Task AguardarMetadata(TorrentManager manager) => await AguardarMetadata([manager]).ConfigureAwait(false);
+    private async Task AguardarMetadata(IList<TorrentManager> managers)
+    {
+        foreach (var manager in managers.Where(m => m.State == TorrentState.Stopped))
+        {
+            await manager.StartAsync().ConfigureAwait(false);
+        }
+        await Task.Delay(2000).ConfigureAwait(false);
+        while (managers.Any(m => m.State == TorrentState.Metadata || m.State == TorrentState.Stopped || m.State == TorrentState.Hashing))
+        {
+            Logger.LogInformation("Aguardando metadata de {Count} torrent(s)...",
+            managers.Count(m => m.State == TorrentState.Metadata || m.State == TorrentState.Stopped));
+
+            await Task.Delay(1000).ConfigureAwait(false);
+        }
+    }
 
 }
