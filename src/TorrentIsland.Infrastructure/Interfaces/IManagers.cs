@@ -9,7 +9,9 @@ namespace TorrentIsland.Infrastructure.Interfaces
         ConcurrentDictionary<Guid, TorrentManager> All { get; set; }
         Task<TorrentManager?> ObterManagerIdAsync(Guid id);
         Task<List<TorrentManager>> ObterManagersAsync();
+        Task<IList<TorrentManager>> StreamingAsync(Torrent torrent, string savePath, TorrentSettings settings);
         Task<IList<TorrentManager>> StreamingAsync(MagnetLink magnet, string savePath, TorrentSettings settings);
+        Task<IList<TorrentManager>> TorrentDownloadAsync(Torrent torrent, string savePath, TorrentSettings settings);
         Task<IList<TorrentManager>> TorrentDownloadAsync(MagnetLink magnet, string savePath, TorrentSettings settings);
     }
 }
