@@ -3,6 +3,9 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using TorrentIsland.Application.Contracts;
+using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Application.Services;
 using TorrentIsland.Infrastructure.VLC;
 namespace TorrentIsland.Presentation.Player;
 
@@ -11,8 +14,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly PlayerViewModel _viewModel;
     private readonly ControlsWindow _controls;
     private readonly DispatcherTimer _inactivityTimer;
+    public string mediaUrl { get; set; } = "";
+    private IStreamService _streamService { get; }
 
-    public PlayerWindow(string mediaUrl)
+    public PlayerWindow(IStreamService streamService)
     {
         Log.Salvar($"PlayerWindow ctor | mediaUrl={mediaUrl}");
         InitializeComponent();
@@ -76,6 +81,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         LocationChanged += (_, _) => PosicionarControles();
         SizeChanged += (_, _) => PosicionarControles();
         StateChanged += (_, _) => PosicionarControles();
+        _streamService = streamService;
     }
 
     // private async Task IniciarAsync(string mediaUrl)
@@ -287,8 +293,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             string[] arquivos = (string[])e.Data.GetData(DataFormats.FileDrop);
+            string ext = Path.GetExtension(arquivos[0]).ToLowerInvariant();
             if (arquivos != null && arquivos.Length > 0 &&
-                ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
+                (ExtensoesVideo.Contains(ext) || ExtensaoTorrent.Contains(ext)))
             {
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
@@ -310,6 +317,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 {
                     Log.Salvar($"Arquivo de vídeo solto: {caminhoArquivo}");
                     await CarregarMidia(caminhoArquivo);
+
+                }else if (ExtensaoTorrent.Contains(extensao))
+                {
+                    Log.Salvar($"Arquivo torrent solto: {caminhoArquivo}");
+                    await CarregarStreamTorrent(caminhoArquivo);
                 }
                 else
                 {
@@ -329,11 +341,50 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             ToggleFullscreen();
         }
     }
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        base.OnPreviewKeyDown(e);
+
+        if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            string texto = Clipboard.GetText();
+            if (!string.IsNullOrWhiteSpace(texto) && texto.StartsWith("magnet:?"))
+            {
+                e.Handled = true;
+                _ = CarregarStreamTorrent(texto);
+            }
+        }
+    }
+
+    private async Task CarregarStreamTorrent(string caminhoOuUrl)
+    {
+        try
+        {
+            _viewModel.IsLoading = true;
+            Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
+            string streamUrl = await _streamService.ToPlayerAsync(caminhoOuUrl);
+
+            Log.Salvar($"Stream URL obtida: {streamUrl}");
+            await CarregarMidia(streamUrl);
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro ao iniciar stream de torrent: {ex.Message}");
+            MessageBox.Show($"Não foi possível iniciar o stream do torrent!", "Player",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _viewModel.IsLoading = false;
+        }
+    }
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? MouseDetected;
 
-    private static readonly string[] ExtensoesVideo = {
+    private static readonly string[] ExtensoesVideo = [
     ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
     ".m4v", ".ts", ".m2ts", ".vob", ".mpg", ".mpeg", ".3gp", ".ogv"
-};
+    ];
+    private static readonly string[] ExtensaoTorrent = [".torrent"];
 }
