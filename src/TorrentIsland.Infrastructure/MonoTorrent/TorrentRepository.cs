@@ -26,8 +26,6 @@ public class TorrentRepository : ITorrentRepository
     private IEntityMapping Map { get; }
     private ILogger<TorrentRepository> Logger { get; }
     private ITrackerService TrackerService { get; }
-    private IPlayerLauncherService Player { get; }
-    private IPlayerMonitorRenderer PlayerMonitor { get; }
     internal TorrentSettings Settings { get; private set; }
 
     public TorrentRepository(ClientEngine engine,
@@ -37,13 +35,9 @@ public class TorrentRepository : ITorrentRepository
         IEntityMapping map,
         ILogger<TorrentRepository> logger,
         IStringLocalizer<TorrentRepository> localizer,
-        ITrackerService trackerService,
-        IPlayerLauncherService playerLauncher,
-        IPlayerMonitorRenderer playerMonitor)
+        ITrackerService trackerService)
     {
         TrackerService = trackerService;
-        Player = playerLauncher;
-        PlayerMonitor = playerMonitor;
         Settings = new TorrentSettingsBuilder
         {
             AllowDht = true,
@@ -215,7 +209,7 @@ public class TorrentRepository : ITorrentRepository
 
     #region Stream Methods
     // Publics
-    public async Task StartStreamAsync(Guid id)
+    public async Task<string> StartStreamAsync(Guid id)
     {
         var manager = await Managers.ObterManagerIdAsync(id);
         var torrent = ManagerFiles.ArquivoMaiorPrimeiro(manager!);
@@ -224,8 +218,7 @@ public class TorrentRepository : ITorrentRepository
 
         App.OneStream = false;
         await StreamBuffer(manager!);
-        var process = await Player.LaunchPlayerAsync(stream.FullUri);
-        await PlayerMonitor.MonitorPlayerAsync(process, StreamTorrentEstado).ConfigureAwait(false);
+        return stream.FullUri;        
     }
 
     public IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)> StreamTorrentEstado()

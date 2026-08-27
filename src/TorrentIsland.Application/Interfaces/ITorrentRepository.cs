@@ -8,7 +8,7 @@ public interface ITorrentRepository
     Task<List<Guid>> AddEngineAsync(string magnetOrFolderName, bool isStream = false);
     Task<TorrentEntity?> ObterAsync(Guid id);
     Task StartAllTorrentAsync();
-    Task StartStreamAsync(Guid id);
+    Task<string> StartStreamAsync(Guid id);
     Task StartTorrentAsync(Guid id);
     IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)> StreamTorrentEstado();
     Task TrackersAsync(Guid id);
