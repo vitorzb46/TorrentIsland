@@ -1,19 +1,13 @@
-using System.IO;
-using System.Windows;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MonoTorrent.Client;
-using TorrentIsland.Application.Contracts;
+using System.IO;
+using System.Windows;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Application.Medias.Commands;
 using TorrentIsland.Application.Services;
-using TorrentIsland.Application.Settings;
-using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.DependencyInjection;
 using TorrentIsland.Infrastructure.Interfaces;
-using TorrentIsland.Infrastructure.Logging;
-using TorrentIsland.Infrastructure.MonoTorrent;
-using TorrentIsland.Infrastructure.Services;
+using TorrentIsland.Presentation.Console.Helpers;
+using TorrentIsland.Presentation.Console.Renderers;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -39,7 +33,7 @@ public partial class App : System.Windows.Application
 
         // Uso: TorrentIsland.Presentation.Player.exe <url-do-stream>
         var mediaUrl = e.Args.Length > 0 ? e.Args[0] : null;
-        
+
         var services = new ServiceCollection();
         ConfigurarServico(services);
         var serviceProvider = services.BuildServiceProvider();
@@ -54,9 +48,13 @@ public partial class App : System.Windows.Application
         var configuration = new ConfigurationBuilder()
         .SetBasePath(AppContext.BaseDirectory)
         .Build();
+        services.AddSingleton<ILogPainel, LogPainel>();
+        services.AddSingleton<IConsoleLogRenderer, ConsoleLogRenderer>();
         var consoleLog = services.BuildServiceProvider().GetRequiredService<IConsoleLogRenderer>();
 
         services.AddTorrentIsland(configuration, consoleLog, maxLogs: 10);
+        services.AddSingleton<IFormattingHelper, FormattingHelper>();
+        services.AddSingleton<IStreamService, StreamService>();
         services.AddSingleton<PlayerWindow>();
     }
 }

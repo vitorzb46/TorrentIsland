@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TorrentIsland.Infrastructure\TorrentIsland.Infrastructure.csproj" />
+    <ProjectReference Include="..\TorrentIsland.Presentation.Console\TorrentIsland.Presentation.Console.csproj" />
   </ItemGroup>
 
   <ItemGroup>
