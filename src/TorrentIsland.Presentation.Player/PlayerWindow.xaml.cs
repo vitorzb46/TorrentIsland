@@ -3,9 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
-using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Application.Services;
 using TorrentIsland.Infrastructure.VLC;
 namespace TorrentIsland.Presentation.Player;
 
@@ -15,7 +13,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly ControlsWindow _controls;
     private readonly DispatcherTimer _inactivityTimer;
     public string mediaUrl { get; set; } = "";
-    private IStreamService _streamService { get; }
+    private IStreamService StreamService { get; }
 
     public PlayerWindow(IStreamService streamService)
     {
@@ -81,14 +79,14 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         LocationChanged += (_, _) => PosicionarControles();
         SizeChanged += (_, _) => PosicionarControles();
         StateChanged += (_, _) => PosicionarControles();
-        _streamService = streamService;
+        StreamService = streamService;
     }
 
     // private async Task IniciarAsync(string mediaUrl)
     // {
     //     _viewModel.IsLoading = true;
     //     Log.Salvar("Criando Media");
-        
+
     //     var media = new Media(_viewModel.LibVLC, mediaUrl, FromType.FromLocation);
 
     //     // Opções de rede para streaming
@@ -276,69 +274,43 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private void PlayerWindow_DragEnter(object sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos)
+            && ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
         {
-            string[] arquivos = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (arquivos != null && arquivos.Length > 0 &&
-                ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
-            {
-                e.Effects = DragDropEffects.Copy;
-                e.Handled = true;
-            }
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
         }
     }
 
     private void PlayerWindow_DragOver(object sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos)
+            && (ExtensoesVideo.Contains(arquivos[0]) || ExtensaoTorrent.Contains(arquivos[0])))
         {
-            string[] arquivos = (string[])e.Data.GetData(DataFormats.FileDrop);
-            string ext = Path.GetExtension(arquivos[0]).ToLowerInvariant();
-            if (arquivos != null && arquivos.Length > 0 &&
-                (ExtensoesVideo.Contains(ext) || ExtensaoTorrent.Contains(ext)))
-            {
-                e.Effects = DragDropEffects.Copy;
-                e.Handled = true;
-            }
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
         }
     }
 
     private async void PlayerWindow_Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos))
         {
-            string[] arquivos = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (arquivos != null && arquivos.Length > 0)
+            if (ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
             {
-                string caminhoArquivo = arquivos[0];
-                string extensao = Path.GetExtension(caminhoArquivo).ToLowerInvariant();
-
-                if (ExtensoesVideo.Contains(extensao))
-                {
-                    Log.Salvar($"Arquivo de vídeo solto: {caminhoArquivo}");
-                    await CarregarMidia(caminhoArquivo);
-
-                }else if (ExtensaoTorrent.Contains(extensao))
-                {
-                    Log.Salvar($"Arquivo torrent solto: {caminhoArquivo}");
-                    await CarregarStreamTorrent(caminhoArquivo);
-                }
-                else
-                {
-                    MessageBox.Show("Formato de arquivo não suportado.", "Player",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
+                Log.Salvar($"Arquivo de vídeo colado: {arquivos[0]}");
+                await CarregarMidia(arquivos[0]);
             }
-        }
-    }
-
-    protected override void OnKeyDown(KeyEventArgs e)
-    {
-        base.OnKeyDown(e);
-
-        if (e.Key == Key.Escape && _viewModel.IsFullscreen)
-        {
-            ToggleFullscreen();
+            else if (ExtensaoTorrent.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
+            {
+                Log.Salvar($"Arquivo torrent colado: {arquivos[0]}");
+                await CarregarStreamTorrent(arquivos[0]);
+            }
+            else
+            {
+                MessageBox.Show("Formato de arquivo não suportado.", "Player",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
     }
 
@@ -346,16 +318,69 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         base.OnPreviewKeyDown(e);
 
+        if (e.Key == Key.Escape && _viewModel.IsFullscreen)
+        {
+            ToggleFullscreen();
+        }
+
         if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            string texto = Clipboard.GetText();
-            if (!string.IsNullOrWhiteSpace(texto) && texto.StartsWith("magnet:?"))
+            var dataObject = Clipboard.GetDataObject();
+            if (dataObject == null) return;
+
+            if (TentarObterDado(dataObject, DataFormats.FileDrop, out string[] arquivos)
+                && ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant())) // Arquivo das extensões de vídeo suportadas
             {
                 e.Handled = true;
-                _ = CarregarStreamTorrent(texto);
+                _ = CarregarMidia(arquivos[0]);
+                return;
+            }
+
+            if (TentarObterDado(dataObject, DataFormats.FileDrop, out string[] torrent)
+                && ExtensaoTorrent.Contains(Path.GetExtension(torrent[0]).ToLowerInvariant())) // Arquivo torrent
+            {
+                e.Handled = true;
+                _ = CarregarStreamTorrent(torrent[0]);
+                return;
+            }
+
+            if (TentarObterDado(dataObject, DataFormats.Text, out string magnet)
+                && magnet.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase)) // Magnet link
+            {
+                e.Handled = true;
+                _ = CarregarStreamTorrent(magnet);
+                return;
             }
         }
     }
+    /// <summary>
+    /// Tenta obter dados do tipo Data Object usando o formato especificado.
+    /// </summary>
+    /// <typeparam name="T">O tipo de dado a ser obtido.</typeparam>
+    /// <param name="dataObject">O IDataObject de onde obtem os dados.</param>
+    /// <param name="formato">O formato dos dados.</param>
+    /// <param name="resultado">Os dados obtidos.</param>
+    /// <returns>True se os dados foram obtidos com sucesso e convertidos, false caso contrário.</returns>
+    private bool TentarObterDado<T>(IDataObject dataObject, string formato, out T resultado)
+    {
+        resultado = default!;
+
+        if (!dataObject.GetDataPresent(formato))
+            return false;
+
+        var dado = dataObject.GetData(formato);
+        if (dado is T dadoConvertido)
+        {
+            if (dadoConvertido is string[] array && array.Length == 0)
+                return false;
+
+            resultado = dadoConvertido;
+            return true;
+        }
+
+        return false;
+    }
+
 
     private async Task CarregarStreamTorrent(string caminhoOuUrl)
     {
@@ -363,7 +388,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             _viewModel.IsLoading = true;
             Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
-            string streamUrl = await _streamService.ToPlayerAsync(caminhoOuUrl);
+            string streamUrl = await StreamService.ToPlayerAsync(caminhoOuUrl);
 
             Log.Salvar($"Stream URL obtida: {streamUrl}");
             await CarregarMidia(streamUrl);
