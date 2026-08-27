@@ -195,21 +195,20 @@ public class TorrentRepository : ITorrentRepository
 
         Logger.LogInformation(Localizer["Torrent_Registrando", listaDeTorrents.Count]);
         var ids = new List<Guid>();
+        var i = 0;
         foreach (var torrent in listaDeTorrents)
         {
-            for (int i = 0; i < listaDeTorrents.Count; i++)
+            try
             {
-                try
-                {
-                    ids.Add(Guid.NewGuid());
-                    var manager = await Engine.AddAsync(torrent, ManagerFiles.DownloadFolder, Settings).ConfigureAwait(false);
-                    await Map.RegistroIdAsync(ids[i], manager).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogInformation(Localizer["Torrent_FalhaRegistrar", torrent.Name, ex.Message]);
-                }
+                ids.Add(Guid.NewGuid());
+                var manager = await Engine.AddAsync(torrent, ManagerFiles.DownloadFolder, Settings).ConfigureAwait(false);
+                await Map.RegistroIdAsync(ids[i], manager).ConfigureAwait(false);
             }
+            catch (Exception ex)
+            {
+                Logger.LogInformation(Localizer["Torrent_FalhaRegistrar", torrent.Name, ex.Message]);
+            }
+            i++;
         }
         return ids;
     }
