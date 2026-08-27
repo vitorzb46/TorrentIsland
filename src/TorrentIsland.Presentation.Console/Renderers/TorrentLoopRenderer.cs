@@ -16,11 +16,13 @@ internal sealed class TorrentLoopRenderer(ClientEngine engine,
                                           ILogger<TorrentLoopRenderer> logger,
                                           IEntityMapping map,
                                           AppSettings app,
-                                          IFormattingHelper fb) : BackgroundService, ITorrentLoopRenderer
+                                          IFormattingHelper fb,
+                                          IManagers managers) : BackgroundService, ITorrentLoopRenderer
 {
     private readonly ILogger<TorrentLoopRenderer> Logger = logger;
     private readonly AppSettings app = app;
     private readonly IFormattingHelper fb = fb;
+    private readonly IManagers managers = managers;
 
     public ClientEngine Engine { get; } = engine;
     public IConsoleLogRenderer Renderer { get; } = renderer;
@@ -38,15 +40,15 @@ internal sealed class TorrentLoopRenderer(ClientEngine engine,
         // Mantém o serviço rodando em background
         while (!stoppingToken.IsCancellationRequested && Engine.IsRunning)
         {
-            var managers = await Map.ObterManagersAsync().ConfigureAwait(false);
+            var torrents = await managers.ObterTorrentsAsync().ConfigureAwait(false);
 
-            if (DeveEncerrarEngine(managers))
+            if (DeveEncerrarEngine(torrents))
             {
                 await EncerrarEngineAsync(stoppingToken);
                 break;
             }
 
-            RenderizarInterface(managers);
+            RenderizarInterface(torrents);
 
             if (stoppingToken.IsCancellationRequested) break;
 
