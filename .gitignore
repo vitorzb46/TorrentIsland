@@ -9,6 +9,7 @@ README.md
 TorrentIsland.Application.Tests/
 graphify-out/
 src/.github/
+mkvextract.exe
 
 # script
 gerar_contexto.bat
