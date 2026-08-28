@@ -376,16 +376,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
 
     public async Task PopulateTracksAsync(CancellationToken ct = default)
     {
-        var audioTrackCount = _mediaPlayer.AudioTrackCount;
-        var subtitleTrackCount = _mediaPlayer.SpuCount;
-        var trackDesc = _mediaPlayer.SpuDescription ?? [];
-        Log.Salvar($"Àudios: {audioTrackCount} | Legendas {subtitleTrackCount}");
-
-        foreach (var t in trackDesc)
-        {
-            Log.Salvar($"Track: {t.Id} | {t.Name}");
-        }
-
         // Aguarda o vídeo iniciar (o MediaPlayer precisa do media carregado), com timeout
         // para não travar a UI caso a mídia falhe (ex.: URL inacessível).
         var esperaInicio = Task.Delay(TimeSpan.FromSeconds(15), ct);
@@ -497,7 +487,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         // 2. Sem metadados: usa o nome do SpuDescription.
         if (string.IsNullOrWhiteSpace(nome) || EhIdiomaIndefinido(nome))
         {
-            return $"{tipo} {id}";
+            return $"{tipo} {id} (Indefinido)";
         }
 
         var limpo = nome.Trim().ToLower();
