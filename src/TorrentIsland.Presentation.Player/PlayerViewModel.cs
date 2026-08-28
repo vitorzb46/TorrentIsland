@@ -1,8 +1,12 @@
 using LibVLCSharp.Shared;
+using Panlingo.LanguageIdentification.CLD2;
+using SubtitlesParser.Classes.Parsers;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows.Input;
 
 namespace TorrentIsland.Presentation.Player;
@@ -56,7 +60,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.EncounteredError += (_, _) =>
         {
             Log.Salvar($"EncounteredError | State={_mediaPlayer.State} | Mrl={_mediaPlayer.Media?.Mrl}");
-            
+
             if (_mediaPlayer.Media != null)
             {
                 Log.Salvar($"Media Type: {_mediaPlayer.Media.Type}");
@@ -64,7 +68,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                 Log.Salvar($"Media Duration: {_mediaPlayer.Media.Duration}");
                 Log.Salvar($"Media Tracks: {_mediaPlayer.Media.Tracks?.Length ?? 0}");
             }
-            
+
         };
 
         _mediaPlayer.LengthChanged += (sender, args) =>
@@ -407,18 +411,91 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         SubtitleTracks.Clear();
 
         var metadadosLegendas = _mediaPlayer.Media?.Tracks.Where(m => m.TrackType == TrackType.Text)
-                                                          .ToDictionary(t => t.Id, t => (t.Language, t.Description));
+                                                          .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
+
+        var caminhoMkvExtract = Path.Combine(AppContext.BaseDirectory, "mkvextract.exe");
+        var x = Path.Combine(AppContext.BaseDirectory, "Downloads");
+        var caminhoDoVideo = Directory.GetFiles(x, "*.mkv")[0];
+        var caminhoTemp = Path.Combine(AppContext.BaseDirectory, "temp");
+
 
         Log.Salvar($"Número de legendas: {spuTracks!.Length}");
         foreach (var legenda in spuTracks!)
         {
+            var metaSub = metadadosLegendas!.ContainsKey(legenda.Id) ? metadadosLegendas[legenda.Id].Language : null;
+            var metaDesc = metadadosLegendas!.ContainsKey(legenda.Id) ? metadadosLegendas[legenda.Id].Description : null;
+            var metaCodec = metadadosLegendas!.ContainsKey(legenda.Id) ? metadadosLegendas[legenda.Id].Codec : 0;
+            var arquivoDeSaida = string.Empty;
+
+            if (metaSub == "und")
+            {
+                // Obtem tipo da legenda por codec
+                var extensaoSub = "srt";
+                if (metaCodec != 0 && _mediaPlayer.Media != null)
+                {
+                    var codecDesc = _mediaPlayer.Media.CodecDescription(TrackType.Text, metaCodec).ToLower();
+                    if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
+                    else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
+                }
+
+                // Extrai legenda com mkvextract
+                arquivoDeSaida = Path.Combine(caminhoTemp, $"{metaSub}_{legenda.Id}.{extensaoSub}");
+                var args = $"tracks \"{caminhoDoVideo}\" {legenda.Id}:\"{arquivoDeSaida}\"";
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = caminhoMkvExtract,
+                    Arguments = args,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(processInfo);
+                process?.WaitForExit();
+
+                if (File.Exists(arquivoDeSaida))
+                {
+                    // Analisa legenda extraída
+                    var parser = new SubParser();
+                    using var fileStream = File.OpenRead(arquivoDeSaida);
+                    var items = parser.ParseStream(fileStream, Encoding.UTF8);
+
+                    // Armazena primeiras linhas da legenda
+                    var sb = new StringBuilder();
+                    for (var i = 0; i < Math.Min(15, items.Count); i++)
+                    {
+                        foreach (var line in items[i].Lines)
+                        {
+                            if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
+                                sb.Append(line).Append(' ');
+                        }
+                    }
+
+                    // Identifica idioma da legenda
+                    using var detector = new CLD2Detector();
+                    var lista = detector.PredictLanguage(sb.ToString());
+
+                    foreach (var item in lista)
+                    {
+                        if (item.Probability > 0.9)
+                        {
+                            metaSub = item.Language;
+                            Log.Salvar($"Legenda inferida: {metaSub}{Environment.NewLine}");
+                        }
+                    }
+                }
+            }
+
             Log.Salvar($"LEGENDAS: {legenda.Name} | {legenda.Id}");
             SubtitleTracks.Add(new TrackItem(legenda.Id, NomeDaFaixa(
                 legenda.Name,
                 "Legenda",
                 legenda.Id,
-                metadadosLegendas!.TryGetValue(legenda.Id, out var meta) ? meta.Language : null,
-                metadadosLegendas!.TryGetValue(legenda.Id, out meta) ? meta.Description : null)));
+                metaSub,
+                metaDesc)));
+
+            try { File.Delete(arquivoDeSaida); } catch { }
         }
 
         IsLoading = false;
@@ -474,6 +551,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         {
             if (!string.IsNullOrWhiteSpace(descricaoReal))
             {
+                Log.Salvar($"Nome da faixa: {idioma} - {descricaoReal}{Environment.NewLine}");
                 return $"{idioma} - {descricaoReal}";
             }
             return idioma;
@@ -508,49 +586,67 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         if (!EhIdiomaValido(valor)) return null;
 
         var limpo = valor.Trim().ToLower();
-        if (limpo.Contains("por") || limpo.Contains("pt") || limpo.Contains("portuguese"))
+
+        if (limpo == "pt" || limpo == "por" || limpo == "pt-br" || limpo.Contains("portuguese"))
         {
             return "Português (BR)";
         }
-        if (limpo.Contains("eng") || limpo.Contains("en") || limpo.Contains("english"))
+
+        if (limpo == "en" || limpo == "eng" || limpo.Contains("english"))
         {
             return "Inglês";
         }
-        if (limpo.Contains("spa") || limpo.Contains("es") || limpo.Contains("spanish") || limpo.Contains("espanol"))
+
+        if (limpo == "es" || limpo == "spa" || limpo.Contains("spanish") || limpo.Contains("espanol"))
         {
             return "Espanhol";
         }
-        if (limpo.Contains("fre") || limpo.Contains("fr") || limpo.Contains("french"))
+
+        if (limpo == "fr" || limpo == "fre" || limpo == "fra" || limpo.Contains("french"))
         {
             return "Francês";
         }
-        if (limpo.Contains("ger") || limpo.Contains("de") || limpo.Contains("german"))
+
+        if (limpo == "de" || limpo == "ger" || limpo == "deu" || limpo.Contains("german"))
         {
             return "Alemão";
         }
-        if (limpo.Contains("jap") || limpo.Contains("ja") || limpo.Contains("japanese"))
+
+        if (limpo == "ja" || limpo == "jpn" || limpo == "jap" || limpo.Contains("japanese"))
         {
             return "Japonês";
         }
-        if (limpo.Contains("kor") || limpo.Contains("ko") || limpo.Contains("korean"))
+
+        if (limpo == "ko" || limpo == "kor" || limpo.Contains("korean"))
         {
             return "Coreano";
         }
-        if (limpo.Contains("chi") || limpo.Contains("zh") || limpo.Contains("chinese"))
+
+        if (limpo == "zh" || limpo == "zho" || limpo == "chi" || limpo.Contains("chinese"))
         {
             return "Chinês";
         }
-        if (limpo.Contains("rus") || limpo.Contains("ru") || limpo.Contains("russian"))
+
+        if (limpo == "ru" || limpo == "rus" || limpo.Contains("russian"))
         {
             return "Russo";
         }
-        if (limpo.Contains("ara") || limpo.Contains("ar") || limpo.Contains("arabic"))
+
+        if (limpo == "ar" || limpo == "ara" || limpo.Contains("arabic"))
         {
             return "Árabe";
         }
+
+
+        if (Idiomas.TryGetValue(limpo, out var idiomaEncontrado))
+        {
+            return idiomaEncontrado;
+        }
+
+
         foreach (var idioma in Idiomas)
         {
-            if (limpo.Contains(idioma.Key))
+            if (limpo.Contains(idioma.Value, StringComparison.CurrentCultureIgnoreCase))
             {
                 return idioma.Value;
             }
