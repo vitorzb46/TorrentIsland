@@ -8,6 +8,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows.Input;
+using TorrentIsland.Application.DTOs;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -41,6 +42,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private string _feedbackTempo = "";
     private bool _mostrarFeedback = false;
     public LibVLC LibVLC => _libVLC;
+    public string? TorrentName { get; set; }
     #endregion
 
     #region Constructor
@@ -57,6 +59,11 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.Stopped += OnStopped;
         _mediaPlayer.EndReached += OnEndReached;
         _mediaPlayer.Buffering += OnPlayerBuffering;
+        _mediaPlayer.MediaChanged += (_, _) =>
+        {
+            _ = ProcessarLegendasUndAsync();
+        };
+
         _mediaPlayer.EncounteredError += (_, _) =>
         {
             Log.Salvar($"EncounteredError | State={_mediaPlayer.State} | Mrl={_mediaPlayer.Media?.Mrl}");
@@ -190,6 +197,11 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     #endregion
 
     #region Public Methods
+    public string ObterTorrentName(string? task = null)
+    {
+        return task!;
+    }
+
     public void ToggleFullscreen() => IsFullscreen = !IsFullscreen;
 
     public void SelectAudioTrack(int trackId) => _mediaPlayer.SetAudioTrack(trackId);
@@ -399,49 +411,93 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             return;
         }
 
-        var audioTracks = _mediaPlayer.AudioTrackDescription ?? [];
+        _ = ProcessarLegendasUndAsync();
+    }
+
+    private async Task ProcessarLegendasUndAsync()
+    {
+        IsLoading = true;
+
+        var audioTracks = _mediaPlayer.AudioTrackDescription;
+        if (audioTracks == null || audioTracks.Length == 0) return; 
+        var spuTracks = _mediaPlayer.SpuDescription;
+        if (spuTracks == null || spuTracks.Length == 0) return;
+
         AudioTracks.Clear();
+        SubtitleTracks.Clear();
+
         foreach (var t in audioTracks.Where(t => t.Id >= 0))
         {
-            Log.Salvar($"AudioTrack: {t.Name}");
             AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
         }
 
-        var spuTracks = _mediaPlayer.SpuDescription;
-        SubtitleTracks.Clear();
+        var media = _mediaPlayer.Media;
+        if (media == null) return;
 
-        var metadadosLegendas = _mediaPlayer.Media?.Tracks.Where(m => m.TrackType == TrackType.Text)
-                                                          .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
+        var caminhoDoVideo = Path.Combine(AppContext.BaseDirectory, "Downloads", TorrentName!);
+
+        if (string.IsNullOrEmpty(caminhoDoVideo) || !File.Exists(caminhoDoVideo))
+        {
+            Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
+            return;
+        }
+
+        var metadadosLegendas = media.Tracks
+            .Where(m => m.TrackType == TrackType.Text)
+            .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
 
         var caminhoMkvExtract = Path.Combine(AppContext.BaseDirectory, "mkvextract.exe");
-        var x = Path.Combine(AppContext.BaseDirectory, "Downloads");
-        var caminhoDoVideo = Directory.GetFiles(x, "*.mkv")[0];
-        var caminhoTemp = Path.Combine(AppContext.BaseDirectory, "temp");
-
-
-        Log.Salvar($"Número de legendas: {spuTracks!.Length}");
-        foreach (var legenda in spuTracks!)
+        if (!File.Exists(caminhoMkvExtract))
         {
-            var metaSub = metadadosLegendas!.ContainsKey(legenda.Id) ? metadadosLegendas[legenda.Id].Language : null;
-            var metaDesc = metadadosLegendas!.ContainsKey(legenda.Id) ? metadadosLegendas[legenda.Id].Description : null;
-            var metaCodec = metadadosLegendas!.ContainsKey(legenda.Id) ? metadadosLegendas[legenda.Id].Codec : 0;
-            var arquivoDeSaida = string.Empty;
+            Log.Salvar("mkvextract.exe não encontrado!");
+            return;
+        }
 
-            if (metaSub == "und")
+        var caminhoTempBase = Path.Combine(Path.GetTempPath(), "SubExtract");
+        Directory.CreateDirectory(caminhoTempBase);
+
+        var novosTracks = new List<TrackItem>();
+
+        var swTotal = Stopwatch.StartNew();
+        LogComTempo($"Iniciando processamento de {spuTracks.Length} faixas de legenda.");
+
+        foreach (var legenda in spuTracks)
+        {
+            var trackId = legenda.Id;
+            var metaSub = metadadosLegendas.ContainsKey(trackId) ? metadadosLegendas[trackId].Language : null;
+            var metaDesc = metadadosLegendas.ContainsKey(trackId) ? metadadosLegendas[trackId].Description : null;
+            var metaCodec = metadadosLegendas.ContainsKey(trackId) ? metadadosLegendas[trackId].Codec : 0;
+
+            LogComTempo($"Processando legenda ID {trackId} ({metaSub})");
+
+            if (metaSub != "und")
             {
-                // Obtem tipo da legenda por codec
+                novosTracks.Add(new TrackItem(trackId, NomeDaFaixa(legenda.Name, "Legenda", trackId, metaSub, metaDesc)));
+                continue;
+            }
+
+            var swSub = Stopwatch.StartNew();
+
+            string? arquivoDeSaida = null;
+            try
+            {
+                // Determina extensão
                 var extensaoSub = "srt";
-                if (metaCodec != 0 && _mediaPlayer.Media != null)
+                if (metaCodec != 0)
                 {
-                    var codecDesc = _mediaPlayer.Media.CodecDescription(TrackType.Text, metaCodec).ToLower();
+                    var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
                     if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
                     else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
                 }
 
-                // Extrai legenda com mkvextract
-                arquivoDeSaida = Path.Combine(caminhoTemp, $"{metaSub}_{legenda.Id}.{extensaoSub}");
-                var args = $"tracks \"{caminhoDoVideo}\" {legenda.Id}:\"{arquivoDeSaida}\"";
-                var processInfo = new ProcessStartInfo
+                // Nome único para evitar colisão
+                var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
+                arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
+                var args = $"tracks \"{caminhoDoVideo}\" {trackId}:\"{arquivoDeSaida}\"";
+
+                LogComTempo($"Iniciando mkvextract para {nomeArquivo}", swSub);
+
+                var processStartInfo = new ProcessStartInfo
                 {
                     FileName = caminhoMkvExtract,
                     Arguments = args,
@@ -451,52 +507,87 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                     CreateNoWindow = true
                 };
 
-                using var process = Process.Start(processInfo);
-                process?.WaitForExit();
+                using var process = Process.Start(processStartInfo);
+                await process!.WaitForExitAsync().ConfigureAwait(false);
 
-                if (File.Exists(arquivoDeSaida))
+                LogComTempo($"mkvextract finalizado para ID {trackId}", swSub);
+
+                if (process?.ExitCode != 0 || !File.Exists(arquivoDeSaida))
                 {
-                    // Analisa legenda extraída
-                    var parser = new SubParser();
-                    using var fileStream = File.OpenRead(arquivoDeSaida);
-                    var items = parser.ParseStream(fileStream, Encoding.UTF8);
+                    Log.Salvar($"Falha na extração da legenda ID {trackId}. ExitCode: {process?.ExitCode}");
+                    metaSub = "und";
+                    continue;
+                }
 
-                    // Armazena primeiras linhas da legenda
-                    var sb = new StringBuilder();
-                    for (var i = 0; i < Math.Min(15, items.Count); i++)
+                // Analisa legenda extraída
+                using var fileStream = File.OpenRead(arquivoDeSaida);
+                var parser = new SubParser();
+                var items = parser.ParseStream(fileStream);
+
+                LogComTempo($"Parsing concluído, {items.Count} itens lidos", swSub);
+
+                // Coleta primeiras 15 linhas de texto
+                var sb = new StringBuilder();
+                for (var i = 0; i < Math.Min(15, items.Count); i++)
+                {
+                    foreach (var line in items[i].Lines)
                     {
-                        foreach (var line in items[i].Lines)
-                        {
-                            if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
-                                sb.Append(line).Append(' ');
-                        }
-                    }
-
-                    // Identifica idioma da legenda
-                    using var detector = new CLD2Detector();
-                    var lista = detector.PredictLanguage(sb.ToString());
-
-                    foreach (var item in lista)
-                    {
-                        if (item.Probability > 0.9)
-                        {
-                            metaSub = item.Language;
-                            Log.Salvar($"Legenda inferida: {metaSub}{Environment.NewLine}");
-                        }
+                        if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
+                            sb.Append(line).Append(' ');
                     }
                 }
+
+                if (sb.Length == 0)
+                {
+                    Log.Salvar($"Nenhum texto útil encontrado na legenda ID {trackId}");
+                    metaSub = "und";
+                    continue;
+                }
+
+                // Identifica idioma da legenda
+                using var detector = new CLD2Detector();
+                var predictions = detector.PredictLanguage(sb.ToString());
+                var melhor = predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+
+                if (melhor != null && melhor.Probability > 0.9)
+                {
+                    metaSub = melhor.Language.ToString();
+                    LogComTempo($"Idioma detectado: {metaSub} (confiança: {melhor.Probability:P})", swSub);
+                }
+                else
+                {
+                    Log.Salvar($"Detecção incerta para ID {trackId}. Melhor: {melhor?.Language} ({melhor?.Probability:P})");
+                    metaSub = "und";
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Salvar($"Erro ao processar legenda ID {trackId}: {ex.Message}");
+                metaSub = "und";
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(arquivoDeSaida) && File.Exists(arquivoDeSaida))
+                {
+                    try { File.Delete(arquivoDeSaida); }
+                    catch (Exception ex) { Log.Salvar($"Falha ao deletar {arquivoDeSaida}: {ex.Message}"); }
+                }
+                LogComTempo($"Finalizado processamento da legenda ID {trackId}", swSub);
             }
 
-            Log.Salvar($"LEGENDAS: {legenda.Name} | {legenda.Id}");
-            SubtitleTracks.Add(new TrackItem(legenda.Id, NomeDaFaixa(
-                legenda.Name,
-                "Legenda",
-                legenda.Id,
-                metaSub,
-                metaDesc)));
-
-            try { File.Delete(arquivoDeSaida); } catch { }
+            // Adiciona à lista com o nome atualizado (se detectado)
+            novosTracks.Add(new TrackItem(trackId, NomeDaFaixa(legenda.Name, "Legenda", trackId, metaSub, metaDesc)));
         }
+
+        // Atualiza a coleção na UI
+        await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            SubtitleTracks.Clear();
+            foreach (var item in novosTracks)
+                SubtitleTracks.Add(item);
+        });
+
+        LogComTempo($"Processamento completo de todas as legendas 'und'", swTotal);
 
         IsLoading = false;
     }
@@ -755,6 +846,13 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     {
         throw new NotImplementedException();
     }
+
+    private void LogComTempo(string mensagem, Stopwatch? sw = null)
+    {
+        var tempo = sw != null ? $" [Tempo: {sw.ElapsedMilliseconds}ms]" : "";
+        Log.Salvar($"{mensagem}{tempo}");
+        Log.Salvar("------");
+    }   
 
     //public void DiagnosticarSincronia(string titulo)
     //{

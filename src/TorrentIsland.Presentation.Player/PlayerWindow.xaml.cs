@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.VLC;
 namespace TorrentIsland.Presentation.Player;
 
@@ -14,9 +15,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly DispatcherTimer _inactivityTimer;
     public string mediaUrl { get; set; } = "";
     private IStreamService StreamService { get; }
+    private IManagers Managers { get; }
 
-    public PlayerWindow(IStreamService streamService)
-    {
+    public PlayerWindow(IStreamService streamService, IManagers managers)
+    {        
         Log.Salvar($"PlayerWindow ctor | mediaUrl={mediaUrl}");
         InitializeComponent();
 
@@ -80,6 +82,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         SizeChanged += (_, _) => PosicionarControles();
         StateChanged += (_, _) => PosicionarControles();
         StreamService = streamService;
+        Managers = managers;
     }
 
     // private async Task IniciarAsync(string mediaUrl)
@@ -138,6 +141,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 MessageBox.Show("Caminho de mídia inválido.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+
+            var torrents = await Managers.ObterTorrentsAsync();
+            _viewModel.TorrentName = torrents.Select(t => t.Value.Nome)
+                .FirstOrDefault()!.Replace("[[", "[").Replace("]]", "]");
 
             // Opções de rede para streaming
             media.AddOption(":network-caching=3000");
