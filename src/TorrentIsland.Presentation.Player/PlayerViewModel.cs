@@ -1,6 +1,8 @@
 using LibVLCSharp.Shared;
+using LibVLCSharp.Shared.Structures;
 using Panlingo.LanguageIdentification.CLD2;
 using SubtitlesParser.Classes.Parsers;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -8,7 +10,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows.Input;
-using TorrentIsland.Application.DTOs;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -418,21 +419,21 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     {
         IsLoading = true;
 
+        var media = _mediaPlayer.Media;
+        if (media == null) return;
+
         var audioTracks = _mediaPlayer.AudioTrackDescription;
-        if (audioTracks == null || audioTracks.Length == 0) return; 
+        if (audioTracks == null || audioTracks.Length == 0) return;
         var spuTracks = _mediaPlayer.SpuDescription;
         if (spuTracks == null || spuTracks.Length == 0) return;
 
-        AudioTracks.Clear();
-        SubtitleTracks.Clear();
+        var caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
 
-        foreach (var t in audioTracks.Where(t => t.Id >= 0))
-        {
-            AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
-        }
+        // Limpa o diretório temporário se houver resquícios não tratados.
+        if (Directory.Exists(caminhoTempBase))
+            Directory.Delete(caminhoTempBase, true);
 
-        var media = _mediaPlayer.Media;
-        if (media == null) return;
+        Directory.CreateDirectory(caminhoTempBase);
 
         var caminhoDoVideo = Path.Combine(AppContext.BaseDirectory, "Downloads", TorrentName!);
 
@@ -442,10 +443,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             return;
         }
 
-        var metadadosLegendas = media.Tracks
-            .Where(m => m.TrackType == TrackType.Text)
-            .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
-
         var caminhoMkvExtract = Path.Combine(AppContext.BaseDirectory, "mkvextract.exe");
         if (!File.Exists(caminhoMkvExtract))
         {
@@ -453,80 +450,117 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             return;
         }
 
-        var caminhoTempBase = Path.Combine(Path.GetTempPath(), "SubExtract");
-        Directory.CreateDirectory(caminhoTempBase);
+        AudioTracks.Clear();
+        SubtitleTracks.Clear();
 
-        var novosTracks = new List<TrackItem>();
+        foreach (var t in audioTracks.Where(t => t.Id >= 0))
+        {
+            AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
+        }
+
+        var novosTracks = new ConcurrentBag<TrackItem>();
+        var tempFiles = new Dictionary<int, string>();
+
+        var metadadosLegendas = media.Tracks
+            .Where(m => m.TrackType == TrackType.Text)
+            .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
+
+        List<TrackDescription> undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) && metadadosLegendas[t.Id].Language == "und")];
+
+        uint metaCodec = 0;
+        string? metaDesc = null;
+
+        if (undTracks.Count == 0) return;
 
         var swTotal = Stopwatch.StartNew();
-        LogComTempo($"Iniciando processamento de {spuTracks.Length} faixas de legenda.");
+        var swSub = Stopwatch.StartNew();
 
-        foreach (var legenda in spuTracks)
+        Log.Salvar($"Iniciando extração em lote de {undTracks.Count} faixas...");
+        var argsList = new List<string> { "tracks", $"\"{caminhoDoVideo}\"" };
+
+        var arquivoDeSaida = "";
+
+        foreach (var track in undTracks)
         {
-            var trackId = legenda.Id;
-            var metaSub = metadadosLegendas.ContainsKey(trackId) ? metadadosLegendas[trackId].Language : null;
-            var metaDesc = metadadosLegendas.ContainsKey(trackId) ? metadadosLegendas[trackId].Description : null;
-            var metaCodec = metadadosLegendas.ContainsKey(trackId) ? metadadosLegendas[trackId].Codec : 0;
-
-            LogComTempo($"Processando legenda ID {trackId} ({metaSub})");
-
-            if (metaSub != "und")
+            var extensaoSub = "srt";
+            metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
+            metaDesc = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Description : null;
+            if (metaCodec != 0)
             {
-                novosTracks.Add(new TrackItem(trackId, NomeDaFaixa(legenda.Name, "Legenda", trackId, metaSub, metaDesc)));
-                continue;
+                var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
+                if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
+                else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
             }
 
-            var swSub = Stopwatch.StartNew();
+            var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
+            arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
+            tempFiles[track.Id] = arquivoDeSaida;
+            argsList.Add($"{track.Id}:\"{arquivoDeSaida}\"");
+        }
 
-            string? arquivoDeSaida = null;
+        var args = string.Join(' ', argsList);
+
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = caminhoMkvExtract,
+            Arguments = args,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(processStartInfo);
+        if (process != null)
+        {
+            Log.Salvar("Iniciando extração de legendas com mkvextract...");
+
+            string? linha;
+            while ((linha = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false)) != null)
+            {
+                if (!string.IsNullOrWhiteSpace(linha))
+                {
+                    //Log.Salvar($"[mkvextract] {linha}");
+                }
+            }
+
+            string erros = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(erros))
+            {
+                Log.Salvar($"[mkvextract ERRO] {erros}");
+            }
+
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            Log.Salvar($"mkvextract finalizado com código de saída: {process.ExitCode}");
+        }
+        else
+        {
+            Log.Salvar("Falha ao iniciar o processo do mkvextract.");
+        }
+        await process!.WaitForExitAsync().ConfigureAwait(false);
+
+        Log.Salvar($"Extração em lote concluída em {swSub.ElapsedMilliseconds}ms");
+
+        // Analisa legenda extraída
+        swSub.Restart();
+
+        Parallel.ForEach(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, kvp =>
+        {
+            var trackId = kvp.Key;
+            var filePath = kvp.Value;
+
             try
             {
-                // Determina extensão
-                var extensaoSub = "srt";
-                if (metaCodec != 0)
+                if (!File.Exists(filePath))
                 {
-                    var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
-                    if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
-                    else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
+                    novosTracks.Add(new TrackItem(trackId, "Desconhecido"));
+                    return;
                 }
 
-                // Nome único para evitar colisão
-                var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
-                arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
-                var args = $"tracks \"{caminhoDoVideo}\" {trackId}:\"{arquivoDeSaida}\"";
-
-                LogComTempo($"Iniciando mkvextract para {nomeArquivo}", swSub);
-
-                var processStartInfo = new ProcessStartInfo
-                {
-                    FileName = caminhoMkvExtract,
-                    Arguments = args,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(processStartInfo);
-                await process!.WaitForExitAsync().ConfigureAwait(false);
-
-                LogComTempo($"mkvextract finalizado para ID {trackId}", swSub);
-
-                if (process?.ExitCode != 0 || !File.Exists(arquivoDeSaida))
-                {
-                    Log.Salvar($"Falha na extração da legenda ID {trackId}. ExitCode: {process?.ExitCode}");
-                    metaSub = "und";
-                    continue;
-                }
-
-                // Analisa legenda extraída
-                using var fileStream = File.OpenRead(arquivoDeSaida);
+                using var fileStream = File.OpenRead(filePath);
                 var parser = new SubParser();
                 var items = parser.ParseStream(fileStream);
 
-                LogComTempo($"Parsing concluído, {items.Count} itens lidos", swSub);
-
-                // Coleta primeiras 15 linhas de texto
                 var sb = new StringBuilder();
                 for (var i = 0; i < Math.Min(15, items.Count); i++)
                 {
@@ -537,49 +571,39 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                     }
                 }
 
-                if (sb.Length == 0)
-                {
-                    Log.Salvar($"Nenhum texto útil encontrado na legenda ID {trackId}");
-                    metaSub = "und";
-                    continue;
-                }
+                string detectedLang = "und";
 
-                // Identifica idioma da legenda
-                using var detector = new CLD2Detector();
-                var predictions = detector.PredictLanguage(sb.ToString());
-                var melhor = predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+                if (sb.Length > 0)
+                {
+                    using var detector = new CLD2Detector();
+                    var predictions = detector.PredictLanguage(sb.ToString());
+                    var best = predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
 
-                if (melhor != null && melhor.Probability > 0.9)
-                {
-                    metaSub = melhor.Language.ToString();
-                    LogComTempo($"Idioma detectado: {metaSub} (confiança: {melhor.Probability:P})", swSub);
+                    if (best != null && best.Probability > 0.9)
+                    {
+                        detectedLang = best.Language;
+                    }
+                    else
+                    {
+                        detectedLang = "und";
+                    }
                 }
-                else
-                {
-                    Log.Salvar($"Detecção incerta para ID {trackId}. Melhor: {melhor?.Language} ({melhor?.Probability:P})");
-                    metaSub = "und";
-                }
+                novosTracks.Add(new TrackItem(trackId, NomeDaFaixa("und", "Legenda", trackId, detectedLang, metaDesc)));
             }
             catch (Exception ex)
             {
-                Log.Salvar($"Erro ao processar legenda ID {trackId}: {ex.Message}");
-                metaSub = "und";
+                novosTracks.Add(new TrackItem(trackId, NomeDaFaixa("und", "Legenda", trackId)));
+                Log.Salvar($"Falha ao processar legenda ID {trackId}: {ex.Message}");
             }
             finally
             {
-                if (!string.IsNullOrEmpty(arquivoDeSaida) && File.Exists(arquivoDeSaida))
-                {
-                    try { File.Delete(arquivoDeSaida); }
-                    catch (Exception ex) { Log.Salvar($"Falha ao deletar {arquivoDeSaida}: {ex.Message}"); }
-                }
-                LogComTempo($"Finalizado processamento da legenda ID {trackId}", swSub);
+                try { File.Delete(filePath); } catch { }
             }
+        });
 
-            // Adiciona à lista com o nome atualizado (se detectado)
-            novosTracks.Add(new TrackItem(trackId, NomeDaFaixa(legenda.Name, "Legenda", trackId, metaSub, metaDesc)));
-        }
+        Log.Salvar($"Análise e detecção concluida em {swSub.ElapsedMilliseconds}ms");
 
-        // Atualiza a coleção na UI
+        /// Atualiza a coleção na UI
         await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
             SubtitleTracks.Clear();
@@ -587,7 +611,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                 SubtitleTracks.Add(item);
         });
 
-        LogComTempo($"Processamento completo de todas as legendas 'und'", swTotal);
+        Log.Salvar($"Processamento de legendas concluido em {swTotal.ElapsedMilliseconds}ms");
 
         IsLoading = false;
     }
@@ -626,6 +650,78 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         ["swe"] = "Sueco",
         ["pl"] = "Polonês",
         ["pol"] = "Polonês",
+        ["zh-hant"] = "Chinês (Tradicional)",
+        ["zh-Hant"] = "Chinês (Tradicional)",
+        ["zh-hans"] = "Chinês (Simplificado)",
+        ["da"] = "Dinamarquês",
+        ["dan"] = "Dinamarquês",
+        ["danish"] = "Dinamarquês",
+        ["et"] = "Estoniano",
+        ["est"] = "Estoniano",
+        ["estonian"] = "Estoniano",
+        ["fi"] = "Finlandês",
+        ["fin"] = "Finlandês",
+        ["finnish"] = "Finlandês",
+        ["cs"] = "Tcheco",
+        ["ces"] = "Tcheco",
+        ["cze"] = "Tcheco",
+        ["czech"] = "Tcheco",
+        ["bg"] = "Búlgaro",
+        ["bul"] = "Búlgaro",
+        ["bulgarian"] = "Búlgaro",
+        ["el"] = "Grego",
+        ["ell"] = "Grego",
+        ["greek"] = "Grego",
+        ["iw"] = "Hebraico",
+        ["he"] = "Hebraico",
+        ["heb"] = "Hebraico",
+        ["hebrew"] = "Hebraico",
+        ["hu"] = "Húngaro",
+        ["hun"] = "Húngaro",
+        ["hungarian"] = "Húngaro",
+        ["lv"] = "Letão",
+        ["lav"] = "Letão",
+        ["latvian"] = "Letão",
+        ["ms"] = "Malaio",
+        ["may"] = "Malaio",
+        ["malay"] = "Malaio",
+        ["ro"] = "Romeno",
+        ["ron"] = "Romeno",
+        ["rum"] = "Romeno",
+        ["romanian"] = "Romeno",
+        ["lt"] = "Lituano",
+        ["lit"] = "Lituano",
+        ["lithuanian"] = "Lituano",
+        ["no"] = "Norueguês",
+        ["nor"] = "Norueguês",
+        ["norsk"] = "Norueguês",
+        ["ta"] = "Tâmil",
+        ["tam"] = "Tâmil",
+        ["tamil"] = "Tâmil",
+        ["sk"] = "Eslovaco",
+        ["slo"] = "Eslovaco",
+        ["slovak"] = "Eslovaco",
+        ["th"] = "Tailandês",
+        ["tha"] = "Tailandês",
+        ["thai"] = "Tailandês",
+        ["te"] = "Telugu",
+        ["tel"] = "Telugu",
+        ["telugu"] = "Telugu",
+        ["sl"] = "Esloveno",
+        ["slv"] = "Esloveno",
+        ["slovenian"] = "Esloveno",
+        ["tr"] = "Turco",
+        ["tur"] = "Turco",
+        ["turkish"] = "Turco",
+        ["vi"] = "Vietnamita",
+        ["vie"] = "Vietnamita",
+        ["vietnamese"] = "Vietnamita",
+        ["uk"] = "Ucraniano",
+        ["ukr"] = "Ucraniano",
+        ["ukrainian"] = "Ucraniano",
+        ["id"] = "Indonésio",
+        ["ind"] = "Indonésio",
+        ["indonesian"] = "Indonésio",
     };
 
     /// <summary>
@@ -638,6 +734,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         // 1. Idiomas/descrições reais dos metadados têm prioridade máxima.
         // "und"/"undetermined" = idioma indefinido → trata como ausente.
         var idioma = EhIdiomaValido(idiomaReal) ? TraduzirIdioma(idiomaReal!) : null;
+
         if (idioma is not null)
         {
             if (!string.IsNullOrWhiteSpace(descricaoReal))
@@ -646,6 +743,10 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                 return $"{idioma} - {descricaoReal}";
             }
             return idioma;
+        }
+        else
+        {
+            Log.Salvar($"Idioma não classificado: {idiomaReal}{Environment.NewLine}");
         }
 
         if (!string.IsNullOrWhiteSpace(descricaoReal))
@@ -676,72 +777,24 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     {
         if (!EhIdiomaValido(valor)) return null;
 
-        var limpo = valor.Trim().ToLower();
+        var chave = valor.Trim().ToLowerInvariant();
 
-        if (limpo == "pt" || limpo == "por" || limpo == "pt-br" || limpo.Contains("portuguese"))
-        {
-            return "Português (BR)";
-        }
+        if (Idiomas.TryGetValue(chave, out var nome))
+            return nome;
 
-        if (limpo == "en" || limpo == "eng" || limpo.Contains("english"))
-        {
-            return "Inglês";
-        }
-
-        if (limpo == "es" || limpo == "spa" || limpo.Contains("spanish") || limpo.Contains("espanol"))
-        {
-            return "Espanhol";
-        }
-
-        if (limpo == "fr" || limpo == "fre" || limpo == "fra" || limpo.Contains("french"))
-        {
-            return "Francês";
-        }
-
-        if (limpo == "de" || limpo == "ger" || limpo == "deu" || limpo.Contains("german"))
-        {
-            return "Alemão";
-        }
-
-        if (limpo == "ja" || limpo == "jpn" || limpo == "jap" || limpo.Contains("japanese"))
-        {
-            return "Japonês";
-        }
-
-        if (limpo == "ko" || limpo == "kor" || limpo.Contains("korean"))
-        {
-            return "Coreano";
-        }
-
-        if (limpo == "zh" || limpo == "zho" || limpo == "chi" || limpo.Contains("chinese"))
-        {
-            return "Chinês";
-        }
-
-        if (limpo == "ru" || limpo == "rus" || limpo.Contains("russian"))
-        {
-            return "Russo";
-        }
-
-        if (limpo == "ar" || limpo == "ara" || limpo.Contains("arabic"))
-        {
-            return "Árabe";
-        }
-
-
-        if (Idiomas.TryGetValue(limpo, out var idiomaEncontrado))
-        {
-            return idiomaEncontrado;
-        }
-
+        var chaveSemHifen = chave.Replace("-", "").Replace("_", "");
+        if (Idiomas.TryGetValue(chaveSemHifen, out var nome2))
+            return nome2;
 
         foreach (var idioma in Idiomas)
         {
-            if (limpo.Contains(idioma.Value, StringComparison.CurrentCultureIgnoreCase))
+            if (chave.Contains(idioma.Key, StringComparison.OrdinalIgnoreCase) ||
+                idioma.Key.Contains(chave, StringComparison.OrdinalIgnoreCase))
             {
                 return idioma.Value;
             }
         }
+
         return null;
     }
     #endregion
@@ -846,13 +899,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     {
         throw new NotImplementedException();
     }
-
-    private void LogComTempo(string mensagem, Stopwatch? sw = null)
-    {
-        var tempo = sw != null ? $" [Tempo: {sw.ElapsedMilliseconds}ms]" : "";
-        Log.Salvar($"{mensagem}{tempo}");
-        Log.Salvar("------");
-    }   
 
     //public void DiagnosticarSincronia(string titulo)
     //{

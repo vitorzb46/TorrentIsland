@@ -18,7 +18,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private IManagers Managers { get; }
 
     public PlayerWindow(IStreamService streamService, IManagers managers)
-    {        
+    {
         Log.Salvar($"PlayerWindow ctor | mediaUrl={mediaUrl}");
         InitializeComponent();
 
@@ -163,10 +163,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Log.Salvar($"Erro ao carregar mídia: {ex.Message}");
             MessageBox.Show($"Não foi possível carregar a mídia: {caminhoOuUrl}", "Player",
                 MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            _viewModel.IsLoading = false;
         }
     }
 
