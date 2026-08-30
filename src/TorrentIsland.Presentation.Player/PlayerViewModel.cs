@@ -64,6 +64,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         _mediaPlayer.Buffering += OnPlayerBuffering;
         _mediaPlayer.MediaChanged += (_, _) =>
         {
+            SubtitleTracks.Clear();
             _ = ProcessarLegendasUndAsync();
         };
 
@@ -211,6 +212,8 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
 
     public void SelectSubtitleTrack(int spuId) => _mediaPlayer.SetSpu(spuId);
 
+    public void SetTime() => _mediaPlayer.Time -= 000001;
+
     public void InicializarDuracaoDoVideo(long totalMilliseconds)
     {
         DuracaoTotalEmMilissegundos = totalMilliseconds;
@@ -275,14 +278,10 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     public void LoadExternalSubtitle(object? filePath)
     {
         if (filePath is not string path || !File.Exists(path)) return;
-
-        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, path, select: true);
-
-        //if (_mediaPlayer.AddSlave(MediaSlaveType.Subtitle, path, select: true))
-        //{
-        //    SubtitleTracks.Add(new TrackItem(-99, Path.GetFileName(path)));
-        //    OnPropertyChanged(nameof(SubtitleTracks));
-        //}
+        var subs = SubtitleTracks.Count + 90;
+        var uri = new Uri(path).AbsoluteUri;
+        SubtitleTracks.Add(new TrackItem(subs, Path.GetFileNameWithoutExtension(path)));
+        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, select: true);
     }
 
     public void AvancarTempo()

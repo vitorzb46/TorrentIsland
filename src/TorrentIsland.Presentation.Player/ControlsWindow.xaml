@@ -214,7 +214,7 @@
                         Content="📁"
                         FontSize="16"
                         Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Carregar Legenda ou Arquivo (.srt / .torrent)" />
+                        ToolTip="Carregar Legenda ou Vídeo" />
 
                     <Button
                         Click="SettingsButton_Click"

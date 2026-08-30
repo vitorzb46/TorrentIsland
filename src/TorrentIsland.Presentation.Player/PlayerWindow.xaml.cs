@@ -143,8 +143,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             }
 
             var torrents = await Managers.ObterTorrentsAsync();
-            _viewModel.TorrentName = torrents.Select(t => t.Value.Nome)
+            if (torrents.Count > 0)
+            {
+                _viewModel.TorrentName = torrents.Select(t => t.Value.Nome)
                 .FirstOrDefault()!.Replace("[[", "[").Replace("]]", "]");
+            }
 
             // Opções de rede para streaming
             media.AddOption(":network-caching=3000");

@@ -153,6 +153,7 @@ public partial class ControlsWindow : Window
         if (e.OriginalSource is MenuItem { Header: TrackItem track })
         {
             _viewModel.SelectSubtitleTrack(track.Id);
+            _viewModel.SetTime();
 
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
