@@ -549,7 +549,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             await process!.WaitForExitAsync().ConfigureAwait(false);
 
             // Analisa legenda extraída
-            Parallel.ForEach(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async kvp =>
+            await Parallel.ForEachAsync(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async (kvp, ct) =>
             {
                 var trackId = kvp.Key;
                 var filePath = kvp.Value;
@@ -613,16 +613,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         {
             SubtitleTracks.Clear();
             var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name);
-            // Algumas subs passam pro cache sem ser adicionadas ao ConcurrentBag.
-            // Acho que devido ao loop em paralelo que ocorre depois da extração, ou não sei.
-            foreach (var id in tempFiles)
-            {
-                if (!allSubs.ContainsKey(id.Key))
-                {
-                    var entry = await GetAsync(caminhoDoVideo, id.Key);
-                    allSubs[id.Key] = entry!.Language;
-                }
-            }
             var lista = allSubs.OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
                                    .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
                                    .ToList();
@@ -676,6 +666,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         ["vi"] = "Vietnamita",
         ["uk"] = "Ucraniano",
         ["id"] = "Indonésio",
+        ["sr"] = "Sérvia",
     };
 
     /// <summary>
