@@ -46,6 +46,9 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private bool _mostrarFeedback = false;
     public LibVLC LibVLC => _libVLC;
     public string? TorrentName { get; set; }
+
+    [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
+    private static partial Regex SeasonEpisode();
     #endregion
 
     #region Constructor
@@ -280,7 +283,19 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         if (filePath is not string path || !File.Exists(path)) return;
         var subs = SubtitleTracks.Count + 90;
         var uri = new Uri(path).AbsoluteUri;
-        SubtitleTracks.Add(new TrackItem(subs, Path.GetFileNameWithoutExtension(path)));
+        var fileName = Path.GetFileNameWithoutExtension(path);
+        var match = SeasonEpisode().Match(fileName);
+
+        if (match.Success)
+        {
+            fileName = String.Concat(match.Value, "...");
+        }
+        else if (fileName.Length > 20)
+        {
+            fileName = string.Concat(fileName.AsSpan(0, 20), "...");
+        }
+
+        SubtitleTracks.Add(new TrackItem(subs, fileName));
         _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, select: true);
     }
 
