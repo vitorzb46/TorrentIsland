@@ -10,12 +10,13 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Input;
 using static TorrentIsland.Presentation.Player.SubCacheManager;
 
 namespace TorrentIsland.Presentation.Player;
 
-public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
+public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposable
 {
     #region Fields
     private readonly LibVLC _libVLC;
@@ -582,13 +583,13 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                     var items = parser.ParseStream(fileStream);
 
                     var sb = new StringBuilder();
-                    for (var i = 0; i < Math.Min(15, items.Count); i++)
+                    var i = 0;
+                    foreach (var line in items[i].Lines)
                     {
-                        foreach (var line in items[i].Lines)
-                        {
-                            if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
-                                sb.Append(line).Append(' ');
-                        }
+                        if (i == 15) break;
+                        if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
+                            sb.Append(line).Append(' ');
+                        i++;
                     }
 
                     string detectedLang = "und";
@@ -608,7 +609,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                         {
                             detectedLang = "und";
                         }
-                    }
+                    }                    
                     novosTracks.Add(new TrackItem(trackId, detectedLang));
                 }
                 catch (Exception ex)
@@ -843,6 +844,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     {
         throw new NotImplementedException();
     }
+
 
     //public void DiagnosticarSincronia(string titulo)
     //{
