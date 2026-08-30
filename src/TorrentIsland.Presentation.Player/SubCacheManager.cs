@@ -10,10 +10,12 @@ public class SubCacheManager
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "TorrentIsland",
         "Cache");
-    
+
     private static readonly string CacheFile = Path.Combine(CacheFolder, "legendas_cache.json");
 
     private static readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
+
+    private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
     static SubCacheManager()
     {
@@ -21,20 +23,20 @@ public class SubCacheManager
         Load();
     }
 
-    public static CacheEntry? Get(string caminhoDoVideo, int trackId)
+    public static async Task<CacheEntry?> GetAsync(string caminhoDoVideo, int trackId)
     {
         var key = MakeKey(caminhoDoVideo, trackId);
         _cache.TryGetValue(key, out var entry);
         if (!IsValid(caminhoDoVideo, entry!))
         {
             _cache.TryRemove(key, out _);
-            Save();
+            await Save();
             return null;
         }
         return entry;
     }
 
-    public static void Set(string caminhoDoVideo, int trackId, string language)
+    public static async Task SetAsync(string caminhoDoVideo, int trackId, string language)
     {
         var entry = new CacheEntry
         {
@@ -44,7 +46,7 @@ public class SubCacheManager
             DetectionTime = DateTime.Now
         };
         _cache[MakeKey(caminhoDoVideo, trackId)] = entry;
-        Save();
+        await Save();
     }
 
     private static void Load()
@@ -67,18 +69,23 @@ public class SubCacheManager
         }
     }
 
-    private static void Save()
+    private static async Task Save()
     {
+        await _semaphore.WaitAsync();
         try
         {
             var json = JsonSerializer.Serialize(_cache, Options);
-            File.WriteAllText(CacheFile, json);
+            await File.WriteAllTextAsync(CacheFile, json);
         }
         catch (Exception ex)
         {
             Log.Salvar($"Erro ao salvar o cache de legendas: {ex.Message}");
         }
-    }    
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
 
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -89,6 +96,7 @@ public class SubCacheManager
 
     private static bool IsValid(string videoPath, CacheEntry entry)
     {
+        if (entry == null) return false;
         if (!File.Exists(videoPath)) return false;
         var fi = new FileInfo(videoPath);
         return fi.Length == entry.FileSize && fi.LastWriteTime == entry.LastWriteTime;
