@@ -342,6 +342,30 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             MostrarFeedbackTempo($"⏪ -{segundosParaRetroceder}s", -segundosParaRetroceder);
         }
     }
+
+    public async Task PopulateTracksAsync(CancellationToken ct = default)
+    {
+        // Aguarda o vídeo iniciar (o MediaPlayer precisa do media carregado), com timeout
+        // para não travar a UI caso a mídia falhe (ex.: URL inacessível).
+        var esperaInicio = Task.Delay(TimeSpan.FromSeconds(15), ct);
+        while (!_mediaPlayer.IsPlaying && _mediaPlayer.State != VLCState.Ended && _mediaPlayer.State != VLCState.Error)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (await Task.WhenAny(Task.Delay(100, ct), esperaInicio).ConfigureAwait(true) == esperaInicio)
+            {
+                break; // timeout: segue para popular faixas mesmo se não iniciou
+            }
+        }
+
+        // Garante que a mutação das ObservableCollection ocorra na UI thread (Dispatcher).
+        if (System.Windows.Application.Current is { } app && !app.Dispatcher.CheckAccess())
+        {
+            await app.Dispatcher.InvokeAsync(() => PopulateTracksAsync(ct)).Task.ConfigureAwait(true);
+            return;
+        }
+
+        _ = ProcessarLegendasUndAsync();
+    }
     #endregion
 
     #region Private Methods
@@ -393,36 +417,8 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         return tempo.ToString(@"mm\:ss");
     }
 
-    public async Task PopulateTracksAsync(CancellationToken ct = default)
-    {
-        // Aguarda o vídeo iniciar (o MediaPlayer precisa do media carregado), com timeout
-        // para não travar a UI caso a mídia falhe (ex.: URL inacessível).
-        var esperaInicio = Task.Delay(TimeSpan.FromSeconds(15), ct);
-        while (!_mediaPlayer.IsPlaying && _mediaPlayer.State != VLCState.Ended && _mediaPlayer.State != VLCState.Error)
-        {
-            ct.ThrowIfCancellationRequested();
-            if (await Task.WhenAny(Task.Delay(100, ct), esperaInicio).ConfigureAwait(true) == esperaInicio)
-            {
-                break; // timeout: segue para popular faixas mesmo se não iniciou
-            }
-        }
-
-        // Garante que a mutação das ObservableCollection ocorra na UI thread (Dispatcher).
-        if (System.Windows.Application.Current is { } app && !app.Dispatcher.CheckAccess())
-        {
-            await app.Dispatcher.InvokeAsync(() => PopulateTracksAsync(ct)).Task.ConfigureAwait(true);
-            return;
-        }
-
-        _ = ProcessarLegendasUndAsync();
-    }
-
     private async Task ProcessarLegendasUndAsync()
     {
-        IsLoading = true;
-        AudioTracks.Add(new TrackItem(-99, "Aguardando audio..."));
-        SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
-
         var media = _mediaPlayer.Media;
         if (media == null) return;
 
@@ -431,7 +427,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         var spuTracks = _mediaPlayer.SpuDescription;
         if (spuTracks == null || spuTracks.Length == 0) return;
 
-        string idiomaUsuario = CultureInfo.CurrentCulture.NativeName.Split(' ')[0];
+        string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
 
         var caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
 
@@ -460,9 +456,11 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
 
         foreach (var t in audioTracks.Where(t => t.Id >= 0))
         {
-            AudioTracks.Clear();
             AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
         }
+
+        IsLoading = true;
+        SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
 
         var novosTracks = new ConcurrentBag<TrackItem>();
         var tempFiles = new Dictionary<int, string>();
@@ -478,9 +476,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
 
         if (undTracks.Count == 0) return;
 
-        var swTotal = Stopwatch.StartNew();
-        var swSub = Stopwatch.StartNew();
-        
         var argsList = new List<string> { "tracks", $"\"{caminhoDoVideo}\"" };
 
         var arquivoDeSaida = "";
@@ -499,12 +494,11 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
             arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
 
-            var cacheEntry = Get(caminhoDoVideo, track.Id);
+            var cacheEntry = await GetAsync(caminhoDoVideo, track.Id);
 
             if (cacheEntry != null)
             {
                 novosTracks.Add(new TrackItem(track.Id, cacheEntry.Language));
-                Log.Salvar($"Usando cache de legendas para {track.Id} ({cacheEntry.Language})");
             }
             else
             {
@@ -512,12 +506,11 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                 argsList.Add($"{track.Id}:\"{arquivoDeSaida}\"");
                 Log.Salvar($"Legenda sem cache: {track.Id}");
             }
-            
+
         }
 
         if (tempFiles.Count > 0)
         {
-            Log.Salvar($"Iniciando extração em lote de {undTracks.Count} faixas...");
             var args = string.Join(' ', argsList);
 
             var processStartInfo = new ProcessStartInfo
@@ -533,14 +526,12 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             using var process = Process.Start(processStartInfo);
             if (process != null)
             {
-                Log.Salvar("Iniciando extração de legendas com mkvextract...");
-
                 string? linha;
                 while ((linha = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false)) != null)
                 {
                     if (!string.IsNullOrWhiteSpace(linha))
                     {
-                        Log.Salvar($"[mkvextract] {linha}");
+                        //Log.Salvar($"[mkvextract] {linha}");
                     }
                 }
 
@@ -551,7 +542,6 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                 }
 
                 await process.WaitForExitAsync().ConfigureAwait(false);
-                Log.Salvar($"mkvextract finalizado com código de saída: {process.ExitCode}");
             }
             else
             {
@@ -559,12 +549,8 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
             }
             await process!.WaitForExitAsync().ConfigureAwait(false);
 
-            Log.Salvar($"Extração em lote concluída em {swSub.ElapsedMilliseconds}ms");
-
             // Analisa legenda extraída
-            swSub.Restart();
-
-            Parallel.ForEach(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, kvp =>
+            Parallel.ForEach(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async kvp =>
             {
                 var trackId = kvp.Key;
                 var filePath = kvp.Value;
@@ -602,18 +588,18 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                         if (best != null && best.Probability > 0.9)
                         {
                             detectedLang = best.Language;
-                            SubCacheManager.Set(caminhoDoVideo, trackId, detectedLang);
+                            await SetAsync(caminhoDoVideo, trackId, detectedLang);
                         }
                         else
                         {
                             detectedLang = "und";
                         }
                     }
-                    novosTracks.Add(new TrackItem(trackId, NomeDaFaixa("und", "Legenda", trackId, detectedLang, metaDesc)));
+                    novosTracks.Add(new TrackItem(trackId, detectedLang));
                 }
                 catch (Exception ex)
                 {
-                    novosTracks.Add(new TrackItem(trackId, NomeDaFaixa("und", "Legenda", trackId)));
+                    novosTracks.Add(new TrackItem(trackId, "und"));
                     Log.Salvar($"Falha ao processar legenda ID {trackId}: {ex.Message}");
                 }
                 finally
@@ -621,28 +607,30 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
                     try { File.Delete(filePath); } catch { }
                 }
             });
-
-            Log.Salvar($"Análise e detecção concluida em {swSub.ElapsedMilliseconds}ms");
-        }       
+        }
 
         /// Atualiza a coleção na UI
-        await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        await System.Windows.Application.Current.Dispatcher.InvokeAsync(async () =>
         {
             SubtitleTracks.Clear();
             var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name);
-            foreach (var item in allSubs)
+            // Algumas subs passam pro cache sem ser adicionadas ao ConcurrentBag.
+            // Acho que devido ao loop em paralelo que ocorre depois da extração, ou não sei.
+            foreach (var id in tempFiles)
             {
-                tempFiles[item.Key] = item.Value;
+                if (!allSubs.ContainsKey(id.Key))
+                {
+                    var entry = await GetAsync(caminhoDoVideo, id.Key);
+                    allSubs[id.Key] = entry!.Language;
+                }
             }
-            var lista = tempFiles.OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
+            var lista = allSubs.OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
                                    .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
                                    .ToList();
 
             foreach (var item in lista)
-                SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(item.Value, "Legenda", item.Key, item.Value, metaDesc)));
+                SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value, metaDesc)));
         });
-
-        Log.Salvar($"Processamento de legendas concluido em {swTotal.ElapsedMilliseconds}ms");
 
         IsLoading = false;
     }
@@ -650,109 +638,45 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
     private static readonly Dictionary<string, string> Idiomas = new(StringComparer.OrdinalIgnoreCase)
     {
         ["pt"] = "Português",
-        ["por"] = "Português",
-        ["pt-br"] = "Português (BR)",
         ["en"] = "Inglês",
-        ["eng"] = "Inglês",
         ["es"] = "Espanhol",
-        ["spa"] = "Espanhol",
         ["fr"] = "Francês",
-        ["fre"] = "Francês",
-        ["fra"] = "Francês",
         ["de"] = "Alemão",
-        ["ger"] = "Alemão",
-        ["deu"] = "Alemão",
         ["it"] = "Italiano",
-        ["ita"] = "Italiano",
         ["ja"] = "Japonês",
-        ["jpn"] = "Japonês",
         ["ko"] = "Coreano",
-        ["kor"] = "Coreano",
         ["zh"] = "Chinês",
-        ["zho"] = "Chinês",
         ["ru"] = "Russo",
-        ["rus"] = "Russo",
         ["ar"] = "Árabe",
-        ["ara"] = "Árabe",
         ["hi"] = "Hindi",
         ["nl"] = "Holandês",
-        ["nld"] = "Holandês",
         ["sv"] = "Sueco",
-        ["swe"] = "Sueco",
         ["pl"] = "Polonês",
-        ["pol"] = "Polonês",
         ["zh-hant"] = "Chinês (Tradicional)",
-        ["zh-Hant"] = "Chinês (Tradicional)",
         ["zh-hans"] = "Chinês (Simplificado)",
         ["da"] = "Dinamarquês",
-        ["dan"] = "Dinamarquês",
-        ["danish"] = "Dinamarquês",
         ["et"] = "Estoniano",
-        ["est"] = "Estoniano",
-        ["estonian"] = "Estoniano",
         ["fi"] = "Finlandês",
-        ["fin"] = "Finlandês",
-        ["finnish"] = "Finlandês",
         ["cs"] = "Tcheco",
-        ["ces"] = "Tcheco",
-        ["cze"] = "Tcheco",
-        ["czech"] = "Tcheco",
         ["bg"] = "Búlgaro",
-        ["bul"] = "Búlgaro",
-        ["bulgarian"] = "Búlgaro",
         ["el"] = "Grego",
-        ["ell"] = "Grego",
-        ["greek"] = "Grego",
         ["iw"] = "Hebraico",
         ["he"] = "Hebraico",
-        ["heb"] = "Hebraico",
-        ["hebrew"] = "Hebraico",
         ["hu"] = "Húngaro",
-        ["hun"] = "Húngaro",
-        ["hungarian"] = "Húngaro",
         ["lv"] = "Letão",
-        ["lav"] = "Letão",
-        ["latvian"] = "Letão",
         ["ms"] = "Malaio",
-        ["may"] = "Malaio",
-        ["malay"] = "Malaio",
         ["ro"] = "Romeno",
-        ["ron"] = "Romeno",
-        ["rum"] = "Romeno",
-        ["romanian"] = "Romeno",
         ["lt"] = "Lituano",
-        ["lit"] = "Lituano",
-        ["lithuanian"] = "Lituano",
         ["no"] = "Norueguês",
-        ["nor"] = "Norueguês",
-        ["norsk"] = "Norueguês",
         ["ta"] = "Tâmil",
-        ["tam"] = "Tâmil",
-        ["tamil"] = "Tâmil",
         ["sk"] = "Eslovaco",
-        ["slo"] = "Eslovaco",
-        ["slovak"] = "Eslovaco",
         ["th"] = "Tailandês",
-        ["tha"] = "Tailandês",
-        ["thai"] = "Tailandês",
         ["te"] = "Telugu",
-        ["tel"] = "Telugu",
-        ["telugu"] = "Telugu",
         ["sl"] = "Esloveno",
-        ["slv"] = "Esloveno",
-        ["slovenian"] = "Esloveno",
         ["tr"] = "Turco",
-        ["tur"] = "Turco",
-        ["turkish"] = "Turco",
         ["vi"] = "Vietnamita",
-        ["vie"] = "Vietnamita",
-        ["vietnamese"] = "Vietnamita",
         ["uk"] = "Ucraniano",
-        ["ukr"] = "Ucraniano",
-        ["ukrainian"] = "Ucraniano",
         ["id"] = "Indonésio",
-        ["ind"] = "Indonésio",
-        ["indonesian"] = "Indonésio",
     };
 
     /// <summary>
@@ -788,7 +712,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
         // 2. Sem metadados: usa o nome do SpuDescription.
         if (string.IsNullOrWhiteSpace(nome) || EhIdiomaIndefinido(nome))
         {
-            return $"{tipo} {id} - {nome}";
+            return $"{tipo} {id} (Desconhecido)";
         }
 
         var limpo = nome.Trim().ToLower();
@@ -810,23 +734,7 @@ public sealed class PlayerViewModel : INotifyPropertyChanged, IDisposable
 
         var chave = valor.Trim().ToLowerInvariant();
 
-        if (Idiomas.TryGetValue(chave, out var nome))
-            return nome;
-
-        var chaveSemHifen = chave.Replace("-", "").Replace("_", "");
-        if (Idiomas.TryGetValue(chaveSemHifen, out var nome2))
-            return nome2;
-
-        foreach (var idioma in Idiomas)
-        {
-            if (chave.Contains(idioma.Key, StringComparison.OrdinalIgnoreCase) ||
-                idioma.Key.Contains(chave, StringComparison.OrdinalIgnoreCase))
-            {
-                return idioma.Value;
-            }
-        }
-
-        return null;
+        return Idiomas.TryGetValue(chave, out var idioma) ? idioma : null;
     }
     #endregion
 
