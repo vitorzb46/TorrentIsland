@@ -17,9 +17,9 @@ public class Utils
     /// </summary>
     /// <param name="callback">Ação para executar de forma síncrona.</param>
     /// <returns>Uma task que representa operação síncrona.</returns>
-    public static async Task AtualizarUI(Action callback)
+    public static void AtualizarUI(Action callback)
     {
-        await System.Windows.Application.Current.Dispatcher.InvokeAsync(callback);
+        System.Windows.Application.Current.Dispatcher.Invoke(callback);
     }
     /// <summary>
     /// Executa ação assíncrona e atualiza a thread principal da UI.

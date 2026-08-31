@@ -90,7 +90,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             long duracaoDoFilmeMs = args.Length;
 
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            Utils.AtualizarUI(() =>
             {
                 InicializarDuracaoDoVideo(duracaoDoFilmeMs);
             });
@@ -614,7 +614,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         }
 
         /// Atualiza a coleção na UI
-        await System.Windows.Application.Current.Dispatcher.InvokeAsync(async () =>
+        await Utils.AtualizarUIAsync(async () =>
         {
             SubtitleTracks.Clear();
             var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name);
@@ -699,7 +699,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             if (cachePreenchido < 100)
             {
                 IsLoading = true;
-                //Log.Salvar($"[ALERTA REDE] Preenchendo buffer: {cachePreenchido:0.0}%");
             }
             else
             {

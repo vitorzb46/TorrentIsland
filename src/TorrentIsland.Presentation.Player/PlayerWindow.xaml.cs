@@ -115,20 +115,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Media media;
             if (File.Exists(caminhoOuUrl))
             {
-                var infoArquivo = new FileInfo(caminhoOuUrl);
-                long tamanhoBytes = infoArquivo.Length;
-                string tamanhoFormatado;
-
-                if (tamanhoBytes >= 1024 * 1024 * 1024) // 1 GB
-                {
-                    tamanhoFormatado = $"{tamanhoBytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
-                }
-                else
-                {
-                    tamanhoFormatado = $"{tamanhoBytes / (1024.0 * 1024.0):F2} MB";
-                }
-
-                Log.Salvar($"Arquivo existe. Tamanho: {tamanhoFormatado} bytes");
+                Log.Salvar($"Arquivo existe. Tamanho: {Utils.BytesFormat} bytes");
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
             }
             else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
@@ -158,8 +145,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             media.AddOption(":clock-jitter=5000");
 
             _viewModel.SetMedia(media);
-            await _viewModel.PopulateTracksAsync().ConfigureAwait(false);
-            ShowControls();
+            await Utils.AtualizarUIAsync(async () =>
+            {
+                await _viewModel.PopulateTracksAsync().ConfigureAwait(false);
+                ShowControls();
+            });
         }
         catch (Exception ex)
         {

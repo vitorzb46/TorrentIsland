@@ -191,10 +191,10 @@ public partial class ControlsWindow : Window
         }
     }
 
-    // Design da ToolTip do TimelineSlider
+    // Design ToolTip dos botões + TimelineSlider
     private ToolTip ToolTipDesign(string text, ToolTip tooltip, UIElement element, double? horiOffset = null, double? vertOffset = null)
     {
-        tooltip.IsOpen = true;
+        //tooltip.IsOpen = true;
 
         tooltip.Background = Brushes.Transparent;
         tooltip.BorderBrush = Brushes.Transparent;
