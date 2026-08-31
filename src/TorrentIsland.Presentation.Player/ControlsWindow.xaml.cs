@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -113,14 +114,27 @@ public partial class ControlsWindow : Window
         Log.Salvar("LoadSubtitleButton_Click");
         var dialog = new OpenFileDialog
         {
-            Filter = "Legendas (*.srt;*.vtt)|*.srt;*.vtt|Todos os arquivos (*.*)|*.*",
+            Filter = "Arquivos Suportados (*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi)|*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi|" +
+                 "Legendas (*.srt;*.vtt;*.ssa;*.ass)|*.srt;*.vtt;*.ssa;*.ass|" +
+                 "Vídeos (*.mp4;*.mkv;*.avi)|*.mp4;*.mkv;*.avi|" +
+                 "Todos os arquivos (*.*)|*.*",
             Title = "Carregar legenda externa"
         };
 
         if (dialog.ShowDialog(this) == true)
         {
-            Log.Salvar("Legenda {dialog.FileName} carregada!");
-            _viewModel.LoadExternalSubtitle(dialog.FileName);
+            string extensao = Path.GetExtension(dialog.FileName).ToLowerInvariant();
+
+            if (Utils.ExtensoesVideo.Contains(extensao))
+            {
+                Log.Salvar($"Vídeo {dialog.FileName} carregado!");
+                _viewModel.LoadExternalMedia(dialog.FileName);
+            }
+            else if (Utils.ExtensoesSubs.Contains(extensao))
+            {
+                Log.Salvar($"Legenda {dialog.FileName} carregada!");
+                _viewModel.LoadExternalSubtitle(dialog.FileName);
+            }
         }
     }
 
