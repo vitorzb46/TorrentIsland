@@ -407,20 +407,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         MostrarFeedback = false;
     }
 
-    /// <summary>Indica se o código de idioma é realmente um idioma (não "und"/"undetermined"/vazio).</summary>
-    private static bool EhIdiomaValido(string? valor)
-    {
-        if (string.IsNullOrWhiteSpace(valor)) return false;
-        var limpo = valor.Trim().ToLower();
-        return limpo is not ("und" or "undetermined" or "unknown" or "mis" or "mul" or "zxx" or "???");
-    }
-
-    /// <summary>Indica se o valor representa "idioma indefinido" (ex.: "und").</summary>
-    private static bool EhIdiomaIndefinido(string? valor)
-    {
-        if (string.IsNullOrWhiteSpace(valor)) return true;
-        return !EhIdiomaValido(valor);
-    }
     private static string FormatarTempo(long milissegundos)
     {
         TimeSpan tempo = TimeSpan.FromMilliseconds(milissegundos);
@@ -566,7 +552,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             await process!.WaitForExitAsync().ConfigureAwait(false);
 
             var detector = new CLD2Detector();
-            
+
             // Analisa legenda extraída
             await Parallel.ForEachAsync(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async (kvp, ct) =>
             {
@@ -598,7 +584,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                     string detectedLang = "und";
 
                     if (sb.Length > 0)
-                    {                        
+                    {
                         var predictions = detector.PredictLanguage(sb.ToString());
                         var best = predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
 
@@ -611,7 +597,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                         {
                             detectedLang = "und";
                         }
-                    }                    
+                    }
                     novosTracks.Add(new TrackItem(trackId, detectedLang));
                 }
                 catch (Exception ex)
@@ -640,53 +626,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value, metaDesc)));
         });
 
-        IsLoading = false;        
+        IsLoading = false;
     }
-
-    private static readonly Dictionary<string, string> Idiomas = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["pt"] = "Português",
-        ["en"] = "Inglês",
-        ["es"] = "Espanhol",
-        ["fr"] = "Francês",
-        ["de"] = "Alemão",
-        ["it"] = "Italiano",
-        ["ja"] = "Japonês",
-        ["ko"] = "Coreano",
-        ["zh"] = "Chinês",
-        ["ru"] = "Russo",
-        ["ar"] = "Árabe",
-        ["hi"] = "Hindi",
-        ["nl"] = "Holandês",
-        ["sv"] = "Sueco",
-        ["pl"] = "Polonês",
-        ["zh-hant"] = "Chinês (Tradicional)",
-        ["zh-hans"] = "Chinês (Simplificado)",
-        ["da"] = "Dinamarquês",
-        ["et"] = "Estoniano",
-        ["fi"] = "Finlandês",
-        ["cs"] = "Tcheco",
-        ["bg"] = "Búlgaro",
-        ["el"] = "Grego",
-        ["iw"] = "Hebraico",
-        ["he"] = "Hebraico",
-        ["hu"] = "Húngaro",
-        ["lv"] = "Letão",
-        ["ms"] = "Malaio",
-        ["ro"] = "Romeno",
-        ["lt"] = "Lituano",
-        ["no"] = "Norueguês",
-        ["ta"] = "Tâmil",
-        ["sk"] = "Eslovaco",
-        ["th"] = "Tailandês",
-        ["te"] = "Telugu",
-        ["sl"] = "Esloveno",
-        ["tr"] = "Turco",
-        ["vi"] = "Vietnamita",
-        ["uk"] = "Ucraniano",
-        ["id"] = "Indonésio",
-        ["sr"] = "Sérvia",
-    };
 
     /// <summary>
     /// Gera um nome legível para uma faixa: prioriza o idioma/descrição reais dos metadados
@@ -695,9 +636,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     /// </summary>
     private static string NomeDaFaixa(string? nome, string tipo, int id, string? idiomaReal = null, string? descricaoReal = null)
     {
-        // 1. Idiomas/descrições reais dos metadados têm prioridade máxima.
         // "und"/"undetermined" = idioma indefinido → trata como ausente.
-        var idioma = EhIdiomaValido(idiomaReal) ? TraduzirIdioma(idiomaReal!) : null;
+        var idioma = Utils.EhIdiomaValido(idiomaReal) ? Utils.TraduzirIdioma(idiomaReal!) : null;
 
         if (idioma is not null)
         {
@@ -718,14 +658,13 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             return descricaoReal;
         }
 
-        // 2. Sem metadados: usa o nome do SpuDescription.
-        if (string.IsNullOrWhiteSpace(nome) || EhIdiomaIndefinido(nome))
+        if (string.IsNullOrWhiteSpace(nome) || Utils.EhIdiomaIndefinido(nome))
         {
             return $"{tipo} {id} (Desconhecido)";
         }
 
         var limpo = nome.Trim().ToLower();
-        string? idiomaDetectado = TraduzirIdioma(nome.Trim());
+        string? idiomaDetectado = Utils.TraduzirIdioma(nome.Trim());
 
         // Se o VLC retornar apenas "Track N", padroniza o termo
         if (limpo.StartsWith("track", StringComparison.OrdinalIgnoreCase))
@@ -733,17 +672,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             return $"{tipo} {id}";
         }
 
-        // Retorna o nome do idioma acompanhado do número da faixa para o usuário conseguir diferenciar
         return idiomaDetectado is null ? $"{tipo} {id}" : $"{idiomaDetectado} [{id}]";
-    }
-
-    private static string? TraduzirIdioma(string valor)
-    {
-        if (!EhIdiomaValido(valor)) return null;
-
-        var chave = valor.Trim().ToLowerInvariant();
-
-        return Idiomas.TryGetValue(chave, out var idioma) ? idioma : null;
     }
     #endregion
 
