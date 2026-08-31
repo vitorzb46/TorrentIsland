@@ -129,6 +129,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 return;
             }
 
+            // Retiro da thread principal se causar algum deadlock, até agora normal.
             var torrents = await Managers.ObterTorrentsAsync();
             if (torrents.Count > 0)
             {
@@ -384,7 +385,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             _viewModel.IsLoading = true;
             Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
-            string streamUrl = await StreamService.ToPlayerAsync(caminhoOuUrl);
+
+            // Tirado da thread principal pois o MonoTorrent causava deadlocks
+            // com o ClientEngine usando .GetAwaiter().GetResult() no construtor deles.
+            string streamUrl = await Task.Run(async () =>
+            {
+                return await StreamService.ToPlayerAsync(caminhoOuUrl);
+            });
 
             Log.Salvar($"Stream URL obtida: {streamUrl}");
             await CarregarMidiaAsync(streamUrl);

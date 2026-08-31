@@ -54,7 +54,8 @@ public static class ServiceCollectionExtensions
 
             var settingBuilder = GetSettingBuilder();
             EngineSettings settings = settingBuilder.ToSettings();
-            return new ClientEngine(settings);
+            return Task.Run(() => new ClientEngine(settings)).GetAwaiter().GetResult();
+            //return new ClientEngine(settings);
         });
         services.AddSingleton<IEventHandling, EventHandling>();
         services.AddSingleton<IIniciarTorrent, IniciarTorrent>();
