@@ -4,13 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
+    Width="1280"
+    Height="720"
     AllowDrop="True"
+    Background="black"
     DragEnter="PlayerWindow_DragEnter"
     DragOver="PlayerWindow_DragOver"
     Drop="PlayerWindow_Drop"
-    Width="1280"
-    Height="720"
-    Background="black"
     ExtendsContentIntoTitleBar="True"
     MouseMove="Player_Mouse"
     WindowBackdropType="None"
@@ -45,8 +45,7 @@
             <vlc:VideoView
                 x:Name="VideoView"
                 HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                MouseMove="Player_Mouse" />
+                VerticalAlignment="Stretch" />
 
 
             <Grid

@@ -25,6 +25,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         var vlc = new VlcPlayerService();
 
         _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer);
+
         DataContext = _viewModel;
 
         VideoView.MediaPlayer = vlc.MediaPlayer;
@@ -202,7 +203,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (_viewModel.IsFullscreen)
         {
-            ShowControls();
             _inactivityTimer.Stop();
             _inactivityTimer.Start();
         }
@@ -211,11 +211,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     // --- Modo cinema ---
     private void ShowControls()
     {
-        _controls.Visibility = Visibility.Visible;
-        Mouse.OverrideCursor = Cursors.Arrow;
-
-        _inactivityTimer.Stop();
-        _inactivityTimer.Start();
+        if (_controls.Visibility != Visibility.Visible)
+        {
+            _controls.Visibility = Visibility.Visible;
+            Mouse.OverrideCursor = Cursors.Arrow;
+        }
+        ReiniciarTimerInatividade();
     }
 
     private void HideControls()
@@ -226,20 +227,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             _controls.Visibility = Visibility.Collapsed;
             Mouse.OverrideCursor = Cursors.None;
-        }
-    }
-    private void Player_Mouse(object sender, MouseEventArgs e)
-    {
-        if (_controls != null && _controls.Visibility != Visibility.Visible)
-        {
-            ShowControls();
-        }
-
-        // Se estiver em tela cheia, avisa o sistema para resetar o timer de inatividade
-        if (_viewModel.IsFullscreen)
-        {
-            ReiniciarTimerInatividade();
-            MouseDetected?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -278,6 +265,16 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             PosicionarControles();
             ShowControls();
         }), DispatcherPriority.Render);
+    }
+
+    private void Player_Mouse(object sender, MouseEventArgs e)
+    {
+        // Se estiver em tela cheia, avisa o sistema para resetar o timer de inatividade
+        if (_viewModel.IsFullscreen)
+        {
+            ShowControls();
+            MouseDetected?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private void PlayerWindow_DragEnter(object sender, DragEventArgs e)

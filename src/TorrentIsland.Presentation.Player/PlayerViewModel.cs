@@ -514,7 +514,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             var extensaoSub = "srt";
             metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
             metaDesc = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Description : null;
-            Log.Salvar($"MetaDesc: {metaDesc} | MetaCodec: {metaCodec}");
             if (metaCodec != 0)
             {
                 var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
