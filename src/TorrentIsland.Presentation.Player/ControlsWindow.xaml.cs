@@ -54,65 +54,34 @@ public partial class ControlsWindow : Window
             ? tempo.ToString(@"hh\:mm\:ss")
             : tempo.ToString(@"mm\:ss");
 
-            if (TimelineSlider.ToolTip == null || TimelineSlider.ToolTip is not System.Windows.Controls.ToolTip)
-            {
-                TimelineSlider.ToolTip = new ToolTip();
-            }
-
-            var tooltip = (ToolTip)TimelineSlider.ToolTip;
-            tooltip.Background = Brushes.Transparent;
-            tooltip.BorderBrush = Brushes.Transparent;
-            tooltip.BorderThickness = new Thickness(0);
-            tooltip.Padding = new Thickness(0);
-
-            var textoTempo = new TextBlock
-            {
-                Text = tempoFormatado,
-                Foreground = Brushes.White,
-                FontSize = 14,
-                FontWeight = FontWeights.SemiBold,
-                FontFamily = new FontFamily("Segoe UI Variable Display, Bahnschrift"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-
-            var containerEscuro = new Border
-            {
-                Background = (Brush)new BrushConverter().ConvertFromString("#E60A0A0A")!, // Fundo escuro com opacidade
-                BorderBrush = (Brush)new BrushConverter().ConvertFromString("#2D323F")!, // Cor da borda
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6),
-
-                // AJUSTE DO PADDING: (Esquerda, Topo, Direita, Fundo)
-                Padding = new Thickness(14, 6, 14, 6),
-
-                Child = textoTempo // Injeta o texto dentro do container
-            };
-
-            tooltip.Content = containerEscuro;
-
-            tooltip.PlacementTarget = TimelineSlider;
-            tooltip.Placement = System.Windows.Controls.Primitives.PlacementMode.Relative;
-
-            double mouseX = e.GetPosition(TimelineSlider).X;
-
-            tooltip.HorizontalOffset = mouseX - 28;
-            tooltip.VerticalOffset = -42;
-
-            tooltip.IsOpen = true;
+            TimelineSlider.ToolTip = ToolTipDesign(
+                tempoFormatado,
+                new ToolTip(),
+                GetTimelineSlider(),
+                e.GetPosition(TimelineSlider).X - 28.0,
+                -42.0);
         }
     }
     #endregion
 
     #region Coluna 1 (Botoes de controle)
-    private void RetrocederButton_Click(object sender, RoutedEventArgs e) => _viewModel.RetrocederTempo();
+    private void RetrocederButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.RetrocederTempo();
+        RetrocederButton.ToolTip = ToolTipDesign("Retroceder 5s", new ToolTip(), RetrocederButton, -55.0, -35.0);
+    }
 
-    private void AvancarButton_Click(object sender, RoutedEventArgs e) => _viewModel.AvancarTempo();
+    private void AvancarButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.AvancarTempo();
+        AvancarButton.ToolTip = ToolTipDesign("Avancar 5s", new ToolTip(), AvancarButton, -55.0, -35.0);
+    }
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.TogglePlay();
         PlayPauseButton.Content = _viewModel.IsPlaying ? "⏸" : "▶";
+        PlayPauseButton.ToolTip = ToolTipDesign("Pausar / Reproduzir", new ToolTip(), PlayPauseButton, -55.0, -35.0);
     }
 
     private void MuteButton_Click(object sender, RoutedEventArgs e)
@@ -120,6 +89,8 @@ public partial class ControlsWindow : Window
         Log.Salvar("MuteButton_Click");
         _viewModel.ToggleMute();
         MuteButton.Content = _viewModel.IsMuted ? "🔇" : "🔊";
+
+        MuteButton.ToolTip = ToolTipDesign("Mutar / Desmutar", new ToolTip(), MuteButton, -55.0, -35.0);
     }
 
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -135,10 +106,27 @@ public partial class ControlsWindow : Window
     #endregion
 
     #region Coluna 2 (Configurações e legendas)
-    private void FullscreenButton_Click(object sender, RoutedEventArgs e) => FullscreenRequested?.Invoke(this, EventArgs.Empty);
+    private void LoadSubtitleButton_Click(object sender, RoutedEventArgs e)
+    {
+        Log.Salvar("LoadSubtitleButton_Click");
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Legendas (*.srt;*.vtt)|*.srt;*.vtt|Todos os arquivos (*.*)|*.*",
+            Title = "Carregar legenda externa"
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            Log.Salvar("Legenda {dialog.FileName} carregada!");
+            _viewModel.LoadExternalSubtitle(dialog.FileName);
+        }
+
+        LoadSubtitleButton.ToolTip = ToolTipDesign("Carregar legenda ou vídeo", new ToolTip(), LoadSubtitleButton, -55.0, -35.0);
+    }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
+        SettingsButton.ToolTip = ToolTipDesign("Settings", new ToolTip(), SettingsButton, -55.0, -35.0);
         if (sender is not Button btn) return;
         ConfigMenu.DataContext = this.DataContext;
         ConfigMenu.PlacementTarget = btn;
@@ -147,6 +135,12 @@ public partial class ControlsWindow : Window
         ConfigMenu.VerticalOffset = -25;
         ConfigMenu.IsOpen = true;
     }
+
+    private void FullscreenButton_Click(object sender, RoutedEventArgs e)
+    {
+        FullscreenRequested?.Invoke(this, EventArgs.Empty);
+        FullscreenButton.ToolTip = ToolTipDesign("Modo cinema", new ToolTip(), FullscreenButton, -55.0, -35.0);
+    }   
 
     private void SubtitleMenuGroup_Click(object sender, RoutedEventArgs e)
     {
@@ -174,23 +168,7 @@ public partial class ControlsWindow : Window
             _viewModel.SelectAudioTrack(track.Id);
             return;
         }
-    }
-
-    private void LoadSubtitleButton_Click(object sender, RoutedEventArgs e)
-    {
-        Log.Salvar("LoadSubtitleButton_Click");
-        var dialog = new OpenFileDialog
-        {
-            Filter = "Legendas (*.srt;*.vtt)|*.srt;*.vtt|Todos os arquivos (*.*)|*.*",
-            Title = "Carregar legenda externa"
-        };
-
-        if (dialog.ShowDialog(this) == true)
-        {
-            Log.Salvar("Legenda {dialog.FileName} carregada!");
-            _viewModel.LoadExternalSubtitle(dialog.FileName);
-        }
-    }
+    }   
 
     private void TorrentMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -216,5 +194,58 @@ public partial class ControlsWindow : Window
         {
             ActivityDetected?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    private UIElement GetTimelineSlider()
+    {
+        return TimelineSlider;
+    }
+
+    // Design da ToolTip do TimelineSlider
+    private ToolTip ToolTipDesign(string text, ToolTip tooltip, UIElement element, double? horiOffset = null, double? vertOffset = null)
+    {
+        tooltip.IsOpen = true;
+
+        tooltip.Background = Brushes.Transparent;
+        tooltip.BorderBrush = Brushes.Transparent;
+        tooltip.BorderThickness = new Thickness(0);
+        tooltip.Padding = new Thickness(0);
+
+        var textoBloco = new TextBlock
+        {
+            Text = text,
+            Foreground = Brushes.White,
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            FontFamily = new FontFamily("Segoe UI Variable Display, Bahnschrift"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var containerEscuro = new Border
+        {
+            Background = (Brush)new BrushConverter().ConvertFromString("#E60A0A0A")!, // Fundo escuro com opacidade
+            BorderBrush = (Brush)new BrushConverter().ConvertFromString("#2D323F")!, // Cor da borda
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+
+            // AJUSTE DO PADDING: (Esquerda, Topo, Direita, Fundo)
+            Padding = new Thickness(14, 6, 14, 6),
+
+            Child = textoBloco // Injeta o texto dentro do container
+        };
+
+        tooltip.Content = containerEscuro;
+
+        tooltip.PlacementTarget = element;
+        tooltip.Placement = System.Windows.Controls.Primitives.PlacementMode.Relative;
+
+        if (horiOffset != null)
+        {
+            tooltip.HorizontalOffset = horiOffset ?? 0;
+            tooltip.VerticalOffset = vertOffset ?? 0;
+        }
+
+        return tooltip;
     }
 }

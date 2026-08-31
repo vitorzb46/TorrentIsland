@@ -154,29 +154,25 @@
                         Click="RetrocederButton_Click"
                         Content="⏪"
                         FontSize="13"
-                        Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Voltar (clique múltiplo: 5s, 15s, 30s, 60s)" />
+                        Style="{StaticResource PlayerButtonStyle}" />
                     <Button
                         x:Name="PlayPauseButton"
                         Click="PlayPauseButton_Click"
                         Content="▶"
                         FontSize="18"
-                        Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Reproduzir / Pausar" />
+                        Style="{StaticResource PlayerButtonStyle}" />
                     <Button
                         x:Name="AvancarButton"
                         Click="AvancarButton_Click"
                         Content="⏩"
                         FontSize="13"
-                        Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Avançar (clique múltiplo: 5s, 15s, 30s, 60s)" />
+                        Style="{StaticResource PlayerButtonStyle}" />
                     <Button
                         x:Name="MuteButton"
                         Width="35"
                         Click="MuteButton_Click"
                         Content="🔊"
-                        Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Mutar" />
+                        Style="{StaticResource PlayerButtonStyle}" />
                     <Slider
                         x:Name="VolumeSlider"
                         Width="100"
@@ -210,17 +206,17 @@
                     </StackPanel>
 
                     <Button
+                        x:Name="LoadSubtitleButton"
                         Click="LoadSubtitleButton_Click"
                         Content="📁"
                         FontSize="16"
-                        Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Carregar Legenda ou Vídeo" />
+                        Style="{StaticResource PlayerButtonStyle}" />
 
                     <Button
+                        x:Name="SettingsButton"
                         Click="SettingsButton_Click"
                         Style="{StaticResource PlayerButtonStyle}"
-                        Tag="{Binding}"
-                        ToolTip="Áudio, Legendas e Ajustes">
+                        Tag="{Binding}">
 
                         <Button.Content>
                             <ui:SymbolIcon
@@ -281,9 +277,9 @@
                         </Button.ContextMenu>
                     </Button>
                     <Button
+                        x:Name="FullscreenButton"
                         Click="FullscreenButton_Click"
-                        Style="{StaticResource PlayerButtonStyle}"
-                        ToolTip="Tela Cheia">
+                        Style="{StaticResource PlayerButtonStyle}">
                         <ui:SymbolIcon
                             FontSize="16"
                             Foreground="White"
