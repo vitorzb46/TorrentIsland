@@ -74,6 +74,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _inactivityTimer.Stop();
             _controls.Close();
             _viewModel.Dispose();
+            vlc.Dispose();
             Environment.Exit(0);
         };
 
@@ -85,31 +86,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         Managers = managers;
     }
 
-    // private async Task IniciarAsync(string mediaUrl)
-    // {
-    //     _viewModel.IsLoading = true;
-    //     Log.Salvar("Criando Media");
-
-    //     var media = new Media(_viewModel.LibVLC, mediaUrl, FromType.FromLocation);
-
-    //     // Opções de rede para streaming
-    //     media.AddOption(":network-caching=3000");
-    //     media.AddOption(":file-caching=3000");
-    //     media.AddOption(":live-caching=3000");
-    //     media.AddOption(":skip-frames");
-    //     media.AddOption(":clock-synchro=0");
-    //     media.AddOption(":clock-jitter=5000");
-
-    //     _viewModel.SetMedia(media);
-    //     await _viewModel.PopulateTracksAsync();
-    //     ShowControls();
-    // }
-
     public async Task CarregarMidiaAsync(string caminhoOuUrl)
     {
         try
         {
-            _viewModel.IsLoading = true;
             Log.Salvar($"Carregando mídia: {caminhoOuUrl}");
 
             Media media;
@@ -117,6 +97,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             {
                 Log.Salvar($"Arquivo existe. Tamanho: {Utils.BytesFormat} bytes");
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
+                _viewModel.MidiaFilePath = caminhoOuUrl;
             }
             else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
             {
@@ -157,6 +138,35 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Log.Salvar($"Erro ao carregar mídia: {ex.Message}");
             MessageBox.Show($"Não foi possível carregar a mídia: {caminhoOuUrl}", "Player",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    public async Task CarregarStreamTorrentAsync(string caminhoOuUrl)
+    {
+        try
+        {
+            _viewModel.IsLoading = true;
+            Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
+
+            // Tirado da thread principal pois o MonoTorrent causava deadlocks
+            // com o ClientEngine usando .GetAwaiter().GetResult() no construtor deles.
+            string streamUrl = await Task.Run(async () =>
+            {
+                return await StreamService.ToPlayerAsync(caminhoOuUrl);
+            });
+
+            Log.Salvar($"Stream URL obtida: {streamUrl}");
+            await CarregarMidiaAsync(streamUrl);
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro ao iniciar stream de torrent: {ex.Message}");
+            MessageBox.Show($"Não foi possível iniciar o stream do torrent!", "Player",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _viewModel.IsLoading = false;
         }
     }
 
@@ -228,6 +238,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         // Se estiver em tela cheia, avisa o sistema para resetar o timer de inatividade
         if (_viewModel.IsFullscreen)
         {
+            ReiniciarTimerInatividade();
             MouseDetected?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -271,7 +282,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private void PlayerWindow_DragEnter(object sender, DragEventArgs e)
     {
-        if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos)
+        if (Utils.TryGetDataObject(e.Data, DataFormats.FileDrop, out string[] arquivos)
             && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
         {
             e.Effects = DragDropEffects.Copy;
@@ -281,7 +292,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private void PlayerWindow_DragOver(object sender, DragEventArgs e)
     {
-        if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos)
+        if (Utils.TryGetDataObject(e.Data, DataFormats.FileDrop, out string[] arquivos)
             && (Utils.ExtensoesVideo.Contains(arquivos[0]) || Utils.ExtensaoTorrent.Contains(arquivos[0])))
         {
             e.Effects = DragDropEffects.Copy;
@@ -291,7 +302,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private async void PlayerWindow_Drop(object sender, DragEventArgs e)
     {
-        if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos))
+        if (Utils.TryGetDataObject(e.Data, DataFormats.FileDrop, out string[] arquivos))
         {
             if (Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
             {
@@ -325,7 +336,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             var dataObject = Clipboard.GetDataObject();
             if (dataObject == null) return;
 
-            if (TentarObterDado(dataObject, DataFormats.FileDrop, out string[] arquivos)
+            if (Utils.TryGetDataObject(dataObject, DataFormats.FileDrop, out string[] arquivos)
                 && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant())) // Arquivo das extensões de vídeo suportadas
             {
                 e.Handled = true;
@@ -333,7 +344,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 return;
             }
 
-            if (TentarObterDado(dataObject, DataFormats.FileDrop, out string[] torrent)
+            if (Utils.TryGetDataObject(dataObject, DataFormats.FileDrop, out string[] torrent)
                 && Utils.ExtensaoTorrent.Contains(Path.GetExtension(torrent[0]).ToLowerInvariant())) // Arquivo torrent
             {
                 e.Handled = true;
@@ -341,7 +352,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 return;
             }
 
-            if (TentarObterDado(dataObject, DataFormats.Text, out string magnet)
+            if (Utils.TryGetDataObject(dataObject, DataFormats.Text, out string magnet)
                 && magnet.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase)) // Magnet link
             {
                 e.Handled = true;
@@ -350,63 +361,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             }
         }
     }
-    /// <summary>
-    /// Tenta obter dados do tipo Data Object usando o formato especificado.
-    /// </summary>
-    /// <typeparam name="T">O tipo de dado a ser obtido.</typeparam>
-    /// <param name="dataObject">O IDataObject de onde obtem os dados.</param>
-    /// <param name="formato">O formato dos dados.</param>
-    /// <param name="resultado">Os dados obtidos.</param>
-    /// <returns>True se os dados foram obtidos com sucesso e convertidos, false caso contrário.</returns>
-    private bool TentarObterDado<T>(IDataObject dataObject, string formato, out T resultado)
-    {
-        resultado = default!;
 
-        if (!dataObject.GetDataPresent(formato))
-            return false;
-
-        var dado = dataObject.GetData(formato);
-        if (dado is T dadoConvertido)
-        {
-            if (dadoConvertido is string[] array && array.Length == 0)
-                return false;
-
-            resultado = dadoConvertido;
-            return true;
-        }
-
-        return false;
-    }
-
-
-    public async Task CarregarStreamTorrentAsync(string caminhoOuUrl)
-    {
-        try
-        {
-            _viewModel.IsLoading = true;
-            Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
-
-            // Tirado da thread principal pois o MonoTorrent causava deadlocks
-            // com o ClientEngine usando .GetAwaiter().GetResult() no construtor deles.
-            string streamUrl = await Task.Run(async () =>
-            {
-                return await StreamService.ToPlayerAsync(caminhoOuUrl);
-            });
-
-            Log.Salvar($"Stream URL obtida: {streamUrl}");
-            await CarregarMidiaAsync(streamUrl);
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro ao iniciar stream de torrent: {ex.Message}");
-            MessageBox.Show($"Não foi possível iniciar o stream do torrent!", "Player",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            _viewModel.IsLoading = false;
-        }
-    }
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? MouseDetected;
 }

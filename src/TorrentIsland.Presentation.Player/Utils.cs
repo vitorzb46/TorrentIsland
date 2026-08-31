@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -12,6 +13,33 @@ public class Utils
     public static readonly string[] ExtensoesSubs = [
         ".srt", ".vtt", ".ssa", ".ass",
     ];
+    /// <summary>
+    /// Tenta obter dados do tipo Data Object usando o formato especificado.
+    /// </summary>
+    /// <typeparam name="T">O tipo de dado a ser obtido.</typeparam>
+    /// <param name="dataObject">O IDataObject de onde obtem os dados.</param>
+    /// <param name="formato">O formato dos dados.</param>
+    /// <param name="resultado">Os dados obtidos.</param>
+    /// <returns>True se os dados foram obtidos com sucesso e convertidos, false caso contrário.</returns>
+    public static bool TryGetDataObject<T>(IDataObject dataObject, string formato, out T resultado)
+    {
+        resultado = default!;
+
+        if (!dataObject.GetDataPresent(formato))
+            return false;
+
+        var dado = dataObject.GetData(formato);
+        if (dado is T dadoConvertido)
+        {
+            if (dadoConvertido is string[] array && array.Length == 0)
+                return false;
+
+            resultado = dadoConvertido;
+            return true;
+        }
+
+        return false;
+    }
     /// <summary>
     /// Executa ação síncrona e atualiza a thread principal da UI.
     /// </summary>

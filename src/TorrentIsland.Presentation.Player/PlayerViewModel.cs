@@ -47,6 +47,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private bool _mostrarFeedback = false;
     public LibVLC LibVLC => _libVLC;
     public string? TorrentName { get; set; }
+    public string? MidiaFilePath { get; set; }
 
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
@@ -229,7 +230,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _media?.Dispose();
         _media = media;
         _mediaPlayer.Play(_media);
-        IsLoading = true;
     }
     public void SeekTo(TimeSpan timeSpan)
     {
@@ -269,15 +269,33 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         Log.Salvar($"TogglePlay | IsPlaying={_mediaPlayer.IsPlaying} State={_mediaPlayer.State}");
         if (_mediaPlayer.IsPlaying)
         {
+            IsPlaying = false;
             _mediaPlayer.Pause();
         }
         else
         {
+            IsPlaying = true;
             _mediaPlayer.Play();
         }
     }
 
+    public void Play()
+    {
+        if (!_mediaPlayer.IsPlaying)
+        {
+            IsPlaying = true;
+            _mediaPlayer.Play();
+        }
+    }
 
+    public void Pause()
+    {
+        if (_mediaPlayer.IsPlaying)
+        {
+            IsPlaying = false;
+            _mediaPlayer.Pause();
+        }
+    }
 
     public void LoadExternalSubtitle(object? filePath)
     {
@@ -420,8 +438,12 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     private async Task ProcessarLegendasUndAsync()
     {
+        Pause();
+
         var media = _mediaPlayer.Media;
         if (media == null) return;
+
+        await Task.Delay(2000);
 
         var audioTracks = _mediaPlayer.AudioTrackDescription;
         if (audioTracks == null || audioTracks.Length == 0) return;
@@ -438,9 +460,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         Directory.CreateDirectory(caminhoTempBase);
 
-        var caminhoDoVideo = Path.Combine(AppContext.BaseDirectory, "Downloads", TorrentName!);
+        string? filePath = null;
+        if (TorrentName != null)
+        {
+            filePath = Path.Combine(AppContext.BaseDirectory, "Downloads", TorrentName!);
+        }
+        else
+        {
+            filePath = MidiaFilePath;
+        }
 
-        if (string.IsNullOrEmpty(caminhoDoVideo) || !File.Exists(caminhoDoVideo))
+        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
         {
             Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
             return;
@@ -460,7 +490,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
         }
 
-        IsLoading = true;
         SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
 
         var novosTracks = new ConcurrentBag<TrackItem>();
@@ -477,7 +506,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         if (undTracks.Count == 0) return;
 
-        var argsList = new List<string> { "tracks", $"\"{caminhoDoVideo}\"" };
+        var argsList = new List<string> { "tracks", $"\"{filePath}\"" };
 
         var arquivoDeSaida = "";
         foreach (var track in undTracks)
@@ -485,6 +514,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             var extensaoSub = "srt";
             metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
             metaDesc = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Description : null;
+            Log.Salvar($"MetaDesc: {metaDesc} | MetaCodec: {metaCodec}");
             if (metaCodec != 0)
             {
                 var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
@@ -496,7 +526,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
             arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
 
-            var cacheEntry = await GetAsync(caminhoDoVideo, track.Id);
+            var cacheEntry = await GetAsync(filePath, track.Id);
 
             if (cacheEntry != null)
             {
@@ -506,7 +536,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             {
                 tempFiles[track.Id] = arquivoDeSaida;
                 argsList.Add($"{track.Id}:\"{arquivoDeSaida}\"");
-                Log.Salvar($"Legenda sem cache: {track.Id}");
             }
 
         }
@@ -572,13 +601,13 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                     var items = parser.ParseStream(fileStream);
 
                     var sb = new StringBuilder();
-                    var i = 0;
-                    foreach (var line in items[i].Lines)
+                    for (var i = 0; i < Math.Min(15, items.Count); i++)
                     {
-                        if (i == 15) break;
-                        if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
-                            sb.Append(line).Append(' ');
-                        i++;
+                        foreach (var line in items[i].Lines)
+                        {
+                            if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
+                                sb.Append(line).Append(' ');
+                        }
                     }
 
                     string detectedLang = "und";
@@ -591,7 +620,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                         if (best != null && best.Probability > 0.9)
                         {
                             detectedLang = best.Language;
-                            await SetAsync(caminhoDoVideo, trackId, detectedLang);
+                            await SetAsync(filePath, trackId, detectedLang);
                         }
                         else
                         {
@@ -610,6 +639,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                     try { File.Delete(filePath); } catch { }
                 }
             });
+
             detector.Dispose();
         }
 
@@ -623,10 +653,12 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                                    .ToList();
 
             foreach (var item in lista)
+            {
                 SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value, metaDesc)));
+            }
         });
 
-        IsLoading = false;
+        Play();
     }
 
     /// <summary>
