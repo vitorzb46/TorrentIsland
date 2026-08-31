@@ -32,7 +32,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
-        _controls = new ControlsWindow(_viewModel);
+        _controls = new ControlsWindow(_viewModel, this);
         _controls.FullscreenRequested += (_, _) => ToggleFullscreen();
         _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
         _controls.Closed += (_, _) => Close();
@@ -60,7 +60,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             if (!string.IsNullOrWhiteSpace(mediaUrl))
             {
-                await CarregarMidia(mediaUrl);
+                await CarregarMidiaAsync(mediaUrl);
             }
             else
             {
@@ -105,7 +105,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     //     ShowControls();
     // }
 
-    private async Task CarregarMidia(string caminhoOuUrl)
+    public async Task CarregarMidiaAsync(string caminhoOuUrl)
     {
         try
         {
@@ -145,8 +145,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             var torrents = await Managers.ObterTorrentsAsync();
             if (torrents.Count > 0)
             {
-                _viewModel.TorrentName = torrents.Select(t => t.Value.Nome)
-                .FirstOrDefault()!.Replace("[[", "[").Replace("]]", "]");
+                _viewModel.TorrentName = torrents.Select(t => t.Value.Nome).FirstOrDefault()!
+                                                                           .Replace("[[", "[").Replace("]]", "]");
             }
 
             // Opções de rede para streaming
@@ -158,7 +158,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             media.AddOption(":clock-jitter=5000");
 
             _viewModel.SetMedia(media);
-            await _viewModel.PopulateTracksAsync();
+            await _viewModel.PopulateTracksAsync().ConfigureAwait(false);
             ShowControls();
         }
         catch (Exception ex)
@@ -305,12 +305,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             if (Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
             {
                 Log.Salvar($"Arquivo de vídeo colado: {arquivos[0]}");
-                await CarregarMidia(arquivos[0]);
+                await CarregarMidiaAsync(arquivos[0]);
             }
             else if (Utils.ExtensaoTorrent.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
             {
                 Log.Salvar($"Arquivo torrent colado: {arquivos[0]}");
-                await CarregarStreamTorrent(arquivos[0]);
+                await CarregarStreamTorrentAsync(arquivos[0]);
             }
             else
             {
@@ -338,7 +338,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant())) // Arquivo das extensões de vídeo suportadas
             {
                 e.Handled = true;
-                _ = CarregarMidia(arquivos[0]);
+                _ = CarregarMidiaAsync(arquivos[0]);
                 return;
             }
 
@@ -346,7 +346,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 && Utils.ExtensaoTorrent.Contains(Path.GetExtension(torrent[0]).ToLowerInvariant())) // Arquivo torrent
             {
                 e.Handled = true;
-                _ = CarregarStreamTorrent(torrent[0]);
+                _ = CarregarStreamTorrentAsync(torrent[0]);
                 return;
             }
 
@@ -354,7 +354,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 && magnet.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase)) // Magnet link
             {
                 e.Handled = true;
-                _ = CarregarStreamTorrent(magnet);
+                _ = CarregarStreamTorrentAsync(magnet);
                 return;
             }
         }
@@ -388,7 +388,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     }
 
 
-    private async Task CarregarStreamTorrent(string caminhoOuUrl)
+    public async Task CarregarStreamTorrentAsync(string caminhoOuUrl)
     {
         try
         {
@@ -397,7 +397,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             string streamUrl = await StreamService.ToPlayerAsync(caminhoOuUrl);
 
             Log.Salvar($"Stream URL obtida: {streamUrl}");
-            await CarregarMidia(streamUrl);
+            await CarregarMidiaAsync(streamUrl);
         }
         catch (Exception ex)
         {
@@ -411,5 +411,5 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
-    public event EventHandler? MouseDetected;    
+    public event EventHandler? MouseDetected;
 }

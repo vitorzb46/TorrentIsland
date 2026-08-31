@@ -206,8 +206,8 @@
                     </StackPanel>
 
                     <Button
-                        x:Name="LoadSubtitleButton"
-                        Click="LoadSubtitleButton_Click"
+                        x:Name="LoadMediaButton"
+                        Click="LoadMediaButton_Click"
                         Content="📁"
                         FontSize="16"
                         Style="{StaticResource PlayerButtonStyle}" />

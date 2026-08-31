@@ -10,6 +10,8 @@ namespace TorrentIsland.Presentation.Player;
 public partial class ControlsWindow : Window
 {
     private readonly PlayerViewModel _viewModel;
+    private readonly PlayerWindow _playerWindow;
+
     private bool _isSeeking { get; set; }
 
     /// <summary>Dispara quando o usuário alternar tela cheia (a janela de vídeo executa).</summary>
@@ -17,10 +19,11 @@ public partial class ControlsWindow : Window
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? ActivityDetected;
 
-    public ControlsWindow(PlayerViewModel viewModel)
+    public ControlsWindow(PlayerViewModel viewModel, PlayerWindow playerWindow)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _playerWindow = playerWindow;
         DataContext = viewModel;
     }
 
@@ -58,7 +61,7 @@ public partial class ControlsWindow : Window
             TimelineSlider.ToolTip = ToolTipDesign(
                 tempoFormatado,
                 new ToolTip(),
-                GetTimelineSlider(),
+                TimelineSlider,
                 e.GetPosition(TimelineSlider).X - 28.0,
                 -42.0);
         }
@@ -107,34 +110,15 @@ public partial class ControlsWindow : Window
     #endregion
 
     #region Coluna 2 (Configurações e legendas)
-    private void LoadSubtitleButton_Click(object sender, RoutedEventArgs e)
+    private async void LoadMediaButton_Click(object sender, RoutedEventArgs e)
     {
-        LoadSubtitleButton.ToolTip = ToolTipDesign("Carregar legenda ou vídeo", new ToolTip(), LoadSubtitleButton, -55.0, -35.0);
-
-        Log.Salvar("LoadSubtitleButton_Click");
-        var dialog = new OpenFileDialog
+        try
         {
-            Filter = "Arquivos Suportados (*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi)|*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi|" +
-                 "Legendas (*.srt;*.vtt;*.ssa;*.ass)|*.srt;*.vtt;*.ssa;*.ass|" +
-                 "Vídeos (*.mp4;*.mkv;*.avi)|*.mp4;*.mkv;*.avi|" +
-                 "Todos os arquivos (*.*)|*.*",
-            Title = "Carregar legenda externa"
-        };
-
-        if (dialog.ShowDialog(this) == true)
+            await ProcessarEscolhaDeArquivoAsync();
+        }
+        catch (Exception ex)
         {
-            string extensao = Path.GetExtension(dialog.FileName).ToLowerInvariant();
-
-            if (Utils.ExtensoesVideo.Contains(extensao))
-            {
-                Log.Salvar($"Vídeo {dialog.FileName} carregado!");
-                _viewModel.LoadExternalMedia(dialog.FileName);
-            }
-            else if (Utils.ExtensoesSubs.Contains(extensao))
-            {
-                Log.Salvar($"Legenda {dialog.FileName} carregada!");
-                _viewModel.LoadExternalSubtitle(dialog.FileName);
-            }
+            Log.Salvar($"Erro ao carregar legenda: {ex.Message}");
         }
     }
 
@@ -154,7 +138,7 @@ public partial class ControlsWindow : Window
     {
         FullscreenRequested?.Invoke(this, EventArgs.Empty);
         FullscreenButton.ToolTip = ToolTipDesign("Modo cinema", new ToolTip(), FullscreenButton, -55.0, -35.0);
-    }   
+    }
 
     private void SubtitleMenuGroup_Click(object sender, RoutedEventArgs e)
     {
@@ -182,20 +166,17 @@ public partial class ControlsWindow : Window
             _viewModel.SelectAudioTrack(track.Id);
             return;
         }
-    }   
+    }
 
-    private void TorrentMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void TorrentMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        Log.Salvar("TorrentMenuItem_Click");
-        var dialog = new OpenFileDialog
+        try
         {
-            Filter = "Arquivos Torrent (*.torrent)|*.torrent",
-            Title = "Carregar arquivo torrent"
-        };
-        if (dialog.ShowDialog(this) == true)
+            await ProcessarTorrentAsync();
+        }
+        catch (Exception ex)
         {
-            Log.Salvar($"Torrent {dialog.FileName} aberto!");
-            _viewModel.LoadExternalTorrent(dialog.FileName);
+            Log.Salvar($"Erro ao processar arquivo torrent: {ex.Message}");
         }
     }
     #endregion
@@ -208,11 +189,6 @@ public partial class ControlsWindow : Window
         {
             ActivityDetected?.Invoke(this, EventArgs.Empty);
         }
-    }
-
-    private UIElement GetTimelineSlider()
-    {
-        return TimelineSlider;
     }
 
     // Design da ToolTip do TimelineSlider
@@ -261,5 +237,51 @@ public partial class ControlsWindow : Window
         }
 
         return tooltip;
+    }
+
+    private async Task ProcessarEscolhaDeArquivoAsync()
+    {
+        LoadMediaButton.ToolTip = ToolTipDesign("Carregar legenda ou vídeo", new ToolTip(), LoadMediaButton, -55.0, -35.0);
+
+        Log.Salvar("LoadMediaButton_Click");
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Arquivos Suportados (*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi)|*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi|" +
+                 "Legendas (*.srt;*.vtt;*.ssa;*.ass)|*.srt;*.vtt;*.ssa;*.ass|" +
+                 "Vídeos (*.mp4;*.mkv;*.avi)|*.mp4;*.mkv;*.avi|" +
+                 "Todos os arquivos (*.*)|*.*",
+            Title = "Carregar legenda externa"
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            string extensao = Path.GetExtension(dialog.FileName).ToLowerInvariant();
+
+            if (Utils.ExtensoesVideo.Contains(extensao))
+            {
+                Log.Salvar($"Vídeo {dialog.FileName} carregado!");
+                await _playerWindow.CarregarMidiaAsync(dialog.FileName);
+            }
+            else if (Utils.ExtensoesSubs.Contains(extensao))
+            {
+                Log.Salvar($"Legenda {dialog.FileName} carregada!");
+                _viewModel.LoadExternalSubtitle(dialog.FileName);
+            }
+        }
+    }
+
+    private async Task ProcessarTorrentAsync()
+    {
+        Log.Salvar("TorrentMenuItem_Click");
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Arquivos Torrent (*.torrent)|*.torrent",
+            Title = "Carregar arquivo torrent"
+        };
+        if (dialog.ShowDialog(this) == true)
+        {
+            Log.Salvar($"Torrent {dialog.FileName} aberto!");
+            await _playerWindow.CarregarStreamTorrentAsync(dialog.FileName);
+        }
     }
 }

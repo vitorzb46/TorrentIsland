@@ -772,17 +772,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         Log.Salvar("Dispose do ViewModel concluído");
     }
 
-    internal void LoadExternalTorrent(string fileName)
-    {
-        throw new NotImplementedException();
-    }
-
-    internal void LoadExternalMedia(string fileName)
-    {
-        throw new NotImplementedException();
-    }
-
-
     //public void DiagnosticarSincronia(string titulo)
     //{
     //    Log.Salvar($"@***===== {titulo} =====***@");
