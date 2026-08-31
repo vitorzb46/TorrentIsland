@@ -108,6 +108,8 @@ public partial class ControlsWindow : Window
     #region Coluna 2 (Configurações e legendas)
     private void LoadSubtitleButton_Click(object sender, RoutedEventArgs e)
     {
+        LoadSubtitleButton.ToolTip = ToolTipDesign("Carregar legenda ou vídeo", new ToolTip(), LoadSubtitleButton, -55.0, -35.0);
+
         Log.Salvar("LoadSubtitleButton_Click");
         var dialog = new OpenFileDialog
         {
@@ -120,8 +122,6 @@ public partial class ControlsWindow : Window
             Log.Salvar("Legenda {dialog.FileName} carregada!");
             _viewModel.LoadExternalSubtitle(dialog.FileName);
         }
-
-        LoadSubtitleButton.ToolTip = ToolTipDesign("Carregar legenda ou vídeo", new ToolTip(), LoadSubtitleButton, -55.0, -35.0);
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)

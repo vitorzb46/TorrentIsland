@@ -502,6 +502,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             if (metaCodec != 0)
             {
                 var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
+                Log.Salvar($"Codec: {codecDesc}");
                 if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
                 else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
             }
@@ -564,6 +565,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             }
             await process!.WaitForExitAsync().ConfigureAwait(false);
 
+            var detector = new CLD2Detector();
+            
             // Analisa legenda extraída
             await Parallel.ForEachAsync(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async (kvp, ct) =>
             {
@@ -595,8 +598,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                     string detectedLang = "und";
 
                     if (sb.Length > 0)
-                    {
-                        using var detector = new CLD2Detector();
+                    {                        
                         var predictions = detector.PredictLanguage(sb.ToString());
                         var best = predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
 
@@ -622,6 +624,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                     try { File.Delete(filePath); } catch { }
                 }
             });
+            detector.Dispose();
         }
 
         /// Atualiza a coleção na UI
@@ -637,7 +640,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value, metaDesc)));
         });
 
-        IsLoading = false;
+        IsLoading = false;        
     }
 
     private static readonly Dictionary<string, string> Idiomas = new(StringComparer.OrdinalIgnoreCase)
