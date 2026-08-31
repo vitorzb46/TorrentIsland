@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace TorrentIsland.Presentation.Player;
 
 public class Utils
@@ -10,6 +12,43 @@ public class Utils
     public static readonly string[] ExtensoesSubs = [
         ".srt", ".vtt", ".ssa", ".ass",
     ];
+    /// <summary>
+    /// Executa ação síncrona e atualiza a thread principal da UI.
+    /// </summary>
+    /// <param name="callback">Ação para executar de forma síncrona.</param>
+    /// <returns>Uma task que representa operação síncrona.</returns>
+    public static Task AtualizarUIAsync(Action callback)
+    {
+        return System.Windows.Application.Current.Dispatcher.InvokeAsync(callback).Task;
+    }
+    /// <summary>
+    /// Executa ação assíncrona e atualiza a thread principal da UI.
+    /// </summary>
+    /// <param name="callback">Ação para executar de forma assíncrona.</param>
+    /// <returns>Uma task que representa operação assíncrona.</returns>
+    public static Task AtualizarUIAsync(Func<Task> callbackAsync)
+    {
+        return System.Windows.Application.Current.Dispatcher.InvokeAsync(callbackAsync).Task.Unwrap();
+    }
+    /// <summary>
+    /// Retorna o tamanho do arquivo em MB ou GB.
+    /// </summary>
+    /// <param name="filePath">Caminho do arquivo</param>
+    /// <returns></returns>
+    public static string? BytesFormat(string filePath)
+    {
+        var infoArquivo = new FileInfo(filePath);
+        long tamanhoBytes = infoArquivo.Length;
+
+        if (tamanhoBytes >= 1024 * 1024 * 1024) // 1 GB
+        {
+            return $"{tamanhoBytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
+        }
+        else
+        {
+            return $"{tamanhoBytes / (1024.0 * 1024.0):F2} MB";
+        }
+    }
     /// <summary>
     /// Verifica o código de idioma e retorna o nome da língua correspondente.
     /// </summary>
