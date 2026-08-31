@@ -281,7 +281,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private void PlayerWindow_DragEnter(object sender, DragEventArgs e)
     {
         if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos)
-            && ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
+            && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
         {
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
@@ -291,7 +291,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private void PlayerWindow_DragOver(object sender, DragEventArgs e)
     {
         if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos)
-            && (ExtensoesVideo.Contains(arquivos[0]) || ExtensaoTorrent.Contains(arquivos[0])))
+            && (Utils.ExtensoesVideo.Contains(arquivos[0]) || Utils.ExtensaoTorrent.Contains(arquivos[0])))
         {
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
@@ -302,12 +302,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (TentarObterDado(e.Data, DataFormats.FileDrop, out string[] arquivos))
         {
-            if (ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
+            if (Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
             {
                 Log.Salvar($"Arquivo de vídeo colado: {arquivos[0]}");
                 await CarregarMidia(arquivos[0]);
             }
-            else if (ExtensaoTorrent.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
+            else if (Utils.ExtensaoTorrent.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
             {
                 Log.Salvar($"Arquivo torrent colado: {arquivos[0]}");
                 await CarregarStreamTorrent(arquivos[0]);
@@ -335,7 +335,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             if (dataObject == null) return;
 
             if (TentarObterDado(dataObject, DataFormats.FileDrop, out string[] arquivos)
-                && ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant())) // Arquivo das extensões de vídeo suportadas
+                && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant())) // Arquivo das extensões de vídeo suportadas
             {
                 e.Handled = true;
                 _ = CarregarMidia(arquivos[0]);
@@ -343,7 +343,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             }
 
             if (TentarObterDado(dataObject, DataFormats.FileDrop, out string[] torrent)
-                && ExtensaoTorrent.Contains(Path.GetExtension(torrent[0]).ToLowerInvariant())) // Arquivo torrent
+                && Utils.ExtensaoTorrent.Contains(Path.GetExtension(torrent[0]).ToLowerInvariant())) // Arquivo torrent
             {
                 e.Handled = true;
                 _ = CarregarStreamTorrent(torrent[0]);
@@ -411,11 +411,5 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
-    public event EventHandler? MouseDetected;
-
-    private static readonly string[] ExtensoesVideo = [
-    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
-    ".m4v", ".ts", ".m2ts", ".vob", ".mpg", ".mpeg", ".3gp", ".ogv"
-    ];
-    private static readonly string[] ExtensaoTorrent = [".torrent"];
+    public event EventHandler? MouseDetected;    
 }

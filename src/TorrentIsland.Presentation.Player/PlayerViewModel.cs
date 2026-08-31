@@ -848,6 +848,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         throw new NotImplementedException();
     }
 
+    internal void LoadExternalMedia(string fileName)
+    {
+        throw new NotImplementedException();
+    }
+
 
     //public void DiagnosticarSincronia(string titulo)
     //{
