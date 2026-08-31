@@ -17,18 +17,18 @@ public class Utils
     /// </summary>
     /// <param name="callback">Ação para executar de forma síncrona.</param>
     /// <returns>Uma task que representa operação síncrona.</returns>
-    public static Task AtualizarUIAsync(Action callback)
+    public static async Task AtualizarUI(Action callback)
     {
-        return System.Windows.Application.Current.Dispatcher.InvokeAsync(callback).Task;
+        await System.Windows.Application.Current.Dispatcher.InvokeAsync(callback);
     }
     /// <summary>
     /// Executa ação assíncrona e atualiza a thread principal da UI.
     /// </summary>
     /// <param name="callback">Ação para executar de forma assíncrona.</param>
     /// <returns>Uma task que representa operação assíncrona.</returns>
-    public static Task AtualizarUIAsync(Func<Task> callbackAsync)
+    public static async Task AtualizarUIAsync(Func<Task> callbackAsync)
     {
-        return System.Windows.Application.Current.Dispatcher.InvokeAsync(callbackAsync).Task.Unwrap();
+        await System.Windows.Application.Current.Dispatcher.InvokeAsync(callbackAsync);
     }
     /// <summary>
     /// Retorna o tamanho do arquivo em MB ou GB.
