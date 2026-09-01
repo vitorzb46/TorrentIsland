@@ -83,6 +83,10 @@ public class Managers : IManagers
 
     public async Task<Torrent> LoadAsync(string path) => await Torrent.LoadAsync(path).ConfigureAwait(false);
 
+    public async Task<Torrent> LoadAsync(Memory<byte> data) => await Torrent.LoadAsync(data).ConfigureAwait(false);
+
+    public async Task<Torrent> LoadAsync(HttpClient client, Uri url, string savePath) => await Torrent.LoadAsync(client, url, savePath).ConfigureAwait(false);
+
     public MagnetLink Parse(string magnet) => MagnetLink.Parse(magnet);
 
 

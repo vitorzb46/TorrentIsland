@@ -18,6 +18,8 @@ namespace TorrentIsland.Infrastructure.Interfaces
         TorrentDadosBrutos CriarDadosBrutos(Guid id, TorrentManager manager);
         IEnumerable<string> GetTrackers(Guid id);
         Task<Torrent> LoadAsync(string path);
+        Task<Torrent> LoadAsync(Memory<byte> data);
+        Task<Torrent> LoadAsync(HttpClient client, Uri url, string savePath);
         Task<TorrentManager?> ObterManagerIdAsync(Guid id);
         Task<List<TorrentManager>> ObterManagersAsync();
         Task<IReadOnlyDictionary<Guid, TorrentDto>> ObterTorrentsAsync();
