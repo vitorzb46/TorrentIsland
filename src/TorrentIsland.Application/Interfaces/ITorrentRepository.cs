@@ -5,6 +5,7 @@ namespace TorrentIsland.Application.Interfaces;
 
 public interface ITorrentRepository
 {
+    Task<List<Guid>> AddEngineAsync(Memory<byte> torrentData, bool isStream = false);
     Task<List<Guid>> AddEngineAsync(string magnetOrFolderName, bool isStream = false);
     Task<TorrentEntity?> ObterAsync(Guid id);
     Task StartAllTorrentAsync();

@@ -17,6 +17,7 @@ public class TorrentRepository : ITorrentRepository
 {
     #region Fields + Constructor
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<TorrentRepository> Localizer;
+    private static HttpClient? _client;
     private AppSettings App { get; set; }
     private IManagerFiles ManagerFiles { get; }
     private IManagers Managers { get; }
@@ -40,24 +41,56 @@ public class TorrentRepository : ITorrentRepository
         Map = map;
         Logger = logger;
         Localizer = localizer;
+        _client = new HttpClient();
     }
     #endregion
 
-
-    public async Task<List<Guid>> AddEngineAsync(string magnetOrFolderName, bool isStream = false)
+    public async Task<(bool Success, IList<TorrentManager> Manager)> TryCreateManagersAsync(object source, bool isStream)
     {
-        ArgumentNullException.ThrowIfNull(magnetOrFolderName);
+        object? torrentSource = null;
 
-        if (magnetOrFolderName.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) ||
-            Path.GetExtension(magnetOrFolderName).Equals(".torrent", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            object torrentSource = magnetOrFolderName.StartsWith("magnet:?")
-                ? (object)Managers.Parse(magnetOrFolderName)
-                : (object)await Managers.LoadAsync(magnetOrFolderName);
+            switch (source)
+            {
+                case string stringSource:
+                    if (string.IsNullOrWhiteSpace(stringSource))
+                        return (false, new List<TorrentManager>());
 
-            IList<TorrentManager> managers;
+                    if (stringSource.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) ||
+                        Path.GetExtension(stringSource).Equals(".torrent", StringComparison.OrdinalIgnoreCase))
+                    {
+                        torrentSource = stringSource.StartsWith("magnet:?")
+                            ? (object)Managers.Parse(stringSource)
+                            : (object)Managers.LoadAsync(stringSource);
+                    }
+                    else
+                    {
+                        if (Uri.TryCreate(stringSource, UriKind.Absolute, out Uri? uri) &&
+                            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                        {
+                            var torrentTemp = Path.Combine(ManagerFiles.AppDataPath, Guid.NewGuid().ToString() + ".torrent");
+                            torrentSource = await Managers.LoadAsync(_client!, uri, torrentTemp);
+                        }
+                    }
+                    break;
 
-            managers = isStream switch
+                case Memory<byte> memorySource:
+                    if (memorySource.IsEmpty || memorySource.Span[0] != (byte)'d')
+                        return (false, new List<TorrentManager>());
+
+                    torrentSource = await Managers.LoadAsync(memorySource);
+                    break;
+
+                default:
+                    return (false, new List<TorrentManager>());
+
+            }
+
+            if (torrentSource == null)
+                return (false, new List<TorrentManager>());
+
+            IList<TorrentManager> managers = isStream switch
             {
                 true => torrentSource switch
                 {
@@ -73,7 +106,20 @@ public class TorrentRepository : ITorrentRepository
                 }
             };
 
-            //await Task.Delay(3000).ConfigureAwait(false);
+            return (true, managers);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex.Message);
+            return (false, new List<TorrentManager>());
+        }
+    }
+
+    private async Task<List<Guid>> Registro(bool success, IList<TorrentManager> managers)
+    {
+        if (success)
+        {
             await Managers.AguardarMetadata(managers).ConfigureAwait(false);
 
             List<Guid> ids = [];
@@ -90,6 +136,22 @@ public class TorrentRepository : ITorrentRepository
             var ids = await Managers.AddTorrentsAsync().ConfigureAwait(false);
             return ids;
         }
+    }
+
+    public async Task<List<Guid>> AddEngineAsync(Memory<byte> torrentData, bool isStream = false)
+    {
+        var (success, managers) = await TryCreateManagersAsync(torrentData, isStream).ConfigureAwait(false);
+
+        return await Registro(success, managers).ConfigureAwait(false);
+    }
+
+    public async Task<List<Guid>> AddEngineAsync(string magnetOrFolderName, bool isStream = false)
+    {
+        ArgumentNullException.ThrowIfNull(magnetOrFolderName);
+
+        var (success, managers) = await TryCreateManagersAsync(magnetOrFolderName, isStream).ConfigureAwait(false);
+
+        return await Registro(success, managers).ConfigureAwait(false);
     }
 
     public async Task TrackersAsync(Guid id)
