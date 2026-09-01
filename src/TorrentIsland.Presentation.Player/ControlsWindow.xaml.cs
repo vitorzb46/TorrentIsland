@@ -25,6 +25,7 @@ public partial class ControlsWindow : Window
         _viewModel = viewModel;
         _playerWindow = playerWindow;
         DataContext = viewModel;
+        ConfigurarToolTips();
     }
 
     #region Timeline Slider
@@ -60,7 +61,6 @@ public partial class ControlsWindow : Window
 
             TimelineSlider.ToolTip = ToolTipDesign(
                 tempoFormatado,
-                new ToolTip(),
                 TimelineSlider,
                 e.GetPosition(TimelineSlider).X - 28.0,
                 -42.0);
@@ -72,20 +72,17 @@ public partial class ControlsWindow : Window
     private void RetrocederButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.RetrocederTempo();
-        RetrocederButton.ToolTip = ToolTipDesign("Retroceder 5s", new ToolTip(), RetrocederButton, -55.0, -35.0);
     }
 
     private void AvancarButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.AvancarTempo();
-        AvancarButton.ToolTip = ToolTipDesign("Avancar 5s", new ToolTip(), AvancarButton, -55.0, -35.0);
     }
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.TogglePlay();
         PlayPauseButton.Content = _viewModel.IsPlaying ? "⏸" : "▶";
-        PlayPauseButton.ToolTip = ToolTipDesign("Pausar / Reproduzir", new ToolTip(), PlayPauseButton, -55.0, -35.0);
     }
 
     private void MuteButton_Click(object sender, RoutedEventArgs e)
@@ -93,8 +90,6 @@ public partial class ControlsWindow : Window
         Log.Salvar("MuteButton_Click");
         _viewModel.ToggleMute();
         MuteButton.Content = _viewModel.IsMuted ? "🔇" : "🔊";
-
-        MuteButton.ToolTip = ToolTipDesign("Mutar / Desmutar", new ToolTip(), MuteButton, -55.0, -35.0);
     }
 
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -125,7 +120,6 @@ public partial class ControlsWindow : Window
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         _playerWindow.ReiniciarTimerInatividade();
-        SettingsButton.ToolTip = ToolTipDesign("Settings", new ToolTip(), SettingsButton, -55.0, -35.0);
         if (sender is not Button btn) return;
         ConfigMenu.DataContext = this.DataContext;
         ConfigMenu.PlacementTarget = btn;
@@ -138,7 +132,6 @@ public partial class ControlsWindow : Window
     private void FullscreenButton_Click(object sender, RoutedEventArgs e)
     {
         FullscreenRequested?.Invoke(this, EventArgs.Empty);
-        FullscreenButton.ToolTip = ToolTipDesign("Modo cinema", new ToolTip(), FullscreenButton, -55.0, -35.0);
     }
 
     private void SubtitleMenuGroup_Click(object sender, RoutedEventArgs e)
@@ -196,58 +189,19 @@ public partial class ControlsWindow : Window
         }
     }
 
-    // Design ToolTip dos botões + TimelineSlider
-    private ToolTip ToolTipDesign(string text, ToolTip tooltip, UIElement element, double? horiOffset = null, double? vertOffset = null)
+    private void ConfigurarToolTips()
     {
-        //tooltip.IsOpen = true;
-
-        tooltip.Background = Brushes.Transparent;
-        tooltip.BorderBrush = Brushes.Transparent;
-        tooltip.BorderThickness = new Thickness(0);
-        tooltip.Padding = new Thickness(0);
-
-        var textoBloco = new TextBlock
-        {
-            Text = text,
-            Foreground = Brushes.White,
-            FontSize = 14,
-            FontWeight = FontWeights.SemiBold,
-            FontFamily = new FontFamily("Segoe UI Variable Display, Bahnschrift"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        var containerEscuro = new Border
-        {
-            Background = (Brush)new BrushConverter().ConvertFromString("#E60A0A0A")!, // Fundo escuro com opacidade
-            BorderBrush = (Brush)new BrushConverter().ConvertFromString("#2D323F")!, // Cor da borda
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-
-            // AJUSTE DO PADDING: (Esquerda, Topo, Direita, Fundo)
-            Padding = new Thickness(14, 6, 14, 6),
-
-            Child = textoBloco // Injeta o texto dentro do container
-        };
-
-        tooltip.Content = containerEscuro;
-
-        tooltip.PlacementTarget = element;
-        tooltip.Placement = System.Windows.Controls.Primitives.PlacementMode.Relative;
-
-        if (horiOffset != null)
-        {
-            tooltip.HorizontalOffset = horiOffset ?? 0;
-            tooltip.VerticalOffset = vertOffset ?? 0;
-        }
-
-        return tooltip;
+        PlayPauseButton.ToolTip = Utils.ToolTipDesign("Play/Pause", PlayPauseButton, horiOffset: -32);
+        RetrocederButton.ToolTip = Utils.ToolTipDesign("Retroceder", RetrocederButton, horiOffset: -32);
+        AvancarButton.ToolTip = Utils.ToolTipDesign("Avançar", AvancarButton, horiOffset: -25);
+        MuteButton.ToolTip = Utils.ToolTipDesign("Ativar / Desativar som", MuteButton, horiOffset: -65);
+        SettingsButton.ToolTip = Utils.ToolTipDesign("Configurações", SettingsButton, horiOffset: -38);
+        FullscreenButton.ToolTip = Utils.ToolTipDesign("Tela cheia", FullscreenButton, horiOffset: -28);
+        LoadMediaButton.ToolTip = Utils.ToolTipDesign("Carregar legenda ou vídeo", LoadMediaButton, horiOffset: -75);
     }
 
     private async Task ProcessarEscolhaDeArquivoAsync()
     {
-        LoadMediaButton.ToolTip = ToolTipDesign("Carregar legenda ou vídeo", new ToolTip(), LoadMediaButton, -55.0, -35.0);
-
         Log.Salvar("LoadMediaButton_Click");
         var dialog = new OpenFileDialog
         {

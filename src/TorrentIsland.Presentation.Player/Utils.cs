@@ -1,5 +1,7 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -103,7 +105,52 @@ public class Utils
         if (string.IsNullOrWhiteSpace(valor)) return true;
         return !EhIdiomaValido(valor);
     }
+    /// <summary>
+    /// Cria um ToolTip com um design personalizado.
+    /// </summary>
+    /// <param name="text">O texto a ser exibido no tooltip.</param>
+    /// <param name="element">O elemento UI ao qual o tooltip está associado.</param>
+    /// <param name="horiOffset">O deslocamento horizontal do tooltip em relação ao elemento.</param>
+    /// <param name="vertOffset">O deslocamento vertical do tooltip em relação ao elemento.</param>
+    /// <returns>Um objeto ToolTip com o design especificado.</returns>
+    public static ToolTip ToolTipDesign(string text, UIElement element, double horiOffset = -55, double vertOffset = -40)
+    {
+        var tooltip = new ToolTip
+        {
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            PlacementTarget = element,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Relative,
+            HorizontalOffset = horiOffset,
+            VerticalOffset = vertOffset
+        };
 
+        var textoBloco = new TextBlock
+        {
+            Text = text,
+            Foreground = Brushes.White,
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            FontFamily = new FontFamily("Segoe UI Variable Display, Bahnschrift"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var containerEscuro = new Border
+        {
+            Background = (Brush)new BrushConverter().ConvertFromString("#E60A0A0A")!, // Fundo escuro com opacidade
+            BorderBrush = (Brush)new BrushConverter().ConvertFromString("#2D323F")!, // Cor da borda
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(14, 6, 14, 6),
+            Child = textoBloco
+        };
+
+        tooltip.Content = containerEscuro;
+        return tooltip;
+    }
     private static readonly Dictionary<string, string> Idiomas = new(StringComparer.OrdinalIgnoreCase)
     {
         ["pt"] = "Português",
