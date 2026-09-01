@@ -3,7 +3,6 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-src/TorrentIsland.Presentation.Player/Scripts/
 .vscode/
 .github/
 README.md
