@@ -124,6 +124,7 @@ public partial class ControlsWindow : Window
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
+        _playerWindow.ReiniciarTimerInatividade();
         SettingsButton.ToolTip = ToolTipDesign("Settings", new ToolTip(), SettingsButton, -55.0, -35.0);
         if (sender is not Button btn) return;
         ConfigMenu.DataContext = this.DataContext;
@@ -142,8 +143,9 @@ public partial class ControlsWindow : Window
 
     private void SubtitleMenuGroup_Click(object sender, RoutedEventArgs e)
     {
-        if (e.OriginalSource is MenuItem { Header: TrackItem track })
+        if (e.OriginalSource is MenuItem { Header: TrackItem track } dObject)
         {
+            _playerWindow.ReiniciarTimerInatividade();
             _viewModel.SelectSubtitleTrack(track.Id);
             _viewModel.SetTime();
 
@@ -155,15 +157,18 @@ public partial class ControlsWindow : Window
 
                 playerWindow?.VideoView.InvalidateVisual();
             });
+            FecharMenuConfiguracoes(dObject);
             return;
         }
     }
 
     private void AudioMenuGroup_Click(object sender, RoutedEventArgs e)
     {
-        if (e.OriginalSource is MenuItem { Header: TrackItem track })
+        if (e.OriginalSource is MenuItem { Header: TrackItem track } dObject)
         {
+            _playerWindow.ReiniciarTimerInatividade();
             _viewModel.SelectAudioTrack(track.Id);
+            FecharMenuConfiguracoes(dObject);
             return;
         }
     }
@@ -282,6 +287,27 @@ public partial class ControlsWindow : Window
         {
             Log.Salvar($"Torrent {dialog.FileName} aberto!");
             await _playerWindow.CarregarStreamTorrentAsync(dialog.FileName);
+        }
+    }
+
+    /// <summary>
+    /// Método auxiliar para encontrar o ContextMenu ancestral e fechá-lo de forma segura.
+    /// </summary>
+    private void FecharMenuConfiguracoes(DependencyObject elemento)
+    {
+        var atual = elemento;
+
+        // Sobe na árvore de elementos até encontrar o ContextMenu pai
+        while (atual != null && atual is not System.Windows.Controls.ContextMenu)
+        {
+            // Tenta pegar o pai lógico ou o pai visual usando um cast seguro
+            atual = (atual as FrameworkElement)?.Parent ?? VisualTreeHelper.GetParent(atual);
+            atual = (atual as FrameworkElement)?.Parent ?? VisualTreeHelper.GetParent(atual);
+        }
+
+        if (atual is ContextMenu menu)
+        {
+            menu.IsOpen = false;
         }
     }
 }

@@ -40,7 +40,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         _inactivityTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(3)
+            Interval = TimeSpan.FromSeconds(5)
         };
         _inactivityTimer.Tick += (_, _) => HideControls();
 
@@ -199,7 +199,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private void ReiniciarTimerInatividade()
+    public void ReiniciarTimerInatividade()
     {
         if (_viewModel.IsFullscreen)
         {
@@ -221,13 +221,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private void HideControls()
     {
-        _inactivityTimer.Stop();
-
         if (_viewModel.IsFullscreen)
         {
             _controls.Visibility = Visibility.Collapsed;
             Mouse.OverrideCursor = Cursors.None;
         }
+        ReiniciarTimerInatividade();
     }
 
     private void ToggleFullscreen()
