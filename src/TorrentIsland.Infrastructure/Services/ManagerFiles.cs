@@ -7,9 +7,9 @@ namespace TorrentIsland.Infrastructure.Services;
 
 public class ManagerFiles : IManagerFiles
 {
-    private string AppDataPath;
     private string CurrentDirectory;
 
+    public string AppDataPath { get; private set; }
     public string DownloadFolder { get; private set; }
     public string TorrentsFolder { get; private set; }
     public ManagerFiles(AppSettings app)
