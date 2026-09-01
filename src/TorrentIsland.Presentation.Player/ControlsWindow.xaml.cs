@@ -59,7 +59,7 @@ public partial class ControlsWindow : Window
             ? tempo.ToString(@"hh\:mm\:ss")
             : tempo.ToString(@"mm\:ss");
 
-            TimelineSlider.ToolTip = ToolTipDesign(
+            TimelineSlider.ToolTip = Utils.ToolTipDesign(
                 tempoFormatado,
                 TimelineSlider,
                 e.GetPosition(TimelineSlider).X - 28.0,

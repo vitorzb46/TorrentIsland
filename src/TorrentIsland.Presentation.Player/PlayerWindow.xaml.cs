@@ -349,7 +349,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             }
 
             if (Utils.TryGetDataObject(dataObject, DataFormats.Text, out string magnet)
-                && magnet.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase)) // Magnet link
+                && magnet.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) || magnet.StartsWith("http://itorrents.net", StringComparison.OrdinalIgnoreCase)) // Magnet link ou Link direto
             {
                 e.Handled = true;
                 _ = CarregarStreamTorrentAsync(magnet);
