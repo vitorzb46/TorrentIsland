@@ -1,6 +1,7 @@
-﻿using HtmlAgilityPack;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using System.IO;
 using System.Net.Http;
+using HtmlAgilityPack;
 
 namespace TorrentIsland.Presentation.Player.Scripts;
 
@@ -21,32 +22,43 @@ public class Limao
 
         try
         {
-            string html = await _client.GetStringAsync(url);
+            // string html = await _client.GetStringAsync(url);
+            string html = File.ReadAllText("asd.html");
 
             HtmlDocument doc = new();
             doc.LoadHtml(html);
 
-            var rows = doc.DocumentNode.SelectNodes("//table[@class='table2']/tbody");
+            var rows = doc.DocumentNode.SelectNodes("//table[contains(@class,'table2')]//tr[td]");
 
-            if (rows is null) return null!;
+            if (rows is null) return results;
 
             foreach (var row in rows)
             {
-                var link = row.SelectNodes("//td/div[@class='tt-name']/a[1]"); //GetAttributeValue href
-                var name = row.SelectNodes("//td/div[@class='tt-name']/a[2]"); //innerText
-                var size = row.SelectNodes("//tr/td[@class='tdnormal'][2]"); //innerText
-                var seed = row.SelectNodes("//tr/td[@class='tdseed']"); //innerText
-                var leech = row.SelectNodes("//tr/td[@class='tdleech']"); //innerText
+                var ttNameDiv = row.SelectSingleNode(".//div[contains(@class,'tt-name')]");
+                if (ttNameDiv == null) continue;
 
-                if (link is not null && name is not null && size is not null && seed is not null && leech is not null)
-                {
+                var downloadLinkNode = ttNameDiv.SelectSingleNode(".//a[contains(@href,'itorrents.net')]");
+                string downloadUrl = downloadLinkNode!.GetAttributeValue("href", "N/A");
 
-                }
+                var nameLinkNode = ttNameDiv.SelectSingleNode(".//a[not(contains(@href,'itorrents.net'))]");
+                string torrentName = nameLinkNode?.InnerText.Trim() ?? "N/A";
+
+                var tds = row.SelectNodes(".//td");
+                if (tds == null || tds.Count < 6) continue;
+
+                string size = tds[2].InnerText.Trim();
+                string seed = tds[3].InnerText.Trim();
+                string leech = tds[4].InnerText.Trim();
+
+                results.Add(new TorrentSearch(downloadUrl, torrentName, size, seed, leech));
             }
+
+            return results;
         }
         catch (Exception ex)
         {
             Log.Salvar($"Erro no script Limao: {ex.Message}");
+            return results;
         }
     }
 }
