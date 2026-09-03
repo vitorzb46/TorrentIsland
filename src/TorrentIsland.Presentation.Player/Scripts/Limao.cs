@@ -7,26 +7,53 @@ namespace TorrentIsland.Presentation.Player.Scripts;
 
 public class Limao
 {
-    //LinkDownload - TorrentName - Size - Seed - Leech
-    public record TorrentSearch(string LinkDownload, string TorrentName, string Size, string Seed, string Leech);
+    private static readonly string CacheFolder = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "TorrentIsland",
+        "Cache",
+        "htmls",
+        "Limao");
+
+    private static string HtmlPath { get; set; } = string.Empty;
+    private static readonly DateTime LimitDate = DateTime.Now.AddDays(-7);
     private static readonly HttpClient _client;
     static Limao()
     {
         _client = new HttpClient();
+        CanDelete();
+        Directory.CreateDirectory(CacheFolder);
     }
 
-    public static async Task<ObservableCollection<TorrentSearch>> SearchAsync(string query)
+    public static async Task<ObservableCollection<TorrentSearchDto
+>> SearchAsync(string query)
     {
-        var results = new ObservableCollection<TorrentSearch>();
+        var results = new ObservableCollection<TorrentSearchDto
+    >();
         string url = $"https://www.limetorrents.fun/search/all/{query}/seeds/1/";
-
+        string htmlFile = string.Concat(query, ".html");
+        string loadHtml = string.Empty;
+        HtmlPath = Path.Combine(CacheFolder, htmlFile);
+        
         try
         {
-            // string html = await _client.GetStringAsync(url);
-            string html = File.ReadAllText("asd.html");
+            if (File.Exists(HtmlPath))
+            {
+                Log.Salvar($"Carregando HTML do cache: {HtmlPath}");
+                loadHtml = File.ReadAllText(Path.Combine(CacheFolder, HtmlPath));
+            }
+            else
+            {
+                Log.Salvar($"Carregando HTML da web: {url}");
+                loadHtml = await _client.GetStringAsync(url);
+            }
 
             HtmlDocument doc = new();
-            doc.LoadHtml(html);
+            doc.LoadHtml(loadHtml);
+
+            if (doc != null && !File.Exists(HtmlPath))
+            {
+                File.WriteAllText(HtmlPath, loadHtml);
+            }
 
             var rows = doc.DocumentNode.SelectNodes("//table[contains(@class,'table2')]//tr[td]");
 
@@ -50,7 +77,8 @@ public class Limao
                 string seed = tds[3].InnerText.Trim();
                 string leech = tds[4].InnerText.Trim();
 
-                results.Add(new TorrentSearch(downloadUrl, torrentName, size, seed, leech));
+                results.Add(new TorrentSearchDto
+            (downloadUrl, torrentName, size, seed, leech));
             }
 
             return results;
@@ -59,6 +87,18 @@ public class Limao
         {
             Log.Salvar($"Erro no script Limao: {ex.Message}");
             return results;
+        }
+    }
+
+    private static void CanDelete()
+    {
+        if (File.Exists(HtmlPath))
+        {
+            var last = File.GetLastWriteTime(HtmlPath);
+            if (last >= LimitDate)
+            {
+                File.Delete(HtmlPath);
+            }
         }
     }
 }
