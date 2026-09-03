@@ -71,6 +71,7 @@ public class TorrentRepository : ITorrentRepository
                         {
                             var torrentTemp = Path.Combine(ManagerFiles.AppDataPath, Guid.NewGuid().ToString() + ".torrent");
                             torrentSource = await Managers.LoadAsync(_client!, uri, torrentTemp);
+                            File.Delete(torrentTemp);
                         }
                     }
                     break;
