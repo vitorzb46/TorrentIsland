@@ -177,6 +177,25 @@ public partial class ControlsWindow : Window
             Log.Salvar($"Erro ao processar arquivo torrent: {ex.Message}");
         }
     }
+
+    private void BuscarTorrentMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var searchWindow = new TorrentSearchWindow
+        {
+            Owner = GetWindow(this)
+        };
+
+        if (searchWindow.ShowDialog() == true)
+        {
+            string? linkSelecionado = searchWindow.LinkSelecionado;
+            if (!string.IsNullOrEmpty(linkSelecionado))
+            {
+                Log.Salvar($"BuscarTorrentMenuItem_Click - Link selecionado: {linkSelecionado}");
+                
+                _ = _playerWindow.CarregarStreamTorrentAsync(linkSelecionado);
+            }
+        }
+    }
     #endregion
 
 

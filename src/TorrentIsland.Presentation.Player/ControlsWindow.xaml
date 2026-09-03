@@ -228,6 +228,9 @@
                         <Button.ContextMenu>
                             <ContextMenu x:Name="ConfigMenu">
 
+                                <!--  Buscar Torrents  -->
+                                <MenuItem Click="BuscarTorrentMenuItem_Click" Header="🔍 Buscar Torrents" />
+
                                 <!--  Adicionar Torrent  -->
                                 <MenuItem Click="TorrentMenuItem_Click" Header="☠ Adicionar Torrent" />
 
