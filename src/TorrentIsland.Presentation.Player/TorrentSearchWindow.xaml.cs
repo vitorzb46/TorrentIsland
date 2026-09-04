@@ -20,6 +20,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         if (string.IsNullOrEmpty(query)) return;
 
         TxtSearch.IsEnabled = false;
+        BtnBuscar.IsEnabled = false;
         try
         {
             var resultado = await SearchAsync(query);
@@ -32,10 +33,34 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         finally
         {
             TxtSearch.IsEnabled = true;
+            BtnBuscar.IsEnabled = true;
         }
     }
 
     private void ListBoxTorrents_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        SelectedTorrent();
+    }
+    
+    private void TxtSearch_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            BtnBuscar_Click(sender, e);
+            e.Handled = true;
+        }
+    }
+
+    private void ListBoxTorrents_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            SelectedTorrent();
+            e.Handled = true;
+        }
+    }
+
+    private void SelectedTorrent()
     {
         if (ListBoxTorrents.SelectedItem is TorrentSearchDto torrent)
         {
@@ -46,11 +71,13 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private void TxtSearch_KeyDown(object sender, KeyEventArgs e)
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
+        if (e.Key == Key.Escape)
         {
-            BtnBuscar_Click(sender, e);
+            DialogResult = false;
+            Close();
+            e.Handled = true;
         }
     }
 }
