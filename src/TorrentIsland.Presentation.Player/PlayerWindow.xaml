@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
+    Icon="pack://application:,,,/Resources/torrent_island.ico" 
     Width="1280"
     Height="720"
     AllowDrop="True"
@@ -11,7 +12,6 @@
     DragEnter="PlayerWindow_DragEnter"
     DragOver="PlayerWindow_DragOver"
     Drop="PlayerWindow_Drop"
-    ExtendsContentIntoTitleBar="True"
     MouseMove="Player_Mouse"
     WindowBackdropType="None"
     WindowStartupLocation="CenterScreen">
@@ -36,7 +36,7 @@
             Height="32"
             Background="#FF1A1A1A"
             Foreground="White"
-            Icon="pack://application:,,,/Resources/app_icon.ico" />
+            Icon="{ui:ImageIcon 'pack://application:,,,/Resources/torrent_island.ico'}" />
 
 
         <Grid Grid.Row="1" Background="Black">

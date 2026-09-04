@@ -6,10 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Resources\torrent_island.ico</ApplicationIcon>
+    <!-- <AssemblyName>TorrentIsland</AssemblyName> -->
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Resources\torrent_island.ico" />
+    <Resource Include="Resources\torrent_island.ico" />
   </ItemGroup>
 
   <ItemGroup>
