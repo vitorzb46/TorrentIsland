@@ -8,6 +8,8 @@ using TorrentIsland.Infrastructure.DependencyInjection;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Presentation.Console.Helpers;
 using TorrentIsland.Presentation.Console.Renderers;
+using Wpf.Ui.Appearance;
+using Wpf.Ui.Controls;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -18,6 +20,8 @@ public partial class App : System.Windows.Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
+        ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Mica, true);
+
         base.OnStartup(e);
 
         // Logs limpos a cada execução para o timeline não misturar sessões.
