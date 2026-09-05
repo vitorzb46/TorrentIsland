@@ -309,19 +309,16 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     public async Task PopulateTracksAsync(CancellationToken ct = default)
     {
-        // Aguarda o vídeo iniciar (o MediaPlayer precisa do media carregado), com timeout
-        // para não travar a UI caso a mídia falhe (ex.: URL inacessível).
-        var esperaInicio = Task.Delay(TimeSpan.FromSeconds(15), ct);
+        var esperaInicio = Task.Delay(TimeSpan.FromSeconds(5), ct);
         while (!_mediaPlayer.IsPlaying && _mediaPlayer.State != VLCState.Ended && _mediaPlayer.State != VLCState.Error)
         {
             ct.ThrowIfCancellationRequested();
             if (await Task.WhenAny(Task.Delay(100, ct), esperaInicio).ConfigureAwait(true) == esperaInicio)
             {
-                break; // timeout: segue para popular faixas mesmo se não iniciou
+                break;
             }
         }
 
-        // Garante que a mutação das ObservableCollection ocorra na UI thread (Dispatcher).
         if (System.Windows.Application.Current is { } app && !app.Dispatcher.CheckAccess())
         {
             await app.Dispatcher.InvokeAsync(() => PopulateTracksAsync(ct)).Task.ConfigureAwait(true);
@@ -655,9 +652,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private void OnEndReached(object? sender, EventArgs e) => IsPlaying = false;
     private void OnPlaying(object? sender, EventArgs e)
     {
-        Log.Salvar($"EVENT Playing | State={_mediaPlayer.State}");
         IsPlaying = true;
-        LoadingMessage = "Carregando...";
         VideoView_BG();
     }
     private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
@@ -666,12 +661,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             if (e.Cache < 100 && !IsPlaying)
             {
-                LoadingMessage = "Buffering...";
                 IsLoading = true;
-            }
-            else
-            {
-                IsLoading = false;
             }
         });
     }
