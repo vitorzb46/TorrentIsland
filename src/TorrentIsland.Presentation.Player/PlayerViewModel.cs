@@ -170,13 +170,15 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         _media?.Dispose();
         _media = media;
+        _mediaPlayer.Media = media;
         _mediaPlayer.Play(_media);
+        _mediaPlayer.SetPause(true);
     }
     public void SeekTo(TimeSpan timeSpan)
     {
-        if (_duracaoTotalMs > 0)
+        if (DuracaoTotalEmMilissegundos > 0)
         {
-            Position = (timeSpan.TotalMilliseconds / _duracaoTotalMs) * 100.0;
+            Position = (timeSpan.TotalMilliseconds / DuracaoTotalEmMilissegundos) * 100.0;
         }
         _mediaPlayer.SeekTo(timeSpan);
     }
@@ -343,6 +345,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Private Methods
+    private void VideoView_BG()
+    {
+        Utils.AtualizarUI(() =>
+        {
+            var mainHwnd = new WindowInteropHelper(System.Windows.Application.Current.MainWindow).Handle;
+            Utils.VideoView_Background_Black(mainHwnd);
+        });
+    }
     private int ObterSegundosProgressivos(int cliques)
     {
         return cliques switch
@@ -379,7 +389,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     private async Task ProcessarLegendasUndAsync()
     {
-        Pause();
+        LoadingMessage = "Processando legendas...";
+        IsLoading = true;
 
         var media = _mediaPlayer.Media;
         if (media == null) return;
@@ -597,8 +608,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value, metaDesc)));
             }
         });
-
-        Play();
     }
 
     /// <summary>
@@ -660,22 +669,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         Log.Salvar($"EVENT Playing | State={_mediaPlayer.State}");
         IsPlaying = true;
-        IsLoading = false;
+        LoadingMessage = "Carregando...";
+        VideoView_BG();
     }
     private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
     {
         System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
         {
-            float cachePreenchido = e.Cache;
-
-            if (cachePreenchido < 100)
+            if (e.Cache < 100)
             {
+                LoadingMessage = "Buffering...";
                 IsLoading = true;
-            }
-            else
-            {
-                IsLoading = false;
-                Log.Salvar("[ALERTA REDE] Buffer cheio. Continuando reprodução.");
             }
         });
     }
@@ -693,11 +697,41 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         Position = e.Position * 100.0;
 
-        if (_duracaoTotalMs > 0)
+        if (DuracaoTotalEmMilissegundos > 0)
         {
-            long posicaoMs = (long)(e.Position * _duracaoTotalMs);
+            long posicaoMs = (long)(e.Position * DuracaoTotalEmMilissegundos);
             PosicaoEmMilissegundos = posicaoMs;
         }
+    }
+    private void OnMediaChanged(object? sender, MediaPlayerMediaChangedEventArgs e)
+    {
+        IsLoading = true;
+        AudioTracks.Clear();
+        SubtitleTracks.Clear();
+        VideoView_BG();
+    }
+    private void OnEncounteredError(object? sender, EventArgs e)
+    {
+        Log.Salvar($"EncounteredError | State={_mediaPlayer.State} | Mrl={_mediaPlayer.Media?.Mrl}");
+
+        if (_mediaPlayer.Media != null)
+        {
+            Log.Salvar($"Media Type: {_mediaPlayer.Media.Type}");
+            Log.Salvar($"Media State: {_mediaPlayer.Media.State}");
+            Log.Salvar($"Media Duration: {_mediaPlayer.Media.Duration}");
+            Log.Salvar($"Media Tracks: {_mediaPlayer.Media.Tracks?.Length ?? 0}");
+        }
+        IsLoading = false;
+        IsPlaying = false;
+    }
+    private void OnLengthChanged(object? sender, MediaPlayerLengthChangedEventArgs e)
+    {
+        long duracaoDoFilmeMs = e.Length;
+
+        Utils.AtualizarUI(() =>
+        {
+            InicializarDuracaoDoVideo(duracaoDoFilmeMs);
+        });
     }
     #endregion
 
@@ -706,11 +740,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         if (_disposed) return;
         _disposed = true;
+
         Log.Salvar("Dispose do ViewModel iniciado");
 
-        //#if DEBUG
-        //        _diagnosticTimer?.Dispose();
-        //#endif
         // Remove imediatamente as inscrições de eventos para evitar callbacks fantasmas
         _mediaPlayer.PositionChanged -= OnPositionChanged;
         _mediaPlayer.Playing -= OnPlaying;
@@ -733,7 +765,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
             // Descarta o MediaPlayer e depois a instância do LibVLC
             _mediaPlayer.Dispose();
-            _libVLC.Dispose();
+            LibVLC.Dispose();
         }
         catch (Exception ex)
         {
@@ -742,19 +774,4 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         Log.Salvar("Dispose do ViewModel concluído");
     }
-
-    //public void DiagnosticarSincronia(string titulo)
-    //{
-    //    Log.Salvar($"@***===== {titulo} =====***@");
-    //    Log.Salvar("=== DIAGNÓSTICO DE SINCRONIA ===");
-    //    Log.Salvar($"MediaPlayer.Time: {_mediaPlayer.Time}");
-    //    Log.Salvar($"MediaPlayer.Position: {_mediaPlayer.Position:F6}");
-    //    Log.Salvar($"MediaPlayer.Length: {_mediaPlayer.Length}");
-    //    Log.Salvar($"DuracaoTotalEmMilissegundos: {DuracaoTotalEmMilissegundos}");
-    //    Log.Salvar($"PosicaoEmMilissegundos: {PosicaoEmMilissegundos}");
-    //    Log.Salvar($"TempoAtualFormatado: {TempoAtualFormatado}");
-    //    Log.Salvar($"TempoTotalFormatado: {TempoTotalFormatado}");
-    //    Log.Salvar($"Position (percentual): {Position:F4}%");
-    //    Log.Salvar("==============================");
-    //}
 }
