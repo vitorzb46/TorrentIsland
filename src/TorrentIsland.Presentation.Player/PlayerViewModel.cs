@@ -676,10 +676,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
         {
-            if (e.Cache < 100)
+            if (e.Cache < 100 && !IsPlaying)
             {
                 LoadingMessage = "Buffering...";
                 IsLoading = true;
+            }
+            else
+            {
+                IsLoading = false;
             }
         });
     }

@@ -73,21 +73,9 @@ public partial class ControlsWindow : Window
     #endregion
 
     #region Coluna 1 (Botoes de controle)
-    private void RetrocederButton_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.RetrocederTempo();
-        if (_viewModel.IsPlaying == true)
-        {
-            _viewModel.IsLoading = false;
-            PlayPauseButton.Content = "⏸";
-        }
-    }
+    private void RetrocederButton_Click(object sender, RoutedEventArgs e) => _viewModel.RetrocederTempo();
 
-    private void AvancarButton_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.AvancarTempo();
-        if (_viewModel.IsPlaying == true) _viewModel.IsLoading = false;
-    }
+    private void AvancarButton_Click(object sender, RoutedEventArgs e) => _viewModel.AvancarTempo();
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
