@@ -4,81 +4,82 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
-    Icon="pack://application:,,,/Resources/torrent_island.ico" 
     Width="1280"
     Height="720"
     AllowDrop="True"
-    Background="black"
+    Background="Black"
     DragEnter="PlayerWindow_DragEnter"
     DragOver="PlayerWindow_DragOver"
     Drop="PlayerWindow_Drop"
+    Icon="pack://application:,,,/Resources/torrent_island.ico"
     MouseMove="Player_Mouse"
-    WindowBackdropType="None"
     WindowStartupLocation="CenterScreen">
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+    <ui:ClientAreaBorder Background="Black">
 
-            <RowDefinition Height="*" />
+        <Grid x:Name="MainGrid" Background="Black">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
 
-        </Grid.RowDefinitions>
+                <RowDefinition Height="*" />
 
-        <Grid.Resources>
-            <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        </Grid.Resources>
+            </Grid.RowDefinitions>
 
-
-        <ui:TitleBar
-            x:Name="MyTitleBar"
-            Title="Torrent Island"
-            Grid.Row="0"
-            Height="32"
-            Background="#FF1A1A1A"
-            Foreground="White"
-            Icon="{ui:ImageIcon 'pack://application:,,,/Resources/torrent_island.ico'}" />
+            <Grid.Resources>
+                <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            </Grid.Resources>
 
 
-        <Grid Grid.Row="1" Background="Black">
+            <ui:TitleBar
+                x:Name="MyTitleBar"
+                Title="Torrent Island"
+                Grid.Row="0"
+                Height="32"
+                Background="#FF1A1A1A"
+                Foreground="White"
+                Icon="{ui:ImageIcon 'pack://application:,,,/Resources/torrent_island.ico'}" />
 
 
-            <vlc:VideoView
-                x:Name="VideoView"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch" />
+            <Grid Grid.Row="1" Background="Black">
+
+                <vlc:VideoView
+                    x:Name="VideoView"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Visibility="{Binding IsVideoVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <Grid
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+
+                    <Border
+                        Padding="32,28"
+                        Background="#CC0A0A0A"
+                        CornerRadius="16">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
 
 
-            <Grid
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ui:ProgressRing
+                                Width="45"
+                                Height="45"
+                                IsIndeterminate="True"
+                                Progress="0" />
 
-                <Border
-                    Padding="32,28"
-                    Background="#CC0A0A0A"
-                    CornerRadius="16">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock
+                                Margin="0,16,0,0"
+                                HorizontalAlignment="Center"
+                                FontFamily="Segoe UI Variable Display, Bahnschrift"
+                                FontSize="15"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Text="{Binding LoadingMessage}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
 
-
-                        <ui:ProgressRing
-                            Width="45"
-                            Height="45"
-                            IsIndeterminate="True"
-                            Progress="0" />
-
-                        <TextBlock
-                            Margin="0,16,0,0"
-                            HorizontalAlignment="Center"
-                            FontFamily="Segoe UI Variable Display, Bahnschrift"
-                            FontSize="15"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            Text="Carregando..." />
-                    </StackPanel>
-                </Border>
             </Grid>
 
         </Grid>
-
-    </Grid>
+    </ui:ClientAreaBorder>
 </ui:FluentWindow>
