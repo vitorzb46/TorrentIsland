@@ -77,27 +77,16 @@ public partial class ControlsWindow : Window
 
     private void AvancarButton_Click(object sender, RoutedEventArgs e) => _viewModel.AvancarTempo();
 
-    private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.TogglePlay();
-        PlayPauseButton.Content = _viewModel.IsPlaying ? "⏸" : "▶";
-    }
+    private void PlayPauseButton_Click(object sender, RoutedEventArgs e) => _viewModel.TogglePlay();
 
-    private void MuteButton_Click(object sender, RoutedEventArgs e)
-    {
-        Log.Salvar("MuteButton_Click");
-        _viewModel.ToggleMute();
-        MuteButton.Content = _viewModel.IsMuted ? "🔇" : "🔊";
-    }
+    private void MuteButton_Click(object sender, RoutedEventArgs e) => _viewModel.ToggleMute();
 
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        Log.Salvar("VolumeSlider_ValueChanged");
-        if (_viewModel.IsMuted && _viewModel.Volume > 0)
+        if (Math.Abs(e.NewValue - e.OldValue) < 0.001) return;
+        if (_viewModel.IsMuted && e.NewValue > 0)
         {
             _viewModel.SetMute(false);
-            MuteButton.Content = "🔊";
-            Log.Salvar("MuteButton desativado");
         }
     }
     #endregion

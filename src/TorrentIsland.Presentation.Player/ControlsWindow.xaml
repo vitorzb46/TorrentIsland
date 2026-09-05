@@ -158,9 +158,18 @@
                     <Button
                         x:Name="PlayPauseButton"
                         Click="PlayPauseButton_Click"
-                        Content="▶"
-                        FontSize="18"
-                        Style="{StaticResource PlayerButtonStyle}" />
+                        FontSize="18">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource PlayerButtonStyle}" TargetType="Button">
+                                <Setter Property="Content" Value="▶" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                        <Setter Property="Content" Value="⏸" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button
                         x:Name="AvancarButton"
                         Click="AvancarButton_Click"
@@ -169,10 +178,18 @@
                         Style="{StaticResource PlayerButtonStyle}" />
                     <Button
                         x:Name="MuteButton"
-                        Width="35"
-                        Click="MuteButton_Click"
-                        Content="🔊"
-                        Style="{StaticResource PlayerButtonStyle}" />
+                        Click="MuteButton_Click">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource PlayerButtonStyle}" TargetType="Button">
+                                <Setter Property="Content" Value="🔊" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                        <Setter Property="Content" Value="🔇" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Slider
                         x:Name="VolumeSlider"
                         Width="100"

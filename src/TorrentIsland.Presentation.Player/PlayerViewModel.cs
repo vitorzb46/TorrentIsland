@@ -185,26 +185,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     public void SetMute(bool mute)
     {
-        Log.Salvar($"SetMute | mute={mute}");
         _mediaPlayer.Mute = mute;
         IsMuted = mute;
     }
 
     public void ToggleMute()
     {
-        // _mediaPlayer.ToggleMute();
+        _mediaPlayer.Mute = !_mediaPlayer.Mute;
         IsMuted = _mediaPlayer.Mute;
-        Log.Salvar($"ToggleMute | IsMuted={IsMuted}");
-        if (IsMuted)
-        {
-            _mediaPlayer.Mute = false;
-            Log.Salvar("MuteButton desativado");
-        }
-        else
-        {
-            _mediaPlayer.Mute = true;
-            Log.Salvar("MuteButton ativado");
-        }
     }
 
     public void TogglePlay()
