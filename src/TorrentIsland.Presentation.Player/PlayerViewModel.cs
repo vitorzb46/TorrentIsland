@@ -19,35 +19,14 @@ namespace TorrentIsland.Presentation.Player;
 public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposable
 {
     #region Fields
-    private readonly LibVLC _libVLC;
     private readonly MediaPlayer _mediaPlayer;
     private Media? _media;
-    private bool _disposed;
-    private bool _isLoading;
-    private bool _isFullscreen;
-    private bool _isPlaying;
-    private bool _isMuted;
-    private double _position;
-    private int _volume = 100;
-    private long _duracaoTotalMs;
-    private long _posicaoMs;
-    //private System.Threading.Timer? _diagnosticTimer;
-    public ObservableCollection<TrackItem> AudioTracks { get; } = [];
-    public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
-    private ICommand TogglePlayCommand { get; }
-    private ICommand ToggleFullscreenCommand { get; }
-    private ICommand LoadExternalSubtitleCommand { get; }
-    private string _tempoAtualFormatado = "00:00:00";
-    private string _tempoTotalFormatado = "00:00:00";
+    private bool _disposed;  
     private int _cliquesAvancar = 0;
     private int _cliquesRetroceder = 0;
     private DateTime _ultimoCliqueAvancar = DateTime.MinValue;
     private DateTime _ultimoCliqueRetroceder = DateTime.MinValue;
-    private string _feedbackTempo = "";
-    private bool _mostrarFeedback = false;
-    public LibVLC LibVLC => _libVLC;
-    public string? TorrentName { get; set; }
-    public string? MidiaFilePath { get; set; }
+    
 
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
@@ -73,130 +52,92 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             _ = ProcessarLegendasUndAsync();
         };
 
-        _mediaPlayer.EncounteredError += (_, _) =>
-        {
-            Log.Salvar($"EncounteredError | State={_mediaPlayer.State} | Mrl={_mediaPlayer.Media?.Mrl}");
-
-            if (_mediaPlayer.Media != null)
-            {
-                Log.Salvar($"Media Type: {_mediaPlayer.Media.Type}");
-                Log.Salvar($"Media State: {_mediaPlayer.Media.State}");
-                Log.Salvar($"Media Duration: {_mediaPlayer.Media.Duration}");
-                Log.Salvar($"Media Tracks: {_mediaPlayer.Media.Tracks?.Length ?? 0}");
-            }
-
-        };
-
-        _mediaPlayer.LengthChanged += (sender, args) =>
-        {
-            long duracaoDoFilmeMs = args.Length;
-
-            Utils.AtualizarUI(() =>
-            {
-                InicializarDuracaoDoVideo(duracaoDoFilmeMs);
-            });
-        };
-
-        TogglePlayCommand = new RelayCommand(TogglePlay);
-        ToggleFullscreenCommand = new RelayCommand(ToggleFullscreen);
-        LoadExternalSubtitleCommand = new RelayCommand(LoadExternalSubtitle);
-
-        //#if DEBUG
-        //        Log.Salvar("DEBUG: TIMER DE SINCRONIA ATIVADO");
-        //        _diagnosticTimer = new System.Threading.Timer(
-        //        _ =>
-        //        {
-        //            try
-        //            {
-        //                //DiagnosticarSincronia("TIMER DE SINCRONIA CTOR - DEBUG");
-        //            }
-        //            catch { }
-        //        },
-        //        null,
-        //        TimeSpan.FromSeconds(3),
-        //        TimeSpan.FromSeconds(5));
-        //#endif
-    }
-    #endregion
-
     #region Properties
+    public ObservableCollection<TrackItem> AudioTracks { get; } = [];
+    public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
+    public LibVLC LibVLC { get; }
+    public string? TorrentName { get; set; }
+    public string? MidiaFilePath { get; set; }
+    public string LoadingMessage
+    {
+        get;
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+    } = "Carregando...";
+
+    public bool IsVideoVisible { get; set { field = value; OnPropertyChanged(); } } = false;
+
     public bool IsLoading
     {
-        get => _isLoading;
-        set { _isLoading = value; OnPropertyChanged(); }
+        get; set
+        {
+            if (field == value) return;
+            field = value;
+
+            if (value)
+            {
+                IsPlaying = false;
+            }
+            OnPropertyChanged();
+        }
     }
 
-    public bool IsFullscreen
-    {
-        get => _isFullscreen;
-        set { _isFullscreen = value; OnPropertyChanged(); }
-    }
+    public bool IsFullscreen { get; set { field = value; OnPropertyChanged(); } }
 
     public bool IsPlaying
     {
-        get => _isPlaying;
-        set { _isPlaying = value; OnPropertyChanged(); }
+        get; set
+        {
+            if (field == value) return;
+            field = value;
+
+            if (value)
+            {
+                IsLoading = false;
+            }
+            OnPropertyChanged();
+        }
     }
 
-    public bool IsMuted
-    {
-        get => _isMuted;
-        set { _isMuted = value; OnPropertyChanged(); }
-    }
+    public bool IsMuted { get; set { field = value; OnPropertyChanged(); } }
 
     public double Position
     {
-        get => _position;
-        set
+        get; set
         {
-            if (Math.Abs(_position - value) < 0.01) return;
-            _position = value;
+            if (Math.Abs(field - value) < 0.01) return;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public int Volume
     {
-        get => _volume;
-        set
+        get; set
         {
             var novo = Math.Clamp(value, 0, 100);
-            if (novo == _volume) return;
-            _volume = novo;
-            _mediaPlayer.Volume = _volume;
+            if (novo == field) return;
+            field = novo;
+            _mediaPlayer.Volume = field;
             OnPropertyChanged();
         }
-    }
+    } = 100;
 
-    public long DuracaoTotalEmMilissegundos
-    {
-        get => _duracaoTotalMs;
-        set { _duracaoTotalMs = value; OnPropertyChanged(); }
-    }
+    public long DuracaoTotalEmMilissegundos { get; set { field = value; OnPropertyChanged(); } }
 
-    public long PosicaoEmMilissegundos
-    {
-        get => _posicaoMs;
-        set { _posicaoMs = value; OnPropertyChanged(); TempoAtualFormatado = FormatarTempo(value); }
-    }
+    public long PosicaoEmMilissegundos { get; set { field = value; OnPropertyChanged(); TempoAtualFormatado = FormatarTempo(value); } }
 
-    public string TempoAtualFormatado
-    {
-        get => _tempoAtualFormatado;
-        private set { _tempoAtualFormatado = value; OnPropertyChanged(); }
-    }
+    public string TempoAtualFormatado { get; private set { field = value; OnPropertyChanged(); } } = "00:00:00";
 
-    public string TempoTotalFormatado
-    {
-        get => _tempoTotalFormatado;
-        private set { _tempoTotalFormatado = value; OnPropertyChanged(); }
-    }
+    public string TempoTotalFormatado { get; private set { field = value; OnPropertyChanged(); } } = "00:00:00";
 
-    public string FeedbackTempo
-    {
-        get => _feedbackTempo;
-        private set { _feedbackTempo = value; OnPropertyChanged(); }
-    }
+    public string FeedbackTempo { get; private set { field = value; OnPropertyChanged(); } } = "";
 
     public bool MostrarFeedback
     {
