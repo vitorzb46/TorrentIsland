@@ -151,7 +151,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     public void SelectSubtitleTrack(int spuId) => _mediaPlayer.SetSpu(spuId);
 
-    public void SetTime() => _mediaPlayer.Time -= 000001;
+    // public void SetTime() => _mediaPlayer.Time -= 000001;
+    public void SetReset()
+    {
+        _mediaPlayer.SetPause(true);
+        _mediaPlayer.SetPause(false);
+    }
+
+    public void SetPause(bool pause) => _mediaPlayer.SetPause(pause);
 
     public void InicializarDuracaoDoVideo(long totalMilliseconds)
     {
