@@ -20,6 +20,15 @@ public partial class App : System.Windows.Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
+        AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+            Log.Salvar($"UnhandledException: {args.ExceptionObject}");
+
+        DispatcherUnhandledException += (s, args) =>
+        {
+            Log.Salvar($"DispatcherUnhandledException: {args.Exception.Message}");
+            args.Handled = true;
+        };
+
         ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Mica, true);
 
         base.OnStartup(e);
