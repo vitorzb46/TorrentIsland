@@ -1,8 +1,11 @@
-using LibVLCSharp.Shared;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
+using LibVLCSharp.Shared;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.VLC;
@@ -19,9 +22,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     public PlayerWindow(IStreamService streamService, IManagers managers)
     {
-        Log.Salvar($"PlayerWindow ctor | mediaUrl={mediaUrl}");
-        InitializeComponent();
+        RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
+        InitializeComponent();
+        
         var vlc = new VlcPlayerService();
 
         _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer);
@@ -57,18 +61,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             PosicionarControles();
             _controls.Show();
         };
-        Loaded += async (_, _) =>
-        {
-            if (!string.IsNullOrWhiteSpace(mediaUrl))
-            {
-                await CarregarMidiaAsync(mediaUrl);
-            }
-            else
-            {
-                // Talvez overlay no futuro
-                Log.Salvar("Nenhuma mídia inicial fornecida.");
-            }
-        };
         Closed += (_, _) =>
         {
             Log.Salvar("Window fechada — dispose do ViewModel");
@@ -83,6 +75,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         LocationChanged += (_, _) => PosicionarControles();
         SizeChanged += (_, _) => PosicionarControles();
         StateChanged += (_, _) => PosicionarControles();
+
         StreamService = streamService;
         Managers = managers;
     }
@@ -91,12 +84,14 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
+            _viewModel.LoadingMessage = "Iniciando mídia...";
+            _viewModel.IsLoading = true;
             Log.Salvar($"Carregando mídia: {caminhoOuUrl}");
 
             Media media;
             if (File.Exists(caminhoOuUrl))
             {
-                Log.Salvar($"Arquivo existe. Tamanho: {Utils.BytesFormat} bytes");
+                Log.Salvar($"Arquivo existe. Tamanho: {Utils.BytesFormat(caminhoOuUrl)} bytes");
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
                 _viewModel.MidiaFilePath = caminhoOuUrl;
             }
@@ -130,8 +125,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _viewModel.SetMedia(media);
             await Utils.AtualizarUIAsync(async () =>
             {
-                await _viewModel.PopulateTracksAsync().ConfigureAwait(false);
+                await _viewModel.PopulateTracksAsync();
+                _viewModel.SetPause(false);
                 ShowControls();
+                _viewModel.IsLoading = false;
+                _viewModel.IsVideoVisible = true;
             });
         }
         catch (Exception ex)
@@ -146,6 +144,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
+            _viewModel.LoadingMessage = "Iniciando streaming...";
             _viewModel.IsLoading = true;
             Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
 
@@ -174,6 +173,15 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     /// <summary>Posiciona a janela de controles na parte inferior da janela de vídeo.</summary>
     private void PosicionarControles()
     {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            VideoView.Width = 0;
+            VideoView.Height = 0;
+            VideoView.Width = double.NaN;
+            VideoView.Height = double.NaN;
+            VideoView.InvalidateVisual();
+        }), DispatcherPriority.Render);
+
         if (_controls is null) return;
 
         // Se estiver em modo cinema, usamos a matemática baseada na tela cheia
@@ -234,6 +242,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         if (WindowState == WindowState.Normal)
         {
             // Entra em tela cheia
+            Background = Brushes.Black;
             WindowStyle = WindowStyle.None;
             WindowState = WindowState.Maximized;
             _viewModel.IsFullscreen = true;
@@ -246,6 +255,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         else
         {
             // Volta para o modo janela
+            Background = Brushes.Black;
             WindowStyle = WindowStyle.SingleBorderWindow;
             WindowState = WindowState.Normal;
             _viewModel.IsFullscreen = false;
