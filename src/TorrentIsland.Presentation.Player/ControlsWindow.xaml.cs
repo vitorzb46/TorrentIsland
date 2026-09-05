@@ -1,9 +1,13 @@
-using Microsoft.Win32;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Win32;
+using Wpf.Ui.Controls;
+using Button = System.Windows.Controls.Button;
+using MenuItem = System.Windows.Controls.MenuItem;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -72,11 +76,17 @@ public partial class ControlsWindow : Window
     private void RetrocederButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.RetrocederTempo();
+        if (_viewModel.IsPlaying == true)
+        {
+            _viewModel.IsLoading = false;
+            PlayPauseButton.Content = "⏸";
+        }
     }
 
     private void AvancarButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.AvancarTempo();
+        if (_viewModel.IsPlaying == true) _viewModel.IsLoading = false;
     }
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
@@ -123,7 +133,7 @@ public partial class ControlsWindow : Window
         if (sender is not Button btn) return;
         ConfigMenu.DataContext = this.DataContext;
         ConfigMenu.PlacementTarget = btn;
-        ConfigMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+        ConfigMenu.Placement = PlacementMode.Top;
         ConfigMenu.HorizontalOffset = -120;
         ConfigMenu.VerticalOffset = -25;
         ConfigMenu.IsOpen = true;
@@ -140,8 +150,7 @@ public partial class ControlsWindow : Window
         {
             _playerWindow.ReiniciarTimerInatividade();
             _viewModel.SelectSubtitleTrack(track.Id);
-            _viewModel.SetTime();
-
+            
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 var playerWindow = System.Windows.Application.Current.Windows
@@ -180,9 +189,13 @@ public partial class ControlsWindow : Window
 
     private void BuscarTorrentMenuItem_Click(object sender, RoutedEventArgs e)
     {
+        _viewModel.SetPause(true);
         var searchWindow = new TorrentSearchWindow
         {
-            Owner = GetWindow(this)
+            Owner = GetWindow(this),
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ExtendsContentIntoTitleBar = true,
+            WindowCornerPreference = WindowCornerPreference.Round
         };
 
         if (searchWindow.ShowDialog() == true)
@@ -282,5 +295,7 @@ public partial class ControlsWindow : Window
         {
             menu.IsOpen = false;
         }
+
+        _viewModel.SetReset();
     }
 }
