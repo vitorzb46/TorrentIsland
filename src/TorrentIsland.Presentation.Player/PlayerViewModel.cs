@@ -338,7 +338,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             return;
         }
 
-        _ = ProcessarLegendasUndAsync();
+        await ProcessarLegendasUndAsync();
     }
     #endregion
 
