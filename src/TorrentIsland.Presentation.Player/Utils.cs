@@ -1,12 +1,30 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace TorrentIsland.Presentation.Player;
 
 public class Utils
 {
+    private const int GCLP_HBRBACKGROUND = -10;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr childAfter, string? className, string? windowTitle);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetClassLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern IntPtr CreateSolidBrush(uint crColor);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern bool DeleteObject(IntPtr hObject);
+
+    [DllImport("user32.dll")]
+    private static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
+
     public static readonly string[] ExtensoesVideo = [
         ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
         ".m4v", ".ts", ".m2ts", ".vob", ".mpg", ".mpeg", ".3gp", ".ogv"
@@ -15,6 +33,30 @@ public class Utils
     public static readonly string[] ExtensoesSubs = [
         ".srt", ".vtt", ".ssa", ".ass",
     ];
+
+
+    /// <summary>
+    /// Altera a cor de fundo da janela do VideoView para preto antes de iniciar a mídia.
+    /// </summary>
+    /// <param name="mainHwnd">O identificador da janela principal.</param>
+    /// <remarks>
+    /// Este método é chamado ao iniciar uma mídia,
+    /// para prevenir a exibição do fundo branco do VideoView.
+    /// </remarks>
+    public static void VideoView_Background_Black(IntPtr mainHwnd)
+    {
+        IntPtr vlcHwnd = FindWindowEx(mainHwnd, IntPtr.Zero, null, null);
+
+        if (vlcHwnd == IntPtr.Zero) return;
+
+        IntPtr hBrush = CreateSolidBrush(0x00000000);
+        IntPtr oldBrush = SetClassLongPtr(vlcHwnd, GCLP_HBRBACKGROUND, hBrush);
+        if (oldBrush != IntPtr.Zero) DeleteObject(oldBrush);
+        
+        InvalidateRect(vlcHwnd, IntPtr.Zero, true);
+    }
+
+
     /// <summary>
     /// Tenta obter dados do tipo Data Object usando o formato especificado.
     /// </summary>
@@ -42,6 +84,8 @@ public class Utils
 
         return false;
     }
+
+
     /// <summary>
     /// Executa ação síncrona e atualiza a thread principal da UI.
     /// </summary>
@@ -51,6 +95,8 @@ public class Utils
     {
         System.Windows.Application.Current.Dispatcher.Invoke(callback);
     }
+
+
     /// <summary>
     /// Executa ação assíncrona e atualiza a thread principal da UI.
     /// </summary>
@@ -60,6 +106,8 @@ public class Utils
     {
         await System.Windows.Application.Current.Dispatcher.InvokeAsync(callbackAsync);
     }
+
+
     /// <summary>
     /// Retorna o tamanho do arquivo em MB ou GB.
     /// </summary>
@@ -67,18 +115,32 @@ public class Utils
     /// <returns></returns>
     public static string? BytesFormat(string filePath)
     {
-        var infoArquivo = new FileInfo(filePath);
-        long tamanhoBytes = infoArquivo.Length;
+        try
+        {
+            if (!File.Exists(filePath))
+                return "Arquivo não encontrado";
 
-        if (tamanhoBytes >= 1024 * 1024 * 1024) // 1 GB
-        {
-            return $"{tamanhoBytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
+            var tamanhoBytes = new FileInfo(filePath).Length;
+
+            string[] unidades = ["B", "KB", "MB", "GB", "TB"];
+            double tamanho = tamanhoBytes;
+            int unidadeIndex = 0;
+
+            while (tamanho >= 1024 && unidadeIndex < unidades.Length - 1)
+            {
+                tamanho /= 1024;
+                unidadeIndex++;
+            }
+            
+            return $"{tamanho:F2} {unidades[unidadeIndex]}";
         }
-        else
+        catch (Exception ex)
         {
-            return $"{tamanhoBytes / (1024.0 * 1024.0):F2} MB";
+            return $"Erro ao ler tamanho: {ex.Message}";
         }
     }
+
+
     /// <summary>
     /// Verifica o código de idioma e retorna o nome da língua correspondente.
     /// </summary>
@@ -92,6 +154,8 @@ public class Utils
 
         return Idiomas.TryGetValue(chave, out var idioma) ? idioma : null;
     }
+
+
     /// <summary>Indica se o código de idioma é realmente um idioma (não "und"/"undetermined"/vazio).</summary>
     public static bool EhIdiomaValido(string? valor)
     {
@@ -99,12 +163,16 @@ public class Utils
         var limpo = valor.Trim().ToLower();
         return limpo is not ("und" or "undetermined" or "unknown" or "mis" or "mul" or "zxx" or "???");
     }
+
+
     /// <summary>Indica se o valor representa "idioma indefinido" (ex.: "und").</summary>
     public static bool EhIdiomaIndefinido(string? valor)
     {
         if (string.IsNullOrWhiteSpace(valor)) return true;
         return !EhIdiomaValido(valor);
     }
+
+
     /// <summary>
     /// Cria um ToolTip com um design personalizado.
     /// </summary>
@@ -151,6 +219,8 @@ public class Utils
         tooltip.Content = containerEscuro;
         return tooltip;
     }
+
+
     private static readonly Dictionary<string, string> Idiomas = new(StringComparer.OrdinalIgnoreCase)
     {
         ["pt"] = "Português",
