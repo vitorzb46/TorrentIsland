@@ -11,7 +11,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Windows.Input;
+using System.Windows.Interop;
 using static TorrentIsland.Presentation.Player.SubCacheManager;
 
 namespace TorrentIsland.Presentation.Player;
@@ -36,7 +36,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer)
     {
         Log.Salvar("PlayerViewModel iniciado");
-        _libVLC = libVLC;
+        LibVLC = libVLC;
         _mediaPlayer = mediaPlayer;
         _mediaPlayer.PositionChanged += OnPositionChanged;
         _mediaPlayer.Playing += OnPlaying;
@@ -46,11 +46,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.Stopped += OnStopped;
         _mediaPlayer.EndReached += OnEndReached;
         _mediaPlayer.Buffering += OnPlayerBuffering;
-        _mediaPlayer.MediaChanged += (_, _) =>
-        {
-            SubtitleTracks.Clear();
-            _ = ProcessarLegendasUndAsync();
-        };
+        _mediaPlayer.MediaChanged += OnMediaChanged;
+        _mediaPlayer.EncounteredError += OnEncounteredError;
+        _mediaPlayer.LengthChanged += OnLengthChanged;
+    }
+    #endregion
 
     #region Properties
     public ObservableCollection<TrackItem> AudioTracks { get; } = [];
@@ -139,18 +139,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     public string FeedbackTempo { get; private set { field = value; OnPropertyChanged(); } } = "";
 
-    public bool MostrarFeedback
-    {
-        get => _mostrarFeedback;
-        private set { _mostrarFeedback = value; OnPropertyChanged(); }
-    }
+    public bool MostrarFeedback { get; private set { field = value; OnPropertyChanged(); } } = false;
     #endregion
 
     #region Public Methods
-    public string ObterTorrentName(string? task = null)
-    {
-        return task!;
-    }
+    public void ToggleLoading() => IsLoading = !IsLoading;
 
     public void ToggleFullscreen() => IsFullscreen = !IsFullscreen;
 
