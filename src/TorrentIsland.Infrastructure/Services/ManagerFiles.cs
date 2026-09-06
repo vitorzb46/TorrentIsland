@@ -16,7 +16,7 @@ public class ManagerFiles : IManagerFiles
     {
         AppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppSettings.PastaProjeto);
         CurrentDirectory = Directory.GetCurrentDirectory();
-        DownloadFolder = Path.Combine(CurrentDirectory, app.PastaDownloads);
+        DownloadFolder = Path.Combine(CurrentDirectory, AppSettings.PastaDownloads);
         TorrentsFolder = Path.Combine(CurrentDirectory, app.PastaTorrents);
         Directory.CreateDirectory(AppDataPath);
         Directory.CreateDirectory(app.PastaCache);

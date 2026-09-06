@@ -68,6 +68,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITorrentRepository, TorrentRepository>();
         services.AddSingleton<ITorrentService, TorrentService>();
         services.AddSingleton<IPlayerLauncherService, PlayerLauncherService>();
+        services.AddSingleton<IDLService, DLService>();
 
         return services;
     }

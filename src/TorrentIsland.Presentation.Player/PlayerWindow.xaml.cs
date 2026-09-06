@@ -16,11 +16,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly PlayerViewModel _viewModel;
     private readonly ControlsWindow _controls;
     private readonly DispatcherTimer _inactivityTimer;
+    private readonly IDLService _ytDlService;
+
     public string mediaUrl { get; set; } = "";
     private IStreamService StreamService { get; }
     private IManagers Managers { get; }
 
-    public PlayerWindow(IStreamService streamService, IManagers managers)
+    public PlayerWindow(IStreamService streamService, IManagers managers, IDLService ytDlService)
     {
         RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
@@ -78,6 +80,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         StreamService = streamService;
         Managers = managers;
+        _ytDlService = ytDlService;
     }
 
     public async Task CarregarMidiaAsync(string caminhoOuUrl)
@@ -95,10 +98,16 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
                 _viewModel.MidiaFilePath = caminhoOuUrl;
             }
-            else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
+            // else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
+            // {
+            //     Log.Salvar("Origem é uma URL");
+            //     media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
+            // }
+            else if (caminhoOuUrl.Contains("youtube", StringComparison.OrdinalIgnoreCase))
             {
-                Log.Salvar("Origem é uma URL");
-                media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
+                var streamUrl = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
+                Log.Salvar($"Iniciando stream de YouTube: {streamUrl}");
+                media = new Media(_viewModel.LibVLC, streamUrl, FromType.FromLocation);
             }
             else
             {
@@ -115,8 +124,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             }
 
             // Opções de rede para streaming
-            media.AddOption(":network-caching=3000");
-            media.AddOption(":file-caching=3000");
+            media.AddOption(":network-caching=5000");
+            media.AddOption(":file-caching=5000");
             media.AddOption(":live-caching=3000");
             media.AddOption(":skip-frames");
             media.AddOption(":clock-synchro=0");
@@ -363,6 +372,14 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             {
                 e.Handled = true;
                 _ = CarregarStreamTorrentAsync(magnet);
+                return;
+            }
+
+            if (Utils.TryGetDataObject(dataObject, DataFormats.Text, out string youtube)
+                && magnet.Contains("youtube", StringComparison.OrdinalIgnoreCase))
+            {
+                e.Handled = true;
+                _ = CarregarMidiaAsync(youtube);
                 return;
             }
         }

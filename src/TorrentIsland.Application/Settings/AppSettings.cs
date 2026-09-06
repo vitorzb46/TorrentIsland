@@ -6,7 +6,7 @@ namespace TorrentIsland.Application.Settings;
 public sealed class AppSettings
 {
     public readonly record struct BootstrapRouter(string Host, int Port);
-    static int portaLivre = ObterPortaLivre();
+    public static int portaLivre = ObterPortaLivre();
     public string? NomeArquivo { get; } = "%(title)s.%(ext)s";
     public string? VideoAudioQualidade { get; } = "bestvideo+bestaudio/best";
     public string? UserAgent { get; } = string.Empty;
@@ -19,7 +19,7 @@ public sealed class AppSettings
     public bool OneStream { get; set; } = true;
     public bool Semeando { get; set; } = true;
     public static string PastaProjeto { get; } = "TorrentIsland";
-    public string PastaDownloads { get; } = "Downloads";
+    public static string PastaDownloads { get; } = "Downloads";
     public string PastaTorrents { get; } = "Torrents";
 
     // Limites em bytes/s; 0 = ilimitado. Propriedades mantêm o default (0) até serem configuradas.
