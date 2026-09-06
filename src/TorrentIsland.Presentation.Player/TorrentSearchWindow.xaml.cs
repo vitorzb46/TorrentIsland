@@ -37,9 +37,9 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private void ListBoxTorrents_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private async void ListBoxTorrents_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        SelectedTorrent();
+        await SelectedTorrent();
     }
     
     private void TxtSearch_KeyDown(object sender, KeyEventArgs e)
@@ -51,20 +51,21 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private void ListBoxTorrents_KeyDown(object sender, KeyEventArgs e)
+    private async void ListBoxTorrents_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
-            SelectedTorrent();
+            await SelectedTorrent();
             e.Handled = true;
         }
     }
 
-    private void SelectedTorrent()
+    private async Task SelectedTorrent()
     {
         if (ListBoxTorrents.SelectedItem is TorrentSearchDto torrent)
         {
-            LinkSelecionado = torrent.LinkDownload;
+            var magnet = await GetUrlMagneticAsync(torrent.TorrentName);
+            LinkSelecionado = magnet;
 
             DialogResult = true;
             Close();
