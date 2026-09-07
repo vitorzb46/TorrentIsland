@@ -16,7 +16,10 @@ public sealed class VlcPlayerService
     {
         Core.Initialize();
         _libVLC = new LibVLC();
-        _mediaPlayer = new MediaPlayer(_libVLC);
+        _mediaPlayer = new MediaPlayer(_libVLC)
+        {
+            EnableMouseInput = false
+        };
     }
 
     public LibVLC LibVLC => _libVLC;

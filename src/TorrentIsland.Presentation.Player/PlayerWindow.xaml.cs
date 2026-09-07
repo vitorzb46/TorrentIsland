@@ -330,14 +330,26 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
+    protected override void OnPreviewMouseDoubleClick(MouseButtonEventArgs e)
+    {
+        base.OnPreviewMouseDoubleClick(e);
+
+        if (e.ChangedButton == MouseButton.Left) ToggleFullscreen();
+    }
+
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);
 
-        if (e.Key == Key.Escape && _viewModel.IsFullscreen)
-        {
-            ToggleFullscreen();
-        }
+        if (e.Key == Key.Escape && _viewModel.IsFullscreen) ToggleFullscreen();
+
+        if (e.Key == Key.F11) ToggleFullscreen();
+
+        if (e.Key == Key.Space) _viewModel.TogglePlay();
+
+        if (e.Key == Key.Left) _viewModel.RetrocederTempo();
+
+        if (e.Key == Key.Right) _viewModel.AvancarTempo();
 
         if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
