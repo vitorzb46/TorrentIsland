@@ -227,12 +227,11 @@ public partial class ControlsWindow : Window
 
             if (Utils.ExtensoesVideo.Contains(extensao))
             {
-                Log.Salvar($"Vídeo {dialog.FileName} carregado!");
+                _viewModel.LoadingMessage = "Carregando mídia...";
                 await _playerWindow.CarregarMidiaAsync(dialog.FileName);
             }
             else if (Utils.ExtensoesSubs.Contains(extensao))
             {
-                Log.Salvar($"Legenda {dialog.FileName} carregada!");
                 _viewModel.LoadExternalSubtitle(dialog.FileName);
             }
         }

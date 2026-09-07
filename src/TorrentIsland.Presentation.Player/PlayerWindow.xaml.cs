@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.VLC;
 namespace TorrentIsland.Presentation.Player;
@@ -87,7 +88,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
-            _viewModel.LoadingMessage = "Iniciando mídia...";
             _viewModel.IsLoading = true;
             Log.Salvar($"Carregando mídia: {caminhoOuUrl}");
 
@@ -98,17 +98,16 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
                 _viewModel.MidiaFilePath = caminhoOuUrl;
             }
-            // else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
-            // {
-            //     Log.Salvar("Origem é uma URL");
-            //     media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
-            // }
             else if (caminhoOuUrl.Contains("youtube", StringComparison.OrdinalIgnoreCase))
             {
                 var streamUrl = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
                 Log.Salvar($"Iniciando stream de YouTube: {streamUrl}");
                 media = new Media(_viewModel.LibVLC, streamUrl, FromType.FromLocation);
             }
+            else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
+            {
+                media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
+            }            
             else
             {
                 MessageBox.Show("Caminho de mídia inválido.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -161,6 +160,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             // com o ClientEngine usando .GetAwaiter().GetResult() no construtor deles.
             string streamUrl = await Task.Run(async () =>
             {
+                _viewModel.LoadingMessage = AppSettings.LoadingMessage;
                 return await StreamService.ToPlayerAsync(caminhoOuUrl);
             });
 
@@ -321,7 +321,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             if (Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
             {
-                Log.Salvar($"Arquivo de vídeo colado: {arquivos[0]}");
+                _viewModel.LoadingMessage = "Carregando mídia...";
                 await CarregarMidiaAsync(arquivos[0]);
             }
             else if (Utils.ExtensaoTorrent.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
@@ -355,6 +355,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant())) // Arquivo das extensões de vídeo suportadas
             {
                 e.Handled = true;
+                _viewModel.LoadingMessage = "Carregando mídia...";
                 _ = CarregarMidiaAsync(arquivos[0]);
                 return;
             }
@@ -379,6 +380,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 && magnet.Contains("youtube", StringComparison.OrdinalIgnoreCase))
             {
                 e.Handled = true;
+                _viewModel.LoadingMessage = "Carregando mídia...";
                 _ = CarregarMidiaAsync(youtube);
                 return;
             }

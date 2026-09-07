@@ -374,38 +374,18 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     private async Task ProcessarLegendasUndAsync()
     {
-        LoadingMessage = "Processando legendas...";
-        IsLoading = true;
+        string caminhoMkvExtract = Path.Combine(AppContext.BaseDirectory, "mkvextract.exe");
+        string? filePath = string.Empty;
 
-        var media = _mediaPlayer.Media;
-        if (media == null) return;
-
-        await Task.Delay(2000);
-
-        var audioTracks = _mediaPlayer.AudioTrackDescription;
-        if (audioTracks == null || audioTracks.Length == 0) return;
-        var spuTracks = _mediaPlayer.SpuDescription;
-        if (spuTracks == null || spuTracks.Length == 0) return;
-
-        string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-
-        var caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
-
-        // Limpa o diretório temporário se houver resquícios não tratados.
-        if (Directory.Exists(caminhoTempBase))
-            Directory.Delete(caminhoTempBase, true);
-
-        Directory.CreateDirectory(caminhoTempBase);
-
-        string? filePath = null;
-        if (TorrentName != null)
+        if (!File.Exists(caminhoMkvExtract))
         {
-            filePath = Path.Combine(AppContext.BaseDirectory, "Downloads", TorrentName!);
+            Log.Salvar("mkvextract.exe não encontrado!");
+            return;
         }
-        else
-        {
-            filePath = MidiaFilePath;
-        }
+
+        filePath = TorrentName != null
+            ? Path.Combine(AppContext.BaseDirectory, "Downloads", TorrentName!)
+            : MidiaFilePath;
 
         if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
         {
@@ -413,13 +393,48 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             return;
         }
 
-        var caminhoMkvExtract = Path.Combine(AppContext.BaseDirectory, "mkvextract.exe");
-        if (!File.Exists(caminhoMkvExtract))
-        {
-            Log.Salvar("mkvextract.exe não encontrado!");
-            return;
-        }
+        Media? media = _mediaPlayer.Media;
 
+        if (media == null) return;
+
+        // if (media.Tracks is null or []) return;
+        
+        LoadingMessage = "Processando legendas...";
+        IsLoading = true;
+
+        TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
+        TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
+
+        if (audioTracks is not { Length: > 0 }) return;        
+        if (spuTracks is not { Length: > 0 }) return;
+
+        string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+        string caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
+        string? extensaoSub = "srt";
+        
+        ConcurrentBag<TrackItem> novosTracks = [];
+        Dictionary<int, (string? Language, string? Description, uint Codec)>? metadadosLegendas;
+        Dictionary<int, string> tempFiles = [];
+        List<TrackDescription> undTracks = [];
+        List<string> argsList = [];
+
+        metadadosLegendas = media.Tracks
+            .Where(m => m.TrackType == TrackType.Text)
+            .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
+
+        undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) &&
+                                             metadadosLegendas[t.Id].Language == "und")];
+        
+        if (undTracks.Count == 0) return;
+        
+        // Limpa o diretório temporário se houver resquícios não tratados.
+        if (Directory.Exists(caminhoTempBase))
+            Directory.Delete(caminhoTempBase, true);
+
+        Directory.CreateDirectory(caminhoTempBase);
+        
+        argsList = ["tracks", $"\"{filePath}\""];
+        
         AudioTracks.Clear();
 
         foreach (var t in audioTracks.Where(t => t.Id >= 0))
@@ -428,29 +443,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         }
 
         SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
-
-        var novosTracks = new ConcurrentBag<TrackItem>();
-        var tempFiles = new Dictionary<int, string>();
-
-        var metadadosLegendas = media.Tracks
-            .Where(m => m.TrackType == TrackType.Text)
-            .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
-
-        List<TrackDescription> undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) && metadadosLegendas[t.Id].Language == "und")];
-
-        uint metaCodec = 0;
-        string? metaDesc = null;
-
-        if (undTracks.Count == 0) return;
-
-        var argsList = new List<string> { "tracks", $"\"{filePath}\"" };
-
-        var arquivoDeSaida = "";
+        
         foreach (var track in undTracks)
-        {
-            var extensaoSub = "srt";
-            metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
-            metaDesc = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Description : null;
+        {            
+            var metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
             if (metaCodec != 0)
             {
                 var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
@@ -460,7 +456,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             }
 
             var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
-            arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
+            var arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
 
             var cacheEntry = await GetAsync(filePath, track.Id);
 
@@ -522,17 +518,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             await Parallel.ForEachAsync(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async (kvp, ct) =>
             {
                 var trackId = kvp.Key;
-                var filePath = kvp.Value;
+                var sub = kvp.Value;
 
                 try
                 {
-                    if (!File.Exists(filePath))
+                    if (!File.Exists(sub))
                     {
                         novosTracks.Add(new TrackItem(trackId, "Desconhecido"));
                         return;
                     }
 
-                    using var fileStream = File.OpenRead(filePath);
+                    using var fileStream = File.OpenRead(sub);
                     var parser = new SubParser();
                     var items = parser.ParseStream(fileStream);
 
@@ -572,7 +568,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 }
                 finally
                 {
-                    try { File.Delete(filePath); } catch { }
+                    try { File.Delete(sub); } catch { }
                 }
             });
 
@@ -590,7 +586,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
             foreach (var item in lista)
             {
-                SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value, metaDesc)));
+                SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value)));
             }
         });
     }
