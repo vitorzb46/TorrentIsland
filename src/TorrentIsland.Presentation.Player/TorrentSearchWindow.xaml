@@ -9,6 +9,7 @@
     Height="500"
     HorizontalAlignment="Center"
     VerticalAlignment="Center"
+    FocusManager.FocusedElement="{Binding ElementName=TxtSearch}"
     Foreground="Black"
     PreviewKeyDown="Window_PreviewKeyDown">
 
@@ -24,10 +25,22 @@
         <ui:TitleBar
             Title="Buscar Torrents"
             Grid.Row="0"
-            Icon="Search24" />
+            ButtonsForeground="#AAAAAA"
+            Foreground="White"
+            Style="{StaticResource TituloGlobalStyle}">
+
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon
+                    Filled="True"
+                    Foreground="#2D323F"
+                    Symbol="Glance24" />
+            </ui:TitleBar.Icon>
+
+        </ui:TitleBar>
 
         <!--  BARRA DE PESQUISA  -->
         <Grid Grid.Row="1" Margin="0,15,0,15">
+
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -35,8 +48,8 @@
 
             <ui:TextBox
                 x:Name="TxtSearch"
-                KeyDown="TxtSearch_KeyDown"
                 VerticalAlignment="Center"
+                KeyDown="TxtSearch_KeyDown"
                 PlaceholderText="Digite o filme ou série..." />
 
             <ui:Button
@@ -44,8 +57,13 @@
                 Grid.Column="1"
                 Margin="10,0,0,0"
                 Appearance="Primary"
+                Background="#2D323F"
+                BorderBrush="Transparent"
                 Click="BtnBuscar_Click"
-                Content="Buscar" />
+                Content="Buscar"
+                Foreground="White"
+                MouseOverBackground="#3F3F46"
+                PressedBackground="#3F3F49" />
         </Grid>
 
         <!--  CABEÇALHO DA LISTA  -->
@@ -96,11 +114,16 @@
         <!--  LISTBOX COM ROLAGEM  -->
         <ListBox
             x:Name="ListBoxTorrents"
-            KeyDown="ListBoxTorrents_KeyDown"
             Grid.Row="3"
             Background="#252526"
             BorderBrush="#3F3F46"
+            KeyDown="ListBoxTorrents_KeyDown"
             MouseDoubleClick="ListBoxTorrents_MouseDoubleClick">
+
+            <ListBox.Resources>
+                <SolidColorBrush x:Key="ListBoxItemSelectedBackgroundThemeBrush" Color="#3F3F46" />
+                <SolidColorBrush x:Key="ListBoxItemSelectedForegroundThemeBrush" Color="White" />
+            </ListBox.Resources>
 
             <ListBox.ItemTemplate>
                 <DataTemplate>

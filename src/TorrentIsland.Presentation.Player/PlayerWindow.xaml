@@ -37,7 +37,8 @@
                 Height="32"
                 Background="#FF1A1A1A"
                 Foreground="White"
-                Icon="{ui:ImageIcon 'pack://application:,,,/Resources/torrent_island.ico'}" />
+                Icon="{ui:ImageIcon 'pack://application:,,,/Resources/torrent_island.ico'}"
+                Style="{StaticResource TituloGlobalStyle}" />
 
 
             <Grid Grid.Row="1" Background="Black">

@@ -1,14 +1,30 @@
-<Application x:Class="TorrentIsland.Presentation.Player.App"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:TorrentIsland.Presentation.Player">
+<Application
+    x:Class="TorrentIsland.Presentation.Player.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:TorrentIsland.Presentation.Player"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- Dicionários de Recursos Oficiais do WPF-UI -->
+                <!--  Dicionários de Recursos Oficiais do WPF-UI  -->
                 <ResourceDictionary Source="pack://application:,,,/Wpf.Ui;component/Resources/Theme/Dark.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/Wpf.Ui;component/Resources/Wpf.Ui.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <Style TargetType="{x:Type ui:TextBlock}">
+                <Setter Property="FontFamily" Value="Segoe UI Variable Text" />
+            </Style>
+
+            <Style
+                x:Key="TituloGlobalStyle"
+                BasedOn="{StaticResource {x:Type ui:TitleBar}}"
+                TargetType="{x:Type ui:TitleBar}">
+                <Setter Property="FontFamily" Value="Plus Jakarta Sans" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="SlateGray" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
