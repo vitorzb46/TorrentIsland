@@ -40,12 +40,11 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ClientEngine>(sp =>
         {
-            var engineState = sp.GetRequiredService<AppSettings>().ArquivoEngineState;
-            var pasta = sp.GetRequiredService<AppSettings>().PastaEngineState;
+            var engineState = AppSettings.ArquivoEngineState;
 
             try
             {
-                if (File.Exists(Path.Combine(pasta, engineState)))
+                if (File.Exists(engineState))
                 {
                     return ClientEngine.RestoreStateAsync(engineState).GetAwaiter().GetResult();
                 }
@@ -55,7 +54,6 @@ public static class ServiceCollectionExtensions
             var settingBuilder = GetSettingBuilder();
             EngineSettings settings = settingBuilder.ToSettings();
             return Task.Run(() => new ClientEngine(settings)).GetAwaiter().GetResult();
-            //return new ClientEngine(settings);
         });
         services.AddSingleton<IEventHandling, EventHandling>();
         services.AddSingleton<IIniciarTorrent, IniciarTorrent>();
@@ -69,6 +67,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITorrentService, TorrentService>();
         services.AddSingleton<IPlayerLauncherService, PlayerLauncherService>();
         services.AddSingleton<IDLService, DLService>();
+        
+        var binaries = services.BuildServiceProvider().GetRequiredService<IDLService>();
+        Task.Run(async () => await binaries.CheckBinariesAsync());
 
         return services;
     }
@@ -97,7 +98,7 @@ public static class ServiceCollectionExtensions
             AutoSaveLoadFastResume = settings.LoadFastResume,
             AutoSaveLoadMagnetLinkMetadata = settings.LoadMagnetLinkMetadata,
             AutoSaveLoadDhtCache = settings.LoadDhtCache,
-            CacheDirectory = settings.PastaCache,
+            CacheDirectory = AppSettings.CacheFolder,
             UsePartialFiles = settings.ArquivoParcial, // Desativado para ajudar o VLC a ler o arquivo direto
             DiskCachePolicy = CachePolicy.ReadsAndWrites,
             DiskCacheBytes = settings.CacheBytesEmDisco, // 150MB de RAM dedicada a cache

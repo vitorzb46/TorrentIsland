@@ -8,10 +8,9 @@ using TorrentIsland.Infrastructure.MonoTorrent;
 
 namespace TorrentIsland.Infrastructure.Logging;
 
-public class EventHandling(ClientEngine engine, AppSettings app, IManagers managers, ILogger<TorrentRepository> logger, CancellationToken token = default) : IEventHandling
+public class EventHandling(ClientEngine engine, IManagers managers, ILogger<TorrentRepository> logger, CancellationToken token = default) : IEventHandling
 {
     private readonly ClientEngine engine = engine;
-    private readonly AppSettings app = app;
 
     private IManagers Managers { get; } = managers;
     private ILogger<TorrentRepository> Logger { get; } = logger;
@@ -69,7 +68,7 @@ public class EventHandling(ClientEngine engine, AppSettings app, IManagers manag
         {
             Logger.LogInformation("[red]Encerrando processo...[/]");
 
-            await SaveEngineAsync(app.ArquivoEngineState);
+            await SaveEngineAsync(AppSettings.ArquivoEngineState);
 
             await Task.Delay(2000, token).ConfigureAwait(false);
         };
@@ -80,7 +79,7 @@ public class EventHandling(ClientEngine engine, AppSettings app, IManagers manag
 
             Logger.LogInformation("[red]Ctrl + c pressionado. Aguarde...[/]");
 
-            await SaveEngineAsync(app.ArquivoEngineState);
+            await SaveEngineAsync(AppSettings.ArquivoEngineState);
 
             Environment.Exit(0);
         };
@@ -91,7 +90,7 @@ public class EventHandling(ClientEngine engine, AppSettings app, IManagers manag
         try
         {
             var bytes = await engine.SaveStateAsync().ConfigureAwait(false);
-            File.WriteAllBytes(Path.Combine(app.PastaEngineState, fileName), bytes);
+            File.WriteAllBytes(fileName, bytes);
         }
         catch (Exception) { }
     }

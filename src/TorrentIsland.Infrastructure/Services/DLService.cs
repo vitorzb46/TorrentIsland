@@ -8,27 +8,23 @@ namespace TorrentIsland.Infrastructure.Services;
 public class DLService : IDLService
 {
     private readonly YoutubeDL _youtubeDL;
-    private readonly string _toolsPath = Path.Combine(AppContext.BaseDirectory, "tools");
-    private readonly string _ytDlpPath = Path.Combine(AppContext.BaseDirectory, "tools", "yt-dlp.exe");
-    private readonly string _ffmpegPath = Path.Combine(AppContext.BaseDirectory, "tools", "ffmpeg.exe");
+    private readonly string ResourcesFolder = AppSettings.ResourcesFolder;
     public DLService()
     {
-        Directory.CreateDirectory(_toolsPath);
-
-        _ = CheckBinaries();
-
+        Directory.CreateDirectory(ResourcesFolder);
+        
         _youtubeDL = new YoutubeDL
         {
-            YoutubeDLPath = _ytDlpPath,
-            FFmpegPath = _ffmpegPath,
-            OutputFolder = AppSettings.PastaDownloads,
-            OutputFileTemplate = "%(title)s.%(ext)s",
+            YoutubeDLPath = AppSettings.YtDlpExe,
+            FFmpegPath = AppSettings.FfmpegExe,
+            OutputFolder = AppSettings.DownloadsFolder,
+            OutputFileTemplate = AppSettings.NomeMidia,
         };
     }
 
-    private async Task CheckBinaries()
+    public async Task CheckBinariesAsync()
     {
-        await Utils.DownloadBinaries(directoryPath: _toolsPath);
+        await Utils.DownloadBinaries(directoryPath: ResourcesFolder);
     }
 
     public async Task<string> GetStreamingUrl(string url)
@@ -41,7 +37,6 @@ public class DLService : IDLService
             return string.Empty;
         }
 
-        // var directUrl = fetchData.Data.Url;
         var directUrl = fetchData.Data.Formats.FirstOrDefault(x => x.FormatNote == "720p")?.Url;
 
         if (string.IsNullOrEmpty(directUrl))

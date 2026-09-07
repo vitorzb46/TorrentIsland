@@ -128,9 +128,10 @@ public class Managers : IManagers
         {
             await manager.StartAsync().ConfigureAwait(false);
         }
-        await Task.Delay(2000).ConfigureAwait(false);
+        await Task.Delay(500).ConfigureAwait(false);
         while (managers.Any(m => m.State == TorrentState.Metadata || m.State == TorrentState.Stopped || m.State == TorrentState.Hashing))
         {
+            AppSettings.LoadingMessage = "Aguardando Metadata...";
             await Task.Delay(1000).ConfigureAwait(false);
         }
     }
@@ -143,13 +144,14 @@ public class Managers : IManagers
 
     public async Task StreamBuffer(TorrentManager manager)
     {
-        double buffer = 5.0; // buffer inicial = 5%
+        double buffer = 10.0;
         double progresso = manager.Bitfield.PercentComplete;
         if (progresso > buffer) return;
         while (progresso <= buffer)
         {
             progresso = manager.Bitfield.PercentComplete;
-            await Task.Delay(1000).ConfigureAwait(false);
+            AppSettings.LoadingMessage = $"Buffering {progresso:P1}...";
+            await Task.Delay(200);
         }
     }
 
