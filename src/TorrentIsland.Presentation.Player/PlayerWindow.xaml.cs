@@ -1,13 +1,10 @@
+using LibVLCSharp.Shared;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
-using LibVLCSharp.Shared;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.VLC;
 namespace TorrentIsland.Presentation.Player;
@@ -28,7 +25,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
         InitializeComponent();
-        
+
         var vlc = new VlcPlayerService();
 
         _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer);
@@ -107,7 +104,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
             {
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
-            }            
+            }
             else
             {
                 MessageBox.Show("Caminho de mídia inválido.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -156,15 +153,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _viewModel.IsLoading = true;
             Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
 
-            // Tirado da thread principal pois o MonoTorrent causava deadlocks
-            // com o ClientEngine usando .GetAwaiter().GetResult() no construtor deles.
             string streamUrl = await Task.Run(async () =>
             {
-                _viewModel.LoadingMessage = AppSettings.LoadingMessage;
                 return await StreamService.ToPlayerAsync(caminhoOuUrl);
             });
 
-            Log.Salvar($"Stream URL obtida: {streamUrl}");
             await CarregarMidiaAsync(streamUrl);
         }
         catch (Exception ex)

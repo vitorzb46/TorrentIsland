@@ -149,9 +149,9 @@ public class Managers : IManagers
         if (progresso > buffer) return;
         while (progresso <= buffer)
         {
+            AppSettings.LoadingMessage = $"Buffering {progresso / 100:P2}...";
             progresso = manager.Bitfield.PercentComplete;
-            AppSettings.LoadingMessage = $"Buffering {progresso:P1}...";
-            await Task.Delay(200);
+            await Task.Delay(Random.Shared.Next(1, 151));
         }
     }
 

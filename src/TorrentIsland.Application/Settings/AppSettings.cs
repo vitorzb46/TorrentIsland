@@ -5,14 +5,28 @@ namespace TorrentIsland.Application.Settings;
 
 public sealed class AppSettings
 {
+    public static event EventHandler<string>? LoadingMessageChanged;
+
+    public static string LoadingMessage
+    {
+        get;
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                LoadingMessageChanged?.Invoke(null, value);
+            }
+        }
+    } = string.Empty;
+
     public static int PortaLivre { get; set; } = ObterPortaLivre();
-    public static string LoadingMessage { get; set; } = "Carregando...";
-    
+
     // Pastas - AppData
     public static string AppDataFolder { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
     public static string CacheFolder { get; } = Path.Combine(AppDataFolder, "TorrentIsland", "Cache");
     public static string HtmlsFolder { get; } = Path.Combine(CacheFolder, "htmls");
-    
+
     // Pastas - CurrentDirectory
     public static string CurrentFolder { get; } = Path.Combine(AppContext.BaseDirectory);
     public static string DownloadsFolder { get; } = Path.Combine(CurrentFolder, "Downloads");
@@ -59,7 +73,7 @@ public sealed class AppSettings
         TimeSpan.FromSeconds(7),
         TimeSpan.FromSeconds(9),
         TimeSpan.FromSeconds(13)
-    ];    
+    ];
 
     private static int ObterPortaLivre()
     {

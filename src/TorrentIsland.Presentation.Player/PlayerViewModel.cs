@@ -12,6 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Interop;
+using TorrentIsland.Application.Settings;
 using static TorrentIsland.Presentation.Player.SubCacheManager;
 
 namespace TorrentIsland.Presentation.Player;
@@ -21,12 +22,12 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #region Fields
     private readonly MediaPlayer _mediaPlayer;
     private Media? _media;
-    private bool _disposed;  
+    private bool _disposed;
     private int _cliquesAvancar = 0;
     private int _cliquesRetroceder = 0;
     private DateTime _ultimoCliqueAvancar = DateTime.MinValue;
     private DateTime _ultimoCliqueRetroceder = DateTime.MinValue;
-    
+
 
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
@@ -49,6 +50,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.MediaChanged += OnMediaChanged;
         _mediaPlayer.EncounteredError += OnEncounteredError;
         _mediaPlayer.LengthChanged += OnLengthChanged;
+        AppSettings.LoadingMessageChanged += OnLoadingMessageChanged;
     }
     #endregion
 
@@ -398,20 +400,20 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         if (media == null) return;
 
         // if (media.Tracks is null or []) return;
-        
+
         LoadingMessage = "Processando legendas...";
         IsLoading = true;
 
         TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
         TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
 
-        if (audioTracks is not { Length: > 0 }) return;        
+        if (audioTracks is not { Length: > 0 }) return;
         if (spuTracks is not { Length: > 0 }) return;
 
         string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
         string caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
         string? extensaoSub = "srt";
-        
+
         ConcurrentBag<TrackItem> novosTracks = [];
         Dictionary<int, (string? Language, string? Description, uint Codec)>? metadadosLegendas;
         Dictionary<int, string> tempFiles = [];
@@ -424,17 +426,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) &&
                                              metadadosLegendas[t.Id].Language == "und")];
-        
+
         if (undTracks.Count == 0) return;
-        
+
         // Limpa o diretório temporário se houver resquícios não tratados.
         if (Directory.Exists(caminhoTempBase))
             Directory.Delete(caminhoTempBase, true);
 
         Directory.CreateDirectory(caminhoTempBase);
-        
+
         argsList = ["tracks", $"\"{filePath}\""];
-        
+
         AudioTracks.Clear();
 
         foreach (var t in audioTracks.Where(t => t.Id >= 0))
@@ -443,9 +445,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         }
 
         SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
-        
+
         foreach (var track in undTracks)
-        {            
+        {
             var metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
             if (metaCodec != 0)
             {
@@ -711,6 +713,13 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             InicializarDuracaoDoVideo(duracaoDoFilmeMs);
         });
     }
+    private void OnLoadingMessageChanged(object? sender, string e)
+    {
+        Utils.AtualizarUI(() =>
+        {
+            LoadingMessage = e;
+        });
+    }
     #endregion
 
 
@@ -730,6 +739,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.Stopped -= OnStopped;
         _mediaPlayer.EndReached -= OnEndReached;
         _mediaPlayer.Buffering -= OnPlayerBuffering;
+        AppSettings.LoadingMessageChanged -= OnLoadingMessageChanged;
 
         try
         {
