@@ -28,26 +28,34 @@ public class Limao
 
     public static async Task<string> GetUrlMagneticAsync(string torrentName)
     {
-        var magnet = string.Empty;
-        var doc = await LoadFromCacheOrWebAsync();
-
-        if (doc == null) return magnet;
-
-        var torrent = doc?.DocumentNode.SelectSingleNode($".//a[contains(text(),'{torrentName}')]");
-
-        if (torrent == null) return magnet;
-
-        url = string.Concat("https://www.limetorrents.fun", torrent.GetAttributeValue("href", "N/A"));
-
-        htmlFile = string.Concat(torrentName, ".html");
-        HtmlPath = Path.Combine(CacheFolder, htmlFile);
-        
-        var doc2 = await LoadFromCacheOrWebAsync();
-
-        magnet = doc2.DocumentNode.SelectSingleNode(".//a[contains(text(),'Magnet Download')]")
-                                  .GetAttributeValue("href", "N/A");
-
-        return magnet;
+        try
+        {
+            var magnet = string.Empty;
+            var doc = await LoadFromCacheOrWebAsync();
+    
+            if (doc == null) return magnet;
+    
+            var torrent = doc?.DocumentNode.SelectSingleNode($".//a[contains(text(),'{torrentName}')]");
+    
+            if (torrent == null) return magnet;
+    
+            url = string.Concat("https://www.limetorrents.fun", torrent.GetAttributeValue("href", "N/A"));
+    
+            htmlFile = string.Concat(torrentName, ".html");
+            HtmlPath = Path.Combine(CacheFolder, htmlFile);
+            
+            var doc2 = await LoadFromCacheOrWebAsync();
+    
+            magnet = doc2.DocumentNode.SelectSingleNode(".//a[contains(text(),'Magnet Download')]")
+                                      .GetAttributeValue("href", "N/A");
+    
+            return magnet;
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro ao processar link magnético: {ex.Message}");
+            throw;
+        }
     }
 
     public static async Task<ObservableCollection<TorrentSearchDto>> SearchAsync(string query)
