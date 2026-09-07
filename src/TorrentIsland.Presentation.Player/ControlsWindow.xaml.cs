@@ -1,10 +1,10 @@
+using Microsoft.Win32;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Win32;
 using Wpf.Ui.Controls;
 using Button = System.Windows.Controls.Button;
 using MenuItem = System.Windows.Controls.MenuItem;
@@ -68,6 +68,9 @@ public partial class ControlsWindow : Window
                 TimelineSlider,
                 e.GetPosition(TimelineSlider).X - 28.0,
                 -42.0);
+
+            var tip = TimelineSlider.ToolTip as ToolTip;
+            tip?.IsOpen = true;
         }
     }
     #endregion
@@ -127,7 +130,7 @@ public partial class ControlsWindow : Window
         {
             _playerWindow.ReiniciarTimerInatividade();
             _viewModel.SelectSubtitleTrack(track.Id);
-            
+
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 var playerWindow = System.Windows.Application.Current.Windows
@@ -181,7 +184,7 @@ public partial class ControlsWindow : Window
             if (!string.IsNullOrEmpty(linkSelecionado))
             {
                 Log.Salvar($"BuscarTorrentMenuItem_Click - Link selecionado: {linkSelecionado}");
-                
+
                 _ = _playerWindow.CarregarStreamTorrentAsync(linkSelecionado);
             }
         }
