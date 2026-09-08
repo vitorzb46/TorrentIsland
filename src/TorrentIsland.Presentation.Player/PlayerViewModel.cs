@@ -11,7 +11,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Windows.Interop;
 using TorrentIsland.Application.Settings;
 using static TorrentIsland.Presentation.Player.SubCacheManager;
 
@@ -56,6 +55,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Properties
+    public static nint VlcHwnd { get; set { field = value; Log.Salvar($"PlayerViewModel HWND: {value}"); } }
     public static long SubtitleDelay { get; set; } = 0;
     public ObservableCollection<TrackItem> AudioTracks { get; } = [];
     public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
@@ -360,12 +360,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Private Methods
-    private void VideoView_BG()
+    public void VideoView_BG(IntPtr hwnd)
     {
+        Log.Salvar($"VideoView_BG | State={_mediaPlayer.State} | Playing={IsPlaying}");
         Utils.AtualizarUI(() =>
         {
-            var mainHwnd = new WindowInteropHelper(System.Windows.Application.Current.MainWindow).Handle;
-            Utils.VideoView_Background_Black(mainHwnd);
+            //var mainHwnd = new WindowInteropHelper(System.Windows.Application.Current.MainWindow).Handle;
+            //nint mainHwnd = _mediaPlayer.Hwnd;
+            Utils.VideoView_Background_Black(hwnd);
         });
     }
     private int ObterSegundosProgressivos(int cliques)
@@ -666,6 +668,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         return idiomaDetectado is null ? $"{tipo} {id}" : $"{idiomaDetectado} [{id}]";
     }
+    public nint VlcHwnd2 => _mediaPlayer.Hwnd;
+    public nint Zerar
+    {
+        get; set => _mediaPlayer.Hwnd = value;
+    }
     #endregion
 
     #region Events Handlers
@@ -678,8 +685,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private void OnEndReached(object? sender, EventArgs e) => IsPlaying = false;
     private void OnPlaying(object? sender, EventArgs e)
     {
-        IsPlaying = true;
-        VideoView_BG();
+        IsPlaying = false;
+        //VlcHwnd = _mediaPlayer.Hwnd;
+        //VideoView_BG();
+
+        //VlcHwnd = _mediaPlayer.Hwnd;
     }
     private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
     {
@@ -714,9 +724,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private void OnMediaChanged(object? sender, MediaPlayerMediaChangedEventArgs e)
     {
         IsLoading = true;
+        Log.Salvar($"MediaChanged | State={_mediaPlayer.State} | Mrl={_mediaPlayer.Media?.Mrl} | Hwnd={_mediaPlayer.Hwnd}");
         AudioTracks.Clear();
         SubtitleTracks.Clear();
-        VideoView_BG();
+
+        //VlcHwnd = _mediaPlayer.Hwnd;
     }
     private void OnEncounteredError(object? sender, EventArgs e)
     {

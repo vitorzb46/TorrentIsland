@@ -97,6 +97,23 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
+            await Dispatcher.BeginInvoke(new Action(() =>
+            {
+
+                IntPtr hwndAtual = _viewModel.VlcHwnd2;
+
+                _viewModel.Zerar = 0;
+
+                _viewModel.Zerar = hwndAtual;
+
+                Log.Salvar($"VlcHwnd CarregarMidiaAsync: {hwndAtual}");
+
+                VideoView.InvalidateVisual();
+
+                _viewModel.VideoView_BG(hwndAtual);
+
+            }), DispatcherPriority.Render);
+
             _viewModel.IsLoading = true;
             Log.Salvar($"Carregando mídia: {caminhoOuUrl}");
 

@@ -2,7 +2,6 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace TorrentIsland.Presentation.Player;
@@ -45,15 +44,21 @@ public class Utils
     /// </remarks>
     public static void VideoView_Background_Black(IntPtr mainHwnd)
     {
-        IntPtr vlcHwnd = FindWindowEx(mainHwnd, IntPtr.Zero, null, null);
+        //IntPtr vlcHwnd = PlayerViewModel.VlcHwnd;
 
-        if (vlcHwnd == IntPtr.Zero) return;
+        //if (mainHwnd == IntPtr.Zero) return;
+
+        IntPtr vlcChildHwnd = FindWindowEx(mainHwnd, IntPtr.Zero, null, null);
+        if (vlcChildHwnd == IntPtr.Zero)
+            vlcChildHwnd = mainHwnd;
+
+        Log.Salvar($"VideoView_Background_Black: Pai = {mainHwnd} | Filho = {vlcChildHwnd}");
 
         IntPtr hBrush = CreateSolidBrush(0x00000000);
-        IntPtr oldBrush = SetClassLongPtr(vlcHwnd, GCLP_HBRBACKGROUND, hBrush);
+        IntPtr oldBrush = SetClassLongPtr(vlcChildHwnd, GCLP_HBRBACKGROUND, hBrush);
         if (oldBrush != IntPtr.Zero) DeleteObject(oldBrush);
-        
-        InvalidateRect(vlcHwnd, IntPtr.Zero, true);
+
+        InvalidateRect(vlcChildHwnd, IntPtr.Zero, true);
     }
 
 
@@ -131,7 +136,7 @@ public class Utils
                 tamanho /= 1024;
                 unidadeIndex++;
             }
-            
+
             return $"{tamanho:F2} {unidades[unidadeIndex]}";
         }
         catch (Exception ex)

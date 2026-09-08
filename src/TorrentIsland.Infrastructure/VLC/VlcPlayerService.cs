@@ -15,6 +15,14 @@ public sealed class VlcPlayerService
     public VlcPlayerService()
     {
         Core.Initialize();
+
+        //var options = new string[]
+        //{
+        //    "--hwdec=d3d11va",
+        //    "--video-title-show=0",
+        //    "--avcodec-hw=d3d11va"
+        //};
+
         _libVLC = new LibVLC();
         _mediaPlayer = new MediaPlayer(_libVLC)
         {
