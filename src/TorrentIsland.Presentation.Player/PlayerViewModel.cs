@@ -50,12 +50,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.EncounteredError += OnEncounteredError;
         _mediaPlayer.LengthChanged += OnLengthChanged;
         AppSettings.LoadingMessageChanged += OnLoadingMessageChanged;
-        PlayerWindow.SubtitleDelayChanged += OnSubtitleDelayChanged;
     }
     #endregion
 
     #region Properties
-    public static nint VlcHwnd { get; set { field = value; Log.Salvar($"PlayerViewModel HWND: {value}"); } }
+    public static nint VlcHwnd { get; private set; }
     public static long SubtitleDelay { get; set; } = 0;
     public ObservableCollection<TrackItem> AudioTracks { get; } = [];
     public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
@@ -658,11 +657,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         return idiomaDetectado is null ? $"{tipo} {id}" : $"{idiomaDetectado} [{id}]";
     }
-    public nint VlcHwnd2 => _mediaPlayer.Hwnd;
-    public nint Zerar
-    {
-        get; set => _mediaPlayer.Hwnd = value;
-    }
     #endregion
 
     #region Events Handlers
@@ -675,11 +669,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private void OnEndReached(object? sender, EventArgs e) => IsPlaying = false;
     private void OnPlaying(object? sender, EventArgs e)
     {
+        VlcHwnd = _mediaPlayer.Hwnd;
         IsPlaying = false;
-        //VlcHwnd = _mediaPlayer.Hwnd;
-        //VideoView_BG();
-
-        //VlcHwnd = _mediaPlayer.Hwnd;
     }
     private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
     {
@@ -714,11 +705,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private void OnMediaChanged(object? sender, MediaPlayerMediaChangedEventArgs e)
     {
         IsLoading = true;
-        Log.Salvar($"MediaChanged | State={_mediaPlayer.State} | Mrl={_mediaPlayer.Media?.Mrl} | Hwnd={_mediaPlayer.Hwnd}");
         AudioTracks.Clear();
         SubtitleTracks.Clear();
-
-        //VlcHwnd = _mediaPlayer.Hwnd;
+        VlcHwnd = _mediaPlayer.Hwnd;
     }
     private void OnEncounteredError(object? sender, EventArgs e)
     {
@@ -750,13 +739,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             LoadingMessage = e;
         });
     }
-    private void OnSubtitleDelayChanged(object? sender, string e)
-    {
-        Utils.AtualizarUI(() =>
-        {
-            SubtitleMessage = e;
-        });
-    }
     #endregion
 
 
@@ -777,7 +759,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.EndReached -= OnEndReached;
         _mediaPlayer.Buffering -= OnPlayerBuffering;
         AppSettings.LoadingMessageChanged -= OnLoadingMessageChanged;
-        PlayerWindow.SubtitleDelayChanged -= OnSubtitleDelayChanged;
 
         try
         {

@@ -52,7 +52,7 @@ public partial class App : System.Windows.Application
         var serviceProvider = services.BuildServiceProvider();
 
         var window = serviceProvider.GetRequiredService<PlayerWindow>();
-        window.mediaUrl = mediaUrl!;
+        window.MediaUrl = mediaUrl!;
         // Task.Delay(1000).Wait(); // Aguarda 1 segundo para mostrar a janela | OBS: Tem algum bug que abre o programa sem abrir a janela, resolver depois.
         window.Show();
     }
