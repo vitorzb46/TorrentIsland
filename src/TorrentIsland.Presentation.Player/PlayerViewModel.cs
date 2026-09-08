@@ -51,15 +51,28 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.EncounteredError += OnEncounteredError;
         _mediaPlayer.LengthChanged += OnLengthChanged;
         AppSettings.LoadingMessageChanged += OnLoadingMessageChanged;
+        PlayerWindow.SubtitleDelayChanged += OnSubtitleDelayChanged;
     }
     #endregion
 
     #region Properties
+    public static long SubtitleDelay { get; set; } = 0;
     public ObservableCollection<TrackItem> AudioTracks { get; } = [];
     public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
     public LibVLC LibVLC { get; }
     public string? TorrentName { get; set; }
     public string? MidiaFilePath { get; set; }
+
+    public string SubtitleMessage
+    {
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged();
+        }
+    } = $"Ressincronizar legenda: 0,000 seg.";
+
     public string LoadingMessage
     {
         get;
@@ -147,13 +160,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #region Public Methods
     public void ToggleLoading() => IsLoading = !IsLoading;
 
-    public void ToggleFullscreen() => IsFullscreen = !IsFullscreen;
-
     public void SelectAudioTrack(int trackId) => _mediaPlayer.SetAudioTrack(trackId);
 
     public void SelectSubtitleTrack(int spuId) => _mediaPlayer.SetSpu(spuId);
 
-    // public void SetTime() => _mediaPlayer.Time -= 000001;
     public void SetReset()
     {
         _mediaPlayer.SetPause(true);
@@ -199,7 +209,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     public void TogglePlay()
     {
-        Log.Salvar($"TogglePlay | IsPlaying={_mediaPlayer.IsPlaying} State={_mediaPlayer.State}");
         if (_mediaPlayer.IsPlaying)
         {
             IsPlaying = false;
@@ -212,43 +221,41 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         }
     }
 
-    public void Play()
+    public void ToggleVolume(bool volume)
     {
-        if (!_mediaPlayer.IsPlaying)
+        if (volume)
         {
-            IsPlaying = true;
-            _mediaPlayer.Play();
+            if (Volume < 100)
+            {
+                Volume += 5;
+            }
+        }
+        else
+        {
+            if (Volume > 0)
+            {
+                Volume -= 5;
+            }
         }
     }
 
-    public void Pause()
+    public void ToggleDelaySpu(bool delay)
     {
-        if (_mediaPlayer.IsPlaying)
-        {
-            IsPlaying = false;
-            _mediaPlayer.Pause();
-        }
-    }
+        long d = 500000;
 
-    public void LoadExternalSubtitle(object? filePath)
-    {
-        if (filePath is not string path || !File.Exists(path)) return;
-        var subs = SubtitleTracks.Count + 90;
-        var uri = new Uri(path).AbsoluteUri;
-        var fileName = Path.GetFileNameWithoutExtension(path);
-        var match = SeasonEpisode().Match(fileName);
-
-        if (match.Success)
+        if (delay)
         {
-            fileName = String.Concat(match.Value, "...");
+            SubtitleDelay += d;
         }
-        else if (fileName.Length > 20)
+        else
         {
-            fileName = string.Concat(fileName.AsSpan(0, 20), "...");
+            SubtitleDelay -= d;
         }
 
-        SubtitleTracks.Add(new TrackItem(subs, fileName));
-        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, select: true);
+        _mediaPlayer.SetSpuDelay(SubtitleDelay);
+
+        double segundos = (double)SubtitleDelay / 1000000;
+        SubtitleMessage = $"Ressincronizar legenda: {segundos:0.000;-0.000;0.000} seg.";
     }
 
     public void AvancarTempo()
@@ -328,6 +335,27 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         }
 
         await ProcessarLegendasUndAsync();
+    }
+
+    public void LoadExternalSubtitle(object? filePath)
+    {
+        if (filePath is not string path || !File.Exists(path)) return;
+        var subs = SubtitleTracks.Count + 90;
+        var uri = new Uri(path).AbsoluteUri;
+        var fileName = Path.GetFileNameWithoutExtension(path);
+        var match = SeasonEpisode().Match(fileName);
+
+        if (match.Success)
+        {
+            fileName = String.Concat(match.Value, "...");
+        }
+        else if (fileName.Length > 20)
+        {
+            fileName = string.Concat(fileName.AsSpan(0, 20), "...");
+        }
+
+        SubtitleTracks.Add(new TrackItem(subs, fileName));
+        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, select: true);
     }
     #endregion
 
@@ -720,6 +748,13 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             LoadingMessage = e;
         });
     }
+    private void OnSubtitleDelayChanged(object? sender, string e)
+    {
+        Utils.AtualizarUI(() =>
+        {
+            SubtitleMessage = e;
+        });
+    }
     #endregion
 
 
@@ -740,6 +775,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.EndReached -= OnEndReached;
         _mediaPlayer.Buffering -= OnPlayerBuffering;
         AppSettings.LoadingMessageChanged -= OnLoadingMessageChanged;
+        PlayerWindow.SubtitleDelayChanged -= OnSubtitleDelayChanged;
 
         try
         {

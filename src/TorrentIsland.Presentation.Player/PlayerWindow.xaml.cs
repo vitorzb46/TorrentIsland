@@ -15,6 +15,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly ControlsWindow _controls;
     private readonly DispatcherTimer _inactivityTimer;
     private readonly IDLService _ytDlService;
+    private readonly DispatcherTimer _osdTimer;
 
     public string mediaUrl { get; set; } = "";
     private IStreamService StreamService { get; }
@@ -48,6 +49,16 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         };
         _inactivityTimer.Tick += (_, _) => HideControls();
 
+        _osdTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+        _osdTimer.Tick += (s, e) =>
+        {
+            OsdNotification.Visibility = Visibility.Collapsed;
+            _osdTimer.Stop();
+        };
+
         Loaded += (_, _) =>
         {
             Log.Salvar("Loaded disparado — posicionando controles");
@@ -59,6 +70,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             this.Deactivated += (s, e) => _controls.Topmost = false;
 
             PosicionarControles();
+            _controls.ShowActivated = false;
             _controls.Show();
         };
         Closed += (_, _) =>
@@ -218,6 +230,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
+    private void ReiniciarTimerOsd()
+    {
+        _osdTimer.Stop();
+        _osdTimer.Start();
+    }
+
     // --- Modo cinema ---
     private void ShowControls()
     {
@@ -339,6 +357,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
+        //Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
         base.OnPreviewKeyDown(e);
 
         if (e.Key == Key.Escape && _viewModel.IsFullscreen) ToggleFullscreen();
@@ -350,6 +369,27 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         if (e.Key == Key.Left) _viewModel.RetrocederTempo();
 
         if (e.Key == Key.Right) _viewModel.AvancarTempo();
+
+        if (e.Key == Key.Down) _viewModel.ToggleVolume(false); ShowControls(); e.Handled = true;
+
+        if (e.Key == Key.Up) _viewModel.ToggleVolume(true); ShowControls(); e.Handled = true;
+
+        if (e.Key == Key.M) _viewModel.ToggleMute();
+
+        if (e.Key == Key.OemOpenBrackets || e.Key == Key.Oem5)
+        {
+            OsdNotification.Visibility = Visibility.Visible;
+            _viewModel.ToggleDelaySpu(false);
+            ReiniciarTimerOsd();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.OemCloseBrackets || e.Key == Key.Oem6)
+        {
+            OsdNotification.Visibility = Visibility.Visible;
+            _viewModel.ToggleDelaySpu(true);
+            ReiniciarTimerOsd();
+            e.Handled = true;
+        }
 
         if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
         {
@@ -394,4 +434,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? MouseDetected;
+
+    public static event EventHandler<string>? SubtitleDelayChanged;
 }
