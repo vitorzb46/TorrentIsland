@@ -11,16 +11,13 @@ namespace TorrentIsland.Presentation.Player;
 
 public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 {
+    #region Fields + Constructor
     private readonly PlayerViewModel _viewModel;
     private readonly ControlsWindow _controls;
     private readonly DispatcherTimer _inactivityTimer;
     private readonly IDLService _ytDlService;
     private readonly DispatcherTimer _osdTimer;
-
-    public string mediaUrl { get; set; } = "";
-    private IStreamService StreamService { get; }
-    private IManagers Managers { get; }
-
+    
     public PlayerWindow(IStreamService streamService, IManagers managers, IDLService ytDlService)
     {
         RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
@@ -92,7 +89,23 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         Managers = managers;
         _ytDlService = ytDlService;
     }
+    #endregion
 
+    #region Properties
+    public string MediaUrl { get; set; } = "";
+    private IStreamService StreamService { get; }
+    private IManagers Managers { get; }
+    #endregion
+
+    #region Public Methods
+    public void ReiniciarTimerInatividade()
+    {
+        if (_viewModel.IsFullscreen)
+        {
+            _inactivityTimer.Stop();
+            _inactivityTimer.Start();
+        }
+    }
     public async Task CarregarMidiaAsync(string caminhoOuUrl)
     {
         try
@@ -109,20 +122,20 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
                 _viewModel.MidiaFilePath = caminhoOuUrl;
             }
-            else if (caminhoOuUrl.Contains("youtube", StringComparison.OrdinalIgnoreCase))
+            else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
+            {
+                media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
+            }         
+            else
             {
                 var streamUrl = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
                 Log.Salvar($"Iniciando stream de YouTube: {streamUrl}");
                 media = new Media(_viewModel.LibVLC, streamUrl, FromType.FromLocation);
-            }
-            else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
-            {
-                media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
-            }
-            else
-            {
-                MessageBox.Show("Caminho de mídia inválido.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                if (media == null)
+                {
+                    MessageBox.Show($"Url: {caminhoOuUrl} não suportada.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
             }
 
             // Retiro da thread principal se causar algum deadlock, até agora normal.
@@ -188,7 +201,17 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _viewModel.IsLoading = false;
         }
     }
+    #endregion
 
+    #region Private Methods
+    /// <summary>
+    /// Timer da sobreposição de tempo da legenda (On-Screen Display).
+    /// </summary>
+    private void ReiniciarTimerOsd()
+    {
+        _osdTimer.Stop();
+        _osdTimer.Start();
+    }
     /// <summary>Posiciona a janela de controles na parte inferior da janela de vídeo.</summary>
     private void PosicionarControles()
     {
@@ -225,22 +248,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _controls.Top = this.Top + this.ActualHeight - _controls.Height;
         }
     }
-
-    public void ReiniciarTimerInatividade()
-    {
-        if (_viewModel.IsFullscreen)
-        {
-            _inactivityTimer.Stop();
-            _inactivityTimer.Start();
-        }
-    }
-
-    private void ReiniciarTimerOsd()
-    {
-        _osdTimer.Stop();
-        _osdTimer.Start();
-    }
-
+    
     // --- Modo cinema ---
     private void ShowControls()
     {
@@ -352,7 +360,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             }
         }
     }
-
+    #endregion
+    
     protected override void OnPreviewMouseDoubleClick(MouseButtonEventArgs e)
     {
         base.OnPreviewMouseDoubleClick(e);
@@ -426,12 +435,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 return;
             }
 
-            if (Utils.TryGetDataObject(dataObject, DataFormats.Text, out string youtube)
-                && magnet.Contains("youtube", StringComparison.OrdinalIgnoreCase))
+            if (Utils.TryGetDataObject(dataObject, DataFormats.Text, out string ytDlp))
             {
                 e.Handled = true;
                 _viewModel.LoadingMessage = "Carregando mídia...";
-                _ = CarregarMidiaAsync(youtube);
+                _ = CarregarMidiaAsync(ytDlp);
                 return;
             }
         }
@@ -439,6 +447,4 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? MouseDetected;
-
-    public static event EventHandler<string>? SubtitleDelayChanged;
 }
