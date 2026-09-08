@@ -347,7 +347,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         if (match.Success)
         {
-            fileName = String.Concat(match.Value, "...");
+            fileName = string.Concat(match.Value, "...");
         }
         else if (fileName.Length > 20)
         {
@@ -359,17 +359,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     }
     #endregion
 
-    #region Private Methods
-    public void VideoView_BG(IntPtr hwnd)
-    {
-        Log.Salvar($"VideoView_BG | State={_mediaPlayer.State} | Playing={IsPlaying}");
-        Utils.AtualizarUI(() =>
-        {
-            //var mainHwnd = new WindowInteropHelper(System.Windows.Application.Current.MainWindow).Handle;
-            //nint mainHwnd = _mediaPlayer.Hwnd;
-            Utils.VideoView_Background_Black(hwnd);
-        });
-    }
+    #region Private Methods    
     private int ObterSegundosProgressivos(int cliques)
     {
         return cliques switch

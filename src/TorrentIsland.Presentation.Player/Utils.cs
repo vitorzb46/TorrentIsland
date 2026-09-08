@@ -37,22 +37,17 @@ public class Utils
     /// <summary>
     /// Altera a cor de fundo da janela do VideoView para preto antes de iniciar a mídia.
     /// </summary>
-    /// <param name="mainHwnd">O identificador da janela principal.</param>
     /// <remarks>
     /// Este método é chamado ao iniciar uma mídia,
     /// para prevenir a exibição do fundo branco do VideoView.
     /// </remarks>
-    public static void VideoView_Background_Black(IntPtr mainHwnd)
+    public static void VideoView_Background_Black()
     {
-        //IntPtr vlcHwnd = PlayerViewModel.VlcHwnd;
-
-        //if (mainHwnd == IntPtr.Zero) return;
+        IntPtr mainHwnd = PlayerViewModel.VlcHwnd;
 
         IntPtr vlcChildHwnd = FindWindowEx(mainHwnd, IntPtr.Zero, null, null);
         if (vlcChildHwnd == IntPtr.Zero)
             vlcChildHwnd = mainHwnd;
-
-        Log.Salvar($"VideoView_Background_Black: Pai = {mainHwnd} | Filho = {vlcChildHwnd}");
 
         IntPtr hBrush = CreateSolidBrush(0x00000000);
         IntPtr oldBrush = SetClassLongPtr(vlcChildHwnd, GCLP_HBRBACKGROUND, hBrush);

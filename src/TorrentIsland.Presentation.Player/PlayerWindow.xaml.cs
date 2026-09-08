@@ -97,22 +97,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
-            await Dispatcher.BeginInvoke(new Action(() =>
-            {
-
-                IntPtr hwndAtual = _viewModel.VlcHwnd2;
-
-                _viewModel.Zerar = 0;
-
-                _viewModel.Zerar = hwndAtual;
-
-                Log.Salvar($"VlcHwnd CarregarMidiaAsync: {hwndAtual}");
-
-                VideoView.InvalidateVisual();
-
-                _viewModel.VideoView_BG(hwndAtual);
-
-            }), DispatcherPriority.Render);
+            Utils.AtualizarUI(() => _viewModel.IsVideoVisible = false);
 
             _viewModel.IsLoading = true;
             Log.Salvar($"Carregando mídia: {caminhoOuUrl}");
@@ -162,7 +147,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 await _viewModel.PopulateTracksAsync();
                 _viewModel.SetPause(false);
                 ShowControls();
-                _viewModel.IsLoading = false;
+                _viewModel.IsLoading = false;                
+                VideoView.InvalidateVisual();
+                Utils.VideoView_Background_Black();
+                await Task.Delay(250); //Tempo de espera para evitar artefato visual
                 _viewModel.IsVideoVisible = true;
             });
         }
