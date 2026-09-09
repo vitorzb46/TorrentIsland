@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.VLC;
+using TorrentIsland.Presentation.Player.Common;
 namespace TorrentIsland.Presentation.Player;
 
 public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
@@ -154,6 +155,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             media.AddOption(":clock-synchro=0");
             media.AddOption(":clock-jitter=5000");
 
+            KeyGenerator.Hash(caminhoOuUrl);
             _viewModel.SetMedia(media);
             await Utils.AtualizarUIAsync(async () =>
             {
@@ -362,6 +364,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     }
     #endregion
     
+    #region Shortcuts
     protected override void OnPreviewMouseDoubleClick(MouseButtonEventArgs e)
     {
         base.OnPreviewMouseDoubleClick(e);
@@ -444,6 +447,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             }
         }
     }
+    #endregion
 
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? MouseDetected;

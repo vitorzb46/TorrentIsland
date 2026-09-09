@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace TorrentIsland.Presentation.Player;
+namespace TorrentIsland.Presentation.Player.Common;
 
 public class Utils
 {

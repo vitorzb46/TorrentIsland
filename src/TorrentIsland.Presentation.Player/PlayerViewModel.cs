@@ -12,7 +12,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using TorrentIsland.Application.Settings;
-using static TorrentIsland.Presentation.Player.SubCacheManager;
+using TorrentIsland.Presentation.Player.Common;
+using static TorrentIsland.Presentation.Player.Common.SubCacheManager;
 
 namespace TorrentIsland.Presentation.Player;
 
@@ -54,10 +55,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Properties
-    public static nint VlcHwnd { get; private set; }
-    public static long SubtitleDelay { get; set; } = 0;
-    public ObservableCollection<TrackItem> AudioTracks { get; } = [];
-    public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
+    private ObservableCollection<TrackItem> AudioTracks { get; } = [];
+    private ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
+    private static long SubtitleDelay { get; set; } = 0;
+    private long MediaTime { get; set; } = 0;
+    public static nint VlcHwnd { get; private set; }        
     public LibVLC LibVLC { get; }
     public string? TorrentName { get; set; }
     public string? MidiaFilePath { get; set; }
@@ -746,6 +748,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         if (_disposed) return;
         _disposed = true;
+
+        MediaTime = _mediaPlayer.Time;
 
         Log.Salvar("Dispose do ViewModel iniciado");
 
