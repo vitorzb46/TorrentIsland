@@ -8,6 +8,8 @@ using TorrentIsland.Infrastructure.DependencyInjection;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Presentation.Console.Helpers;
 using TorrentIsland.Presentation.Console.Renderers;
+using TorrentIsland.Presentation.Player.Common;
+using TorrentIsland.Presentation.Player.Windows.Main;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 

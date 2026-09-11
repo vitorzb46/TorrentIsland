@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using TorrentIsland.Presentation.Player.ViewModel;
 
 namespace TorrentIsland.Presentation.Player.Common;
 

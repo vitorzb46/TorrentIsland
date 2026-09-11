@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Input;
-using TorrentIsland.Presentation.Player.Scripts;
+using TorrentIsland.Presentation.Player.DTOs;
 using static TorrentIsland.Presentation.Player.Scripts.Limao;
 
-namespace TorrentIsland.Presentation.Player;
+namespace TorrentIsland.Presentation.Player.Windows.WebSearch;
 
 public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
 {

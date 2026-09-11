@@ -14,9 +14,10 @@ using System.Text.RegularExpressions;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Presentation.Player.Common;
+using TorrentIsland.Presentation.Player.DTOs;
 using static TorrentIsland.Presentation.Player.Common.SubCacheManager;
 
-namespace TorrentIsland.Presentation.Player;
+namespace TorrentIsland.Presentation.Player.ViewModel;
 
 public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposable
 {

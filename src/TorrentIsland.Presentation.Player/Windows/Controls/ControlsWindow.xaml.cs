@@ -6,11 +6,15 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using TorrentIsland.Presentation.Player.Common;
+using TorrentIsland.Presentation.Player.DTOs;
+using TorrentIsland.Presentation.Player.ViewModel;
+using TorrentIsland.Presentation.Player.Windows.Main;
+using TorrentIsland.Presentation.Player.Windows.WebSearch;
 using Wpf.Ui.Controls;
 using Button = System.Windows.Controls.Button;
 using MenuItem = System.Windows.Controls.MenuItem;
 
-namespace TorrentIsland.Presentation.Player;
+namespace TorrentIsland.Presentation.Player.Windows.Controls;
 
 public partial class ControlsWindow : Window
 {

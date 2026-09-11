@@ -8,7 +8,10 @@ using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.VLC;
 using TorrentIsland.Presentation.Player.Common;
-namespace TorrentIsland.Presentation.Player;
+using TorrentIsland.Presentation.Player.ViewModel;
+using TorrentIsland.Presentation.Player.Windows.Controls;
+
+namespace TorrentIsland.Presentation.Player.Windows.Main;
 
 public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 {

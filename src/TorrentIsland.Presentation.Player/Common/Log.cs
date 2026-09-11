@@ -1,7 +1,7 @@
 using TorrentIsland.Infrastructure.Logging;
 using Microsoft.Extensions.Logging;
 
-namespace TorrentIsland.Presentation.Player;
+namespace TorrentIsland.Presentation.Player.Common;
 
 /// <summary>
 /// Fachada de log do player: grava no player-debug.log reutilizando o FileLoggerProvider
