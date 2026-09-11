@@ -180,13 +180,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         TempoTotalFormatado = FormatarTempo(totalMilliseconds);
     }
 
-    public void SetMedia(Media media)
+    public void SetMedia(Media media, long time)
     {
         _media?.Dispose();
         _media = media;
         _mediaPlayer.Media = media;
         _mediaPlayer.Play(_media);
         _mediaPlayer.SetPause(true);
+        if (time > 5000)
+        {
+            SeekTo(TimeSpan.FromMilliseconds(time - 5000));
+        }
     }
     public void SeekTo(TimeSpan timeSpan)
     {
@@ -711,7 +715,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _disposed = true;
 
         MediaTime = _mediaPlayer.Time;
-
+        _ = MediaTimestamp.SaveCache(FilePath, MediaTime);
         Log.Salvar("Dispose do ViewModel iniciado");
 
         // Remove imediatamente as inscrições de eventos para evitar callbacks fantasmas

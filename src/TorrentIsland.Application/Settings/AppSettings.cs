@@ -34,6 +34,9 @@ public sealed class AppSettings
     public static string ResourcesFolder { get; } = Path.Combine(CurrentFolder, "Resources");
 
     // Arquivos
+    public static string SubCacheFile { get; } = Path.Combine(CacheFolder, "legendas_cache.json");
+    public static string TimeCacheFile { get; } = Path.Combine(CacheFolder, "time_cache.json");
+    public static string MkvExtract { get; } = Path.Combine(ResourcesFolder, "mkvextract.exe");
     public static string YtDlpExe { get; } = Path.Combine(ResourcesFolder, "yt-dlp.exe");
     public static string FfmpegExe { get; } = Path.Combine(ResourcesFolder, "ffmpeg.exe");
     public static string ArquivoEngineState { get; } = Path.Combine(CacheFolder, "EngineState");

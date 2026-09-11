@@ -2,26 +2,19 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Input;
+using TorrentIsland.Application.Settings;
 
 namespace TorrentIsland.Presentation.Player.Common;
 
 public class SubCacheManager
 {
-    private static readonly string CacheFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "TorrentIsland",
-        "Cache");
-
-    private static readonly string CacheFile = Path.Combine(CacheFolder, "legendas_cache.json");
+    private static readonly string CacheFile = AppSettings.SubCacheFile;
 
     private static readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
 
-    private static readonly SemaphoreSlim _semaphore = new(1, 1);
-
     static SubCacheManager()
     {
-        Directory.CreateDirectory(CacheFolder);
-        Load();
+        _ = Load();
     }
 
     /// <summary>
@@ -41,7 +34,7 @@ public class SubCacheManager
         if (!IsValid(caminhoDoVideo, entry!))
         {
             _cache.TryRemove(key, out _);
-            await Save();
+            await JsonFiles.SaveToFileAsync(_cache, CacheFile);
             return null;
         }
         return entry;
@@ -67,57 +60,13 @@ public class SubCacheManager
             DetectionTime = DateTime.Now
         };
         _cache[MakeKey(caminhoDoVideo, trackId)] = entry;
-        await Save();
+        await JsonFiles.SaveToFileAsync(_cache, CacheFile);
     }
 
-    /// <summary>
-    /// Carrega o cache de legendas do arquivo JSON em disco para a memória.
-    /// </summary>
-    private static void Load()
+    private static async Task Load()
     {
-        try
-        {
-            if (!File.Exists(CacheFile)) return;
-            var json = File.ReadAllText(CacheFile);
-            var data = JsonSerializer.Deserialize<ConcurrentDictionary<string, CacheEntry>>(json);
-            if (data != null)
-            {
-                _cache.Clear();
-                foreach (var item in data)
-                    _cache[item.Key] = item.Value;
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro ao carregar o cache de legendas: {ex.Message}");
-        }
+        await JsonFiles.LoadFromFileAsync(CacheFile, _cache);
     }
-
-    /// <summary>Salva de forma assíncrona o cache de legendas em disco no formato JSON.</summary>
-    /// <remarks>Este método utiliza um <see cref="SemaphoreSlim"/> interno para garantir que apenas uma operação de 
-    /// escrita em disco ocorra por vez (I/O thread-safe) </remarks>
-    private static async Task Save()
-    {
-        await _semaphore.WaitAsync();
-        try
-        {
-            var json = JsonSerializer.Serialize(_cache, Options);
-            await File.WriteAllTextAsync(CacheFile, json);
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro ao salvar o cache de legendas: {ex.Message}");
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
-    }
-
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        WriteIndented = true
-    };
 
     /// <summary>Pega <paramref name="videoPath"/> e <paramref name="trackId"/>, transformando os 2 em uma Key</summary>
     private static string MakeKey(string videoPath, int trackId) => $"{videoPath}|{trackId}";

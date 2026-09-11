@@ -1,28 +1,23 @@
 using MonoTorrent;
 using MonoTorrent.Client;
-using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
+using static TorrentIsland.Application.Settings.AppSettings;
 
 namespace TorrentIsland.Infrastructure.Services;
 
 public class ManagerFiles : IManagerFiles
 {
-    private string CurrentDirectory;
-
-    public string AppDataPath { get; private set; }
-    public string DownloadFolder { get; private set; }
-    public string TorrentsFolder { get; private set; }
     public ManagerFiles()
     {
-        AppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppSettings.CurrentFolder);
-        CurrentDirectory = Directory.GetCurrentDirectory();
-        DownloadFolder = Path.Combine(CurrentDirectory, AppSettings.DownloadsFolder);
-        TorrentsFolder = Path.Combine(CurrentDirectory, AppSettings.TorrentsFolder);
-        Directory.CreateDirectory(AppDataPath);
-        Directory.CreateDirectory(AppSettings.CacheFolder);
-        Directory.CreateDirectory(DownloadFolder);
+        Directory.CreateDirectory(CacheFolder);
+        Directory.CreateDirectory(HtmlsFolder);
+        Directory.CreateDirectory(TempFolder);
+        Directory.CreateDirectory(DownloadsFolder);
         Directory.CreateDirectory(TorrentsFolder);
-        if (!File.Exists(AppSettings.ArquivoEngineState)) File.Create(AppSettings.ArquivoEngineState);
+        Directory.CreateDirectory(ResourcesFolder);
+        if (!File.Exists(ArquivoEngineState)) File.Create(ArquivoEngineState);
+        if (!File.Exists(SubCacheFile)) File.Create(SubCacheFile);
+        if (!File.Exists(TimeCacheFile)) File.Create(TimeCacheFile);
     }
 
     public ITorrentManagerFile ArquivoMaiorPrimeiro(TorrentManager manager) => manager.Files.OrderBy(t => t.Length).Last();

@@ -155,8 +155,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             media.AddOption(":clock-synchro=0");
             media.AddOption(":clock-jitter=5000");
 
-            KeyGenerator.Hash(caminhoOuUrl);
-            _viewModel.SetMedia(media);
+            KeyGenerator.Hash(PlayerViewModel.FilePath);
+            var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
+            _viewModel.SetMedia(media, timeCached.Time);
             await Utils.AtualizarUIAsync(async () =>
             {
                 await _viewModel.PopulateTracksAsync();
