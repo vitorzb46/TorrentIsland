@@ -9,6 +9,7 @@ using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Exceptions;
 using TorrentIsland.Infrastructure.DTOs;
 using TorrentIsland.Infrastructure.Interfaces;
+using static TorrentIsland.Application.Settings.AppSettings;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
 
@@ -16,17 +17,15 @@ public class Managers : IManagers
 {
     private readonly ClientEngine _engine;
     private readonly IEntityMapping _map;
-    private readonly IManagerFiles _managerFiles;
 
     public ConcurrentDictionary<Guid, TorrentManager> All { get; set; } = [];
     internal TorrentSettings Settings { get; private set; }
 
 
-    public Managers(ClientEngine Engine, AppSettings app, IEntityMapping map, IManagerFiles managerFiles)
+    public Managers(ClientEngine Engine, AppSettings app, IEntityMapping map)
     {
         _engine = Engine;
         _map = map;
-        _managerFiles = managerFiles;
         Settings = Settings = new TorrentSettingsBuilder
         {
             AllowDht = true,
@@ -131,7 +130,7 @@ public class Managers : IManagers
         await Task.Delay(500).ConfigureAwait(false);
         while (managers.Any(m => m.State == TorrentState.Metadata || m.State == TorrentState.Stopped || m.State == TorrentState.Hashing))
         {
-            AppSettings.LoadingMessage = "Aguardando Metadata...";
+            LoadingMessage = "Aguardando Metadata...";
             await Task.Delay(1000).ConfigureAwait(false);
         }
     }
@@ -149,7 +148,7 @@ public class Managers : IManagers
         if (progresso > buffer) return;
         while (progresso <= buffer)
         {
-            AppSettings.LoadingMessage = $"Buffering {progresso / 100:P2}...";
+            LoadingMessage = $"Buffering {progresso / 100:P2}...";
             progresso = manager.Bitfield.PercentComplete;
             await Task.Delay(Random.Shared.Next(1, 151));
         }
@@ -158,7 +157,7 @@ public class Managers : IManagers
     public async Task<List<Guid>> AddTorrentsAsync()
     {
         var listaDeTorrents = new List<Torrent>();
-        string[] arquivos = Directory.GetFiles(_managerFiles.TorrentsFolder, "*.torrent");
+        string[] arquivos = Directory.GetFiles(TorrentsFolder, "*.torrent");
         var tarefas = arquivos.Select(async arquivo =>
         {
             try
@@ -201,7 +200,7 @@ public class Managers : IManagers
             try
             {
                 ids.Add(Guid.NewGuid());
-                var manager = await AddAsync(torrent, _managerFiles.DownloadFolder).ConfigureAwait(false);
+                var manager = await AddAsync(torrent, TorrentsFolder).ConfigureAwait(false);
                 RegistroId(ids[i], manager);
             }
             catch (Exception ex)
@@ -221,6 +220,7 @@ public class Managers : IManagers
             TamanhoTotal: manager.Torrent?.Size ?? 0,
             Trackers: manager.TrackerManager.Tiers.SelectMany(t => t.Trackers).Select(tracker => tracker.Uri.ToString()).ToList(),
             SavePath: manager.SavePath,
+            FullPath: manager.Files.Select(f => f.FullPath).FirstOrDefault() ?? string.Empty,
             Estado: manager.Estado(),
             Progresso: manager.Progress,
             BytesRecebidos: manager.Monitor.DataBytesReceived,

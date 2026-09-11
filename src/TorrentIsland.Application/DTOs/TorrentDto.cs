@@ -19,6 +19,7 @@ public class TorrentDto
     public int ParesDisponiveis { get; init; }
     public IReadOnlyList<string> Trackers { get; init; } = [];
     public string SavePath { get; init; } = string.Empty;
+    public string FullPath { get; init; } = string.Empty;
     public string? TempoEstimado { get; init; }
     public string? CorEstado { get; init; }
     public TimeSpan TempoTotal { get; set; }
@@ -39,6 +40,7 @@ public class TorrentDto
             ParesDisponiveis = entity.ParesDisponiveis,
             Trackers = [.. entity.Trackers],
             SavePath = entity.SavePath,
+            FullPath = entity.FullPath,
             TempoEstimado = entity.TempoEstimado,
             CorEstado = entity.CorEstado
         };

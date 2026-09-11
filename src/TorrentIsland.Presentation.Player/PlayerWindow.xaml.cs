@@ -114,14 +114,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Utils.AtualizarUI(() => _viewModel.IsVideoVisible = false);
 
             _viewModel.IsLoading = true;
-            Log.Salvar($"Carregando mídia: {caminhoOuUrl}");
 
             Media media;
             if (File.Exists(caminhoOuUrl))
             {
-                Log.Salvar($"Arquivo existe. Tamanho: {Utils.BytesFormat(caminhoOuUrl)} bytes");
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
-                _viewModel.MidiaFilePath = caminhoOuUrl;
+                PlayerViewModel.FilePath = caminhoOuUrl;
             }
             else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
             {
@@ -130,7 +128,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             else
             {
                 var streamUrl = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
-                Log.Salvar($"Iniciando stream de YouTube: {streamUrl}");
+                Log.Salvar($"Iniciando stream yt-dlp: {streamUrl}");
                 media = new Media(_viewModel.LibVLC, streamUrl, FromType.FromLocation);
                 if (media == null)
                 {
@@ -143,8 +141,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             var torrents = await Managers.ObterTorrentsAsync();
             if (torrents.Count > 0)
             {
-                _viewModel.TorrentName = torrents.Select(t => t.Value.Nome).FirstOrDefault()!
-                                                                           .Replace("[[", "[").Replace("]]", "]");
+                PlayerViewModel.FilePath = torrents.Select(v => v.Value.FullPath).FirstOrDefault()!;
             }
 
             // Opções de rede para streaming

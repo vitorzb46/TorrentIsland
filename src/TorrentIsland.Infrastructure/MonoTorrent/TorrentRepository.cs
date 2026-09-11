@@ -10,6 +10,7 @@ using TorrentIsland.Domain.Enums;
 using TorrentIsland.Domain.Exceptions;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
+using static TorrentIsland.Application.Settings.AppSettings;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
 
@@ -61,15 +62,15 @@ public class TorrentRepository : ITorrentRepository
                         Path.GetExtension(stringSource).Equals(".torrent", StringComparison.OrdinalIgnoreCase))
                     {
                         torrentSource = stringSource.StartsWith("magnet:?")
-                            ? (object)Managers.Parse(stringSource)
-                            : (object)Managers.LoadAsync(stringSource);
+                            ? Managers.Parse(stringSource)
+                            : Managers.LoadAsync(stringSource);
                     }
                     else
                     {
                         if (Uri.TryCreate(stringSource, UriKind.Absolute, out Uri? uri) &&
                             (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                         {
-                            var torrentTemp = Path.Combine(ManagerFiles.AppDataPath, Guid.NewGuid().ToString() + ".torrent");
+                            var torrentTemp = Path.Combine(AppDataFolder, Guid.NewGuid().ToString() + ".torrent");
                             torrentSource = await Managers.LoadAsync(_client!, uri, torrentTemp);
                             File.Delete(torrentTemp);
                         }
@@ -95,14 +96,14 @@ public class TorrentRepository : ITorrentRepository
             {
                 true => torrentSource switch
                 {
-                    MagnetLink m => await Managers.StreamingAsync(m, ManagerFiles.DownloadFolder),
-                    Torrent t => await Managers.StreamingAsync(t, ManagerFiles.DownloadFolder),
+                    MagnetLink m => await Managers.StreamingAsync(m, DownloadsFolder),
+                    Torrent t => await Managers.StreamingAsync(t, DownloadsFolder),
                     _ => throw new InvalidOperationException("Tipo de torrent desconhecido.")
                 },
                 false => torrentSource switch
                 {
-                    MagnetLink m => await Managers.TorrentDownloadAsync(m, ManagerFiles.DownloadFolder),
-                    Torrent t => await Managers.TorrentDownloadAsync(t, ManagerFiles.DownloadFolder),
+                    MagnetLink m => await Managers.TorrentDownloadAsync(m, DownloadsFolder),
+                    Torrent t => await Managers.TorrentDownloadAsync(t, DownloadsFolder),
                     _ => throw new InvalidOperationException("Tipo de torrent desconhecido.")
                 }
             };
@@ -151,7 +152,6 @@ public class TorrentRepository : ITorrentRepository
         ArgumentNullException.ThrowIfNull(magnetOrFolderName);
 
         var (success, managers) = await TryCreateManagersAsync(magnetOrFolderName, isStream).ConfigureAwait(false);
-
         return await Registro(success, managers).ConfigureAwait(false);
     }
 

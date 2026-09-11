@@ -20,6 +20,7 @@
     <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
     <PackageReference Include="MonoTorrent" Version="3.9.0-alpha.unstable.rev0000" />
+    <PackageReference Include="SharpCompress" Version="0.50.4" />
     <PackageReference Include="Spectre.Console" Version="0.57.2" />
     <PackageReference Include="YoutubeDLSharp" Version="1.2.0" />
   </ItemGroup>

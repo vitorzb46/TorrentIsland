@@ -60,10 +60,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
     private static long SubtitleDelay { get; set; } = 0;
     private long MediaTime { get; set; } = 0;
+    public static string FilePath { get; set; } = string.Empty;
     public static nint VlcHwnd { get; private set; }        
     public LibVLC LibVLC { get; }
-    public string? TorrentName { get; set; }
-    public string? MidiaFilePath { get; set; }
 
     public string SubtitleMessage
     {
@@ -406,12 +405,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             if (!await MkvExtract.DownloadBinary()) return;
         }
-
-        filePath = TorrentName != null
-            ? Path.Combine(AppContext.BaseDirectory, "Downloads", TorrentName!)
-            : MidiaFilePath;
-
-        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+        
+        if (string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
         {
             Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
             return;
@@ -420,12 +415,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         Media? media = _mediaPlayer.Media;
 
         if (media == null) return;
-
-        // if (media.Tracks is null or []) return;
-
-        LoadingMessage = "Processando legendas...";
-        IsLoading = true;
-
+        
         TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
         TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
 
@@ -451,13 +441,16 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         if (undTracks.Count == 0) return;
 
+        LoadingMessage = $"Processando {undTracks.Count} legendas...";
+        IsLoading = true;
+
         // Limpa o diretório temporário se houver resquícios não tratados.
         if (Directory.Exists(caminhoTempBase))
             Directory.Delete(caminhoTempBase, true);
 
         Directory.CreateDirectory(caminhoTempBase);
 
-        argsList = ["tracks", $"\"{filePath}\""];
+        argsList = ["tracks", $"\"{FilePath}\""];
 
         AudioTracks.Clear();
 
@@ -482,7 +475,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
             var arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
 
-            var cacheEntry = await GetAsync(filePath, track.Id);
+            var cacheEntry = await GetAsync(FilePath, track.Id);
 
             if (cacheEntry != null)
             {
@@ -540,7 +533,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                         if (best != null && best.Probability > 0.9)
                         {
                             detectedLang = best.Language;
-                            await SetAsync(filePath, trackId, detectedLang);
+                            await SetAsync(FilePath, trackId, detectedLang);
                         }
                         else
                         {
@@ -566,7 +559,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         /// Atualiza a coleção na UI
         await Utils.AtualizarUIAsync(async () =>
         {
+            AudioTracks.Clear();
             SubtitleTracks.Clear();
+            AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
+            SubtitleTracks.Add(new TrackItem(-1, "Desativar legenda"));
             var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name);
             var lista = allSubs.OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
                                    .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
@@ -578,7 +574,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             }
         });
     }
-
+    
     /// <summary>
     /// Gera um nome legível para uma faixa: prioriza o idioma/descrição reais dos metadados
     /// (Media.Tracks), mapeia códigos de idioma (ex.: "por" → "Português"),

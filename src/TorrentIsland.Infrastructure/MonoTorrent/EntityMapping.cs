@@ -23,6 +23,7 @@ public class EntityMapping(IFormattingHelper fb) : IEntityMapping
         torrent.SetTamanhoTotal(dados.TamanhoTotal);
         torrent.SetTrackers(dados.Trackers);
         torrent.SetSavePath(dados.SavePath);
+        torrent.SetFullPath(dados.FullPath);
         torrent.SetEstado(dados.Estado);
         torrent.SetProgresso(dados.Progresso);
         torrent.SetBytesRecebidos(dados.BytesRecebidos);

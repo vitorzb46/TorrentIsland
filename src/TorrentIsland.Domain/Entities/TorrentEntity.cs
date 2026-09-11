@@ -10,6 +10,7 @@ public class TorrentEntity
     public long TamanhoTotal { get; private set; }
     public IList<string> Trackers { get; private set; } = [];
     public string SavePath { get; private set; } = string.Empty;
+    public string FullPath { get; private set; } = string.Empty;
     public TorrentEstado Estado { get; private set; }
     public double Progresso { get; private set; }
     public long BytesRecebidos { get; private set; }
@@ -28,6 +29,7 @@ public class TorrentEntity
     public void SetTamanhoTotal(long tamanhoTotal) => TamanhoTotal = tamanhoTotal;
     public void SetTrackers(IList<string> trackers) => Trackers = trackers;
     public void SetSavePath(string savePath) => SavePath = savePath;
+    public void SetFullPath(string fullPath) => FullPath = fullPath;
     public void SetEstado(TorrentEstado estado) => Estado = estado;
     public void SetProgresso(double progresso) => Progresso = progresso;
     public void SetBytesRecebidos(long bytesRecebidos) => BytesRecebidos = bytesRecebidos;

@@ -184,8 +184,6 @@ public partial class ControlsWindow : Window
             string? linkSelecionado = searchWindow.LinkSelecionado;
             if (!string.IsNullOrEmpty(linkSelecionado))
             {
-                Log.Salvar($"BuscarTorrentMenuItem_Click - Link selecionado: {linkSelecionado}");
-
                 _ = _playerWindow.CarregarStreamTorrentAsync(linkSelecionado);
             }
         }
@@ -215,7 +213,6 @@ public partial class ControlsWindow : Window
 
     private async Task ProcessarEscolhaDeArquivoAsync()
     {
-        Log.Salvar("LoadMediaButton_Click");
         var dialog = new OpenFileDialog
         {
             Filter = "Arquivos Suportados (*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi)|*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi|" +
@@ -243,7 +240,6 @@ public partial class ControlsWindow : Window
 
     private async Task ProcessarTorrentAsync()
     {
-        Log.Salvar("TorrentMenuItem_Click");
         var dialog = new OpenFileDialog
         {
             Filter = "Arquivos Torrent (*.torrent)|*.torrent",
@@ -251,7 +247,6 @@ public partial class ControlsWindow : Window
         };
         if (dialog.ShowDialog(this) == true)
         {
-            Log.Salvar($"Torrent {dialog.FileName} aberto!");
             await _playerWindow.CarregarStreamTorrentAsync(dialog.FileName);
         }
     }
