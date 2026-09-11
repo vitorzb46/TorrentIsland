@@ -12,6 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using TorrentIsland.Application.Settings;
+using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Presentation.Player.Common;
 using static TorrentIsland.Presentation.Player.Common.SubCacheManager;
 
@@ -397,13 +398,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     private async Task ProcessarLegendasUndAsync()
     {
-        string caminhoMkvExtract = Path.Combine(AppContext.BaseDirectory, "mkvextract.exe");
-        string? filePath = string.Empty;
-
-        if (!File.Exists(caminhoMkvExtract))
+        if (!File.Exists(AppSettings.MkvExtract))
         {
-            Log.Salvar("mkvextract.exe não encontrado!");
-            return;
+            if (!await MkvExtract.DownloadBinary()) return;
         }
 
         filePath = TorrentName != null
@@ -497,43 +494,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         if (tempFiles.Count > 0)
         {
-            var args = string.Join(' ', argsList);
-
-            var processStartInfo = new ProcessStartInfo
-            {
-                FileName = caminhoMkvExtract,
-                Arguments = args,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(processStartInfo);
-            if (process != null)
-            {
-                string? linha;
-                while ((linha = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false)) != null)
-                {
-                    if (!string.IsNullOrWhiteSpace(linha))
-                    {
-                        //Log.Salvar($"[mkvextract] {linha}");
-                    }
-                }
-
-                string erros = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-                if (!string.IsNullOrWhiteSpace(erros))
-                {
-                    Log.Salvar($"[mkvextract ERRO] {erros}");
-                }
-
-                await process.WaitForExitAsync().ConfigureAwait(false);
-            }
-            else
-            {
-                Log.Salvar("Falha ao iniciar o processo do mkvextract.");
-            }
-            await process!.WaitForExitAsync().ConfigureAwait(false);
+            using Process? process = await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
 
             var detector = new CLD2Detector();
 
