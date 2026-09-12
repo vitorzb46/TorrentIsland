@@ -1,6 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
-using TorrentIsland.Presentation.Player.DTOs;
+using TorrentIsland.Application.DTOs;
 using static TorrentIsland.Presentation.Player.Scripts.Limao;
 
 namespace TorrentIsland.Presentation.Player.Windows.WebSearch;

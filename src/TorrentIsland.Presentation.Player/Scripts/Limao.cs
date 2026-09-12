@@ -2,8 +2,8 @@
 using System.IO;
 using System.Net.Http;
 using HtmlAgilityPack;
+using TorrentIsland.Application.DTOs;
 using TorrentIsland.Presentation.Player.Common;
-using TorrentIsland.Presentation.Player.DTOs;
 
 namespace TorrentIsland.Presentation.Player.Scripts;
 

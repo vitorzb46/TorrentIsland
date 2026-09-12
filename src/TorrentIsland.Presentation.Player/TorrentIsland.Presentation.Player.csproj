@@ -18,8 +18,6 @@
     <PackageReference Include="HtmlAgilityPack" Version="1.6.14" />
     <PackageReference Include="LibVLCSharp.WPF" Version="3.10.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.11" />
-    <PackageReference Include="Panlingo.LanguageIdentification.CLD2" Version="0.8.0" />
-    <PackageReference Include="SubtitlesParser" Version="1.5.1" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" />
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>

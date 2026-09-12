@@ -5,8 +5,8 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using TorrentIsland.Application.DTOs;
 using TorrentIsland.Presentation.Player.Common;
-using TorrentIsland.Presentation.Player.DTOs;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Main;
 using TorrentIsland.Presentation.Player.Windows.WebSearch;
@@ -114,14 +114,16 @@ public partial class ControlsWindow : Window
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
+        Log.Salvar("SettingsButton_Click aberto");
         _playerWindow.ReiniciarTimerInatividade();
         if (sender is not Button btn) return;
-        ConfigMenu.DataContext = this.DataContext;
+        ConfigMenu.DataContext = DataContext;
         ConfigMenu.PlacementTarget = btn;
         ConfigMenu.Placement = PlacementMode.Top;
         ConfigMenu.HorizontalOffset = -120;
         ConfigMenu.VerticalOffset = -25;
         ConfigMenu.IsOpen = true;
+        Log.Salvar("SettingsButton_Click fechado");
     }
 
     private void FullscreenButton_Click(object sender, RoutedEventArgs e)
@@ -131,8 +133,10 @@ public partial class ControlsWindow : Window
 
     private void SubtitleMenuGroup_Click(object sender, RoutedEventArgs e)
     {
+        Log.Salvar("SubtitleMenuGroup_Click");
         if (e.OriginalSource is MenuItem { Header: TrackItem track } dObject)
         {
+            Log.Salvar("SubtitleMenuGroup_Click dentro do if");
             _playerWindow.ReiniciarTimerInatividade();
             _viewModel.SelectSubtitleTrack(track.Id);
 

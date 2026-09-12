@@ -5,7 +5,9 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
+using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Infrastructure.VLC;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ViewModel;
@@ -182,6 +184,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
+            _viewModel.IsVideoVisible = false;
             _viewModel.LoadingMessage = "Iniciando streaming...";
             _viewModel.IsLoading = true;
             Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
@@ -190,7 +193,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             {
                 return await StreamService.ToPlayerAsync(caminhoOuUrl);
             });
-
+            AppSettings.OneStream = true;
             await CarregarMidiaAsync(streamUrl);
         }
         catch (Exception ex)

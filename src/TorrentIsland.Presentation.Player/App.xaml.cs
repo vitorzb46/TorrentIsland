@@ -6,6 +6,7 @@ using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Services;
 using TorrentIsland.Infrastructure.DependencyInjection;
 using TorrentIsland.Infrastructure.Interfaces;
+using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Presentation.Console.Helpers;
 using TorrentIsland.Presentation.Console.Renderers;
 using TorrentIsland.Presentation.Player.Common;
@@ -55,7 +56,6 @@ public partial class App : System.Windows.Application
 
         var window = serviceProvider.GetRequiredService<PlayerWindow>();
         window.MediaUrl = mediaUrl!;
-        // Task.Delay(1000).Wait(); // Aguarda 1 segundo para mostrar a janela | OBS: Tem algum bug que abre o programa sem abrir a janela, resolver depois.
         window.Show();
     }
 

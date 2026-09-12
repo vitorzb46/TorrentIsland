@@ -1,7 +1,5 @@
 using LibVLCSharp.Shared;
 using LibVLCSharp.Shared.Structures;
-using Panlingo.LanguageIdentification.CLD2;
-using SubtitlesParser.Classes.Parsers;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -9,13 +7,12 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.RegularExpressions;
+using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Presentation.Player.Common;
-using TorrentIsland.Presentation.Player.DTOs;
-using static TorrentIsland.Presentation.Player.Common.SubCacheManager;
+using static TorrentIsland.Infrastructure.Services.SubCacheManager;
 
 namespace TorrentIsland.Presentation.Player.ViewModel;
 
@@ -57,8 +54,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Properties
-    private ObservableCollection<TrackItem> AudioTracks { get; } = [];
-    private ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
+    public ObservableCollection<TrackItem> AudioTracks { get; } = [];
+    public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
     private static long SubtitleDelay { get; set; } = 0;
     private long MediaTime { get; set; } = 0;
     public static string FilePath { get; set; } = string.Empty;
@@ -438,11 +435,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
 
         undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) &&
-                                             metadadosLegendas[t.Id].Language == "und")];
+                                             metadadosLegendas[t.Id].Language == "und").OrderBy(t => t.Id)];
 
         if (undTracks.Count == 0) return;
 
-        LoadingMessage = $"Processando {undTracks.Count} legendas...";
+        LoadingMessage = $"Processando legendas...";
         IsLoading = true;
 
         // Limpa o diretório temporário se houver resquícios não tratados.
@@ -454,12 +451,13 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         argsList = ["tracks", $"\"{FilePath}\""];
 
         AudioTracks.Clear();
-
+        AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
         foreach (var t in audioTracks.Where(t => t.Id >= 0))
         {
             AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
         }
 
+        SubtitleTracks.Clear();
         SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
 
         foreach (var track in undTracks)
@@ -493,87 +491,24 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         if (tempFiles.Count > 0)
         {
             using Process? process = await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
-
-            var detector = new CLD2Detector();
-
-            // Analisa legenda extraída
-            await Parallel.ForEachAsync(tempFiles, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async (kvp, ct) =>
-            {
-                var trackId = kvp.Key;
-                var sub = kvp.Value;
-
-                try
-                {
-                    if (!File.Exists(sub))
-                    {
-                        novosTracks.Add(new TrackItem(trackId, "Desconhecido"));
-                        return;
-                    }
-
-                    using var fileStream = File.OpenRead(sub);
-                    var parser = new SubParser();
-                    var items = parser.ParseStream(fileStream);
-
-                    var sb = new StringBuilder();
-                    for (var i = 0; i < Math.Min(15, items.Count); i++)
-                    {
-                        foreach (var line in items[i].Lines)
-                        {
-                            if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
-                                sb.Append(line).Append(' ');
-                        }
-                    }
-
-                    string detectedLang = "und";
-
-                    if (sb.Length > 0)
-                    {
-                        var predictions = detector.PredictLanguage(sb.ToString());
-                        var best = predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
-
-                        if (best != null && best.Probability > 0.9)
-                        {
-                            detectedLang = best.Language;
-                            await SetAsync(FilePath, trackId, detectedLang);
-                        }
-                        else
-                        {
-                            detectedLang = "und";
-                        }
-                    }
-                    novosTracks.Add(new TrackItem(trackId, detectedLang));
-                }
-                catch (Exception ex)
-                {
-                    novosTracks.Add(new TrackItem(trackId, "und"));
-                    Log.Salvar($"Falha ao processar legenda ID {trackId}: {ex.Message}");
-                }
-                finally
-                {
-                    try { File.Delete(sub); } catch { }
-                }
-            });
-
-            detector.Dispose();
+            await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
         }
 
         /// Atualiza a coleção na UI
         await Utils.AtualizarUIAsync(async () =>
         {
-            AudioTracks.Clear();
-            SubtitleTracks.Clear();
-            AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
+            SubtitleTracks.Clear();            
             SubtitleTracks.Add(new TrackItem(-1, "Desativar legenda"));
-            var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name);
-            var lista = allSubs.OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
-                                   .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
-                                   .ToList();
+            var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name)
+                                     .OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
+                                     .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
+                                     .ToList();
 
-            foreach (var item in lista)
+            foreach (var item in allSubs)
             {
                 SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value)));
             }
-        });
+        }).ConfigureAwait(false);
     }
     
     /// <summary>
