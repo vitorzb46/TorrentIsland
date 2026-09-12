@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\torrent_island.ico</ApplicationIcon>
-    <!-- <AssemblyName>TorrentIsland</AssemblyName> -->
+    <AssemblyName>TorrentIsland</AssemblyName>    
   </PropertyGroup>
 
   <ItemGroup>

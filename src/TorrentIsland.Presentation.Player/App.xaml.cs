@@ -1,12 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Services;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.DependencyInjection;
 using TorrentIsland.Infrastructure.Interfaces;
-using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Presentation.Console.Helpers;
 using TorrentIsland.Presentation.Console.Renderers;
 using TorrentIsland.Presentation.Player.Common;
@@ -24,8 +25,9 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+        {
             Log.Salvar($"UnhandledException: {args.ExceptionObject}");
-
+        };
         DispatcherUnhandledException += (s, args) =>
         {
             Log.Salvar($"DispatcherUnhandledException: {args.Exception.Message}");
@@ -35,9 +37,9 @@ public partial class App : System.Windows.Application
         ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Mica, true);
 
         base.OnStartup(e);
-
+        
         // Logs limpos a cada execução para o timeline não misturar sessões.
-        foreach (var arquivo in new[] { "player-debug.log", "vlc-errors.log" })
+        foreach (var arquivo in new[] { $"{AppSettings.AppLog}", "vlc-errors.log" })
         {
             try
             {

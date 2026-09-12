@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace TorrentIsland.Presentation.Player.Common;
 
 /// <summary>
-/// Fachada de log do player: grava no player-debug.log reutilizando o FileLoggerProvider
+/// Fachada de log do player: grava no <see cref="AppSettings.AppLog"/> reutilizando o FileLoggerProvider
 /// compartilhado da TorrentIsland.Infrastructure.
 /// </summary>
 public static class Log

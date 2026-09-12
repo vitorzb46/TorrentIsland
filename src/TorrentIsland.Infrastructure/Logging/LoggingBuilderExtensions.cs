@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
 
 namespace TorrentIsland.Infrastructure.Logging;
@@ -23,7 +24,7 @@ public static class LoggingBuilderExtensions
     /// </summary>
     public static ILoggingBuilder AddFileLogger(this ILoggingBuilder builder, string? logPath = null)
     {
-        var path = logPath ?? Path.Combine(AppContext.BaseDirectory, "player-debug.log");
+        var path = logPath ?? AppSettings.AppLog;
         var provider = new FileLogger(path);
         builder.Services.AddSingleton(provider);
         builder.AddProvider(provider);

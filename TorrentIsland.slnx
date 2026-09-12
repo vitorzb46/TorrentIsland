@@ -8,7 +8,6 @@
   </Folder>
   <Folder Name="/Presentation/">
     <Project Path="src/TorrentIsland.Presentation.Console/TorrentIsland.Presentation.Console.csproj" />
-    <Project Path="src/TorrentIsland.Presentation.Wpf/TorrentIsland.Presentation.Wpf.csproj" />
     <Project Path="src/TorrentIsland.Presentation.Player/TorrentIsland.Presentation.Player.csproj" />
   </Folder>
 </Solution>
