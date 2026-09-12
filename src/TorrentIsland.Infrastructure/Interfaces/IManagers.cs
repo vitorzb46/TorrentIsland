@@ -10,8 +10,6 @@ namespace TorrentIsland.Infrastructure.Interfaces
     public interface IManagers
     {
         ConcurrentDictionary<Guid, TorrentManager> All { get; set; }
-        Task<TorrentManager> AddAsync(Torrent torrent, string savePath);
-        Task<TorrentManager> AddAsync(MagnetLink magnet, string savePath);
         Task<List<Guid>> AddTorrentsAsync();
         Task AguardarMetadata(TorrentManager manager);
         Task AguardarMetadata(IList<TorrentManager> managers);

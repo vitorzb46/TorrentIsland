@@ -20,6 +20,7 @@ public class Managers : IManagers
 
     public ConcurrentDictionary<Guid, TorrentManager> All { get; set; } = [];
     internal TorrentSettings Settings { get; private set; }
+    internal TorrentManager? StreamingManager { get; set; }
 
 
     public Managers(ClientEngine Engine, AppSettings app, IEntityMapping map)
@@ -48,38 +49,28 @@ public class Managers : IManagers
 
     public async Task<IList<TorrentManager>> StreamingAsync(Torrent torrent, string savePath)
     {
-        if (_engine.Torrents.Count >= 1) return _engine.Torrents;
-        var result = await _engine.AddStreamingAsync(torrent, savePath, Settings).ConfigureAwait(false);
+        var result = await AddStreamingAsync(torrent, savePath, Settings).ConfigureAwait(false);
         return [result];
     }
 
     public async Task<IList<TorrentManager>> StreamingAsync(MagnetLink magnet, string savePath)
     {
-        if (_engine.Torrents.Count >= 1) return _engine.Torrents;
-        var result = await _engine.AddStreamingAsync(magnet, savePath, Settings).ConfigureAwait(false);
+        var result = await AddStreamingAsync(magnet, savePath, Settings).ConfigureAwait(false);
         return [result];
     }
 
     public async Task<IList<TorrentManager>> TorrentDownloadAsync(Torrent torrent, string savePath)
     {
-        if (_engine.Torrents.Count >= 1) return _engine.Torrents;
-        var result = await _engine.AddAsync(torrent, savePath, Settings).ConfigureAwait(false);
+        var result = await AddAsync(torrent, savePath, Settings).ConfigureAwait(false);
         return [result];
     }
 
     public async Task<IList<TorrentManager>> TorrentDownloadAsync(MagnetLink magnet, string savePath)
     {
-        if (_engine.Torrents.Count >= 1) return _engine.Torrents;
-        var result = await _engine.AddAsync(magnet, savePath, Settings).ConfigureAwait(false);
+        var result = await AddAsync(magnet, savePath, Settings).ConfigureAwait(false);
         return [result];
     }
-
-    public async Task<TorrentManager> AddAsync(Torrent torrent, string savePath)
-        => await _engine.AddAsync(torrent, savePath, Settings).ConfigureAwait(false);
-
-    public async Task<TorrentManager> AddAsync(MagnetLink magnet, string savePath)
-        => await _engine.AddAsync(magnet, savePath, Settings).ConfigureAwait(false);
-
+    
     public async Task<Torrent> LoadAsync(string path) => await Torrent.LoadAsync(path).ConfigureAwait(false);
 
     public async Task<Torrent> LoadAsync(Memory<byte> data) => await Torrent.LoadAsync(data).ConfigureAwait(false);
@@ -143,14 +134,14 @@ public class Managers : IManagers
 
     public async Task StreamBuffer(TorrentManager manager)
     {
-        double buffer = 10.0;
+        double buffer = 5.0;
         double progresso = manager.Bitfield.PercentComplete;
         if (progresso > buffer) return;
         while (progresso <= buffer)
         {
             LoadingMessage = $"Buffering {progresso / 100:P2}...";
             progresso = manager.Bitfield.PercentComplete;
-            await Task.Delay(Random.Shared.Next(1, 151));
+            await Task.Delay(Random.Shared.Next(200, 401));
         }
     }
 
@@ -200,7 +191,7 @@ public class Managers : IManagers
             try
             {
                 ids.Add(Guid.NewGuid());
-                var manager = await AddAsync(torrent, TorrentsFolder).ConfigureAwait(false);
+                var manager = await AddAsync(torrent, TorrentsFolder, Settings).ConfigureAwait(false);
                 RegistroId(ids[i], manager);
             }
             catch (Exception ex)
@@ -230,5 +221,39 @@ public class Managers : IManagers
             ParesDisponiveis: manager.Peers.Available,
             BytesRestantes: (manager.Torrent?.Size ?? 0) - manager.Monitor.DataBytesReceived
         );
+    }
+
+    async Task<TorrentManager> AddAsync(Torrent torrent, string savePath, TorrentSettings settings)
+    {
+        return await _engine.AddAsync(torrent, savePath, settings).ConfigureAwait(false);
+    }
+
+    async Task<TorrentManager> AddAsync(MagnetLink magnet, string savePath, TorrentSettings settings)
+    {
+        return await _engine.AddAsync(magnet, savePath, settings).ConfigureAwait(false);
+    }
+
+    async Task<TorrentManager> AddStreamingAsync(Torrent torrent, string savePath, TorrentSettings settings)
+    {
+        await IsStreamning();
+        StreamingManager = await _engine.AddStreamingAsync(torrent, savePath, settings).ConfigureAwait(false);
+        return StreamingManager;
+    }
+
+    async Task<TorrentManager> AddStreamingAsync(MagnetLink magnet, string savePath, TorrentSettings settings)
+    {
+        await IsStreamning();
+        StreamingManager = await _engine.AddStreamingAsync(magnet, savePath, settings).ConfigureAwait(false);
+        return StreamingManager;
+    }
+
+    private async Task IsStreamning()
+    {
+        if (StreamingManager != null)
+        {
+            await StreamingManager!.StopAsync().ConfigureAwait(false);
+            await _engine.RemoveAsync(StreamingManager,
+                                      RemoveMode.KeepAllData).ConfigureAwait(false);
+        }
     }
 }

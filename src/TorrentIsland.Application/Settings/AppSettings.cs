@@ -46,7 +46,7 @@ public sealed class AppSettings
 
     // Torrent (MonoTorrent)
     public static string FullPath { get; set; } = string.Empty;
-    public bool OneStream { get; set; } = true;
+    public static bool OneStream { get; set; } = true;
     public bool Semeando { get; set; } = true;
     public int TorrentLimiteDownload { get; }
     public int TorrentLimiteUpload { get; }

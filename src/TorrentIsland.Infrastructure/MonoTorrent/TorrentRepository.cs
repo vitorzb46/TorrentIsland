@@ -57,7 +57,7 @@ public class TorrentRepository : ITorrentRepository
                 case string stringSource:
                     if (string.IsNullOrWhiteSpace(stringSource))
                         return (false, new List<TorrentManager>());
-
+                        
                     if (stringSource.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) ||
                         Path.GetExtension(stringSource).Equals(".torrent", StringComparison.OrdinalIgnoreCase))
                     {
@@ -210,10 +210,10 @@ public class TorrentRepository : ITorrentRepository
         var manager = await Managers.ObterManagerIdAsync(id);
         await Managers.AguardarMetadata(manager!).ConfigureAwait(false);
         var torrent = ManagerFiles.ArquivoMaiorPrimeiro(manager!);
-        var stream = App?.OneStream == true ? await Managers.StreamHttp(manager!, torrent!) :
+        var stream = OneStream == true ? await Managers.StreamHttp(manager!, torrent!) :
                                       throw new CustomException("Não é possível iniciar um segundo stream.");
 
-        App.OneStream = false;
+        OneStream = false;
         await Managers.StreamBuffer(manager!);
         return stream.FullUri;
     }
