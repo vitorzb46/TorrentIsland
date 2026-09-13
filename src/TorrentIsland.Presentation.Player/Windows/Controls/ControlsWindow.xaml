@@ -124,8 +124,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Slider
-                x:Name="TimelineSlider"
+            <Slider x:Name="TimelineSlider"
                 Grid.Row="0"
                 Height="12"
                 Margin="0,-4,0,0"
@@ -149,14 +148,13 @@
                     Grid.Column="0"
                     VerticalAlignment="Center"
                     Orientation="Horizontal">
-                    <Button
-                        x:Name="RetrocederButton"
+                    <Button x:Name="RetrocederButton"
                         Click="RetrocederButton_Click"
                         Content="⏪"
                         FontSize="13"
                         Style="{StaticResource PlayerButtonStyle}" />
-                    <Button
-                        x:Name="PlayPauseButton"
+                    
+                    <Button x:Name="PlayPauseButton"
                         Click="PlayPauseButton_Click"
                         FontSize="18">
                         <Button.Style>
@@ -170,15 +168,14 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                    <Button
-                        x:Name="AvancarButton"
+                    
+                    <Button x:Name="AvancarButton"
                         Click="AvancarButton_Click"
                         Content="⏩"
                         FontSize="13"
                         Style="{StaticResource PlayerButtonStyle}" />
-                    <Button
-                        x:Name="MuteButton"
-                        Click="MuteButton_Click">
+
+                    <Button x:Name="MuteButton" Click="MuteButton_Click">
                         <Button.Style>
                             <Style BasedOn="{StaticResource PlayerButtonStyle}" TargetType="Button">
                                 <Setter Property="Content" Value="🔊" />
@@ -190,8 +187,8 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                    <Slider
-                        x:Name="VolumeSlider"
+                    
+                    <Slider x:Name="VolumeSlider"
                         Width="100"
                         Margin="5,0,0,0"
                         VerticalAlignment="Center"
@@ -206,6 +203,7 @@
                     VerticalAlignment="Center"
                     Orientation="Horizontal">
 
+                    <!--  Formato de Tempo  -->
                     <StackPanel
                         Margin="0,0,16,0"
                         VerticalAlignment="Center"
@@ -222,15 +220,121 @@
                             Text="{Binding TempoTotalFormatado}" />
                     </StackPanel>
 
-                    <Button
-                        x:Name="LoadMediaButton"
+                    <Button x:Name="LoadMediaButton"
                         Click="LoadMediaButton_Click"
-                        Content="📁"
+                        FontSize="16"
+                        Style="{StaticResource PlayerButtonStyle}">
+                        <ui:SymbolIcon Symbol="Folder32" />
+                    </Button>
+
+                    <ui:Button x:Name="TorrentStatusButton"
+                        Click="TorrentStatusButton_Click"
                         FontSize="16"
                         Style="{StaticResource PlayerButtonStyle}" />
 
-                    <Button
-                        x:Name="SettingsButton"
+                    <Grid Width="0" Height="0">
+                        <ui:Flyout x:Name="TorrentStatusFlyout" Placement="Custom">
+                            <StackPanel Width="200">
+                                <!--  TorrentName e ProgressPercentage  -->
+                                <TextBlock
+                                    Margin="0,0,0,10"
+                                    FontSize="14"
+                                    FontWeight="Bold"
+                                    Foreground="White"
+                                    TextAlignment="Center">
+                                    <Run Text="{Binding TorrentName, Mode=OneWay}" />
+                                    <Run Text=" - " />
+                                    <Run Text="{Binding ProgressPercentage, Mode=OneWay, StringFormat={}{0}%}" />
+                                </TextBlock>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                    </Grid.RowDefinitions>
+
+                                    <!--  Estado  -->
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="0"
+                                        Margin="0,0,10,4"
+                                        Foreground="White"
+                                        Text="Estado:" />
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="1"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="{Binding Status, Mode=OneWay}" />
+
+                                    <!--  Velocidade de Download  -->
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Grid.Column="0"
+                                        Margin="0,0,10,4"
+                                        Foreground="White"
+                                        Text="Vel. Down:" />
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="{Binding DownloadSpeed, Mode=OneWay}" />
+
+                                    <!--  Velocidade de Upload  -->
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Grid.Column="0"
+                                        Margin="0,0,10,4"
+                                        Foreground="White"
+                                        Text="Vel. Up:" />
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Grid.Column="1"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="{Binding UploadSpeed, Mode=OneWay}" />
+
+                                    <!--  Seeds  -->
+                                    <TextBlock
+                                        Grid.Row="3"
+                                        Grid.Column="0"
+                                        Margin="0,0,10,4"
+                                        Foreground="White"
+                                        Text="Seeds:" />
+                                    <TextBlock
+                                        Grid.Row="3"
+                                        Grid.Column="1"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="{Binding Seeds, Mode=OneWay}" />
+
+                                    <!--  Peers  -->
+                                    <TextBlock
+                                        Grid.Row="4"
+                                        Grid.Column="0"
+                                        Margin="0,0,10,4"
+                                        Foreground="White"
+                                        Text="Pares:" />
+                                    <TextBlock
+                                        Grid.Row="4"
+                                        Grid.Column="1"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="{Binding Peers, Mode=OneWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </ui:Flyout>
+                    </Grid>
+                    <!--  Botão das configurações  -->
+                    <Button x:Name="SettingsButton"
                         Click="SettingsButton_Click"
                         Style="{StaticResource PlayerButtonStyle}"
                         Tag="{Binding}">
@@ -291,13 +395,13 @@
                                     </Separator.Template>
                                 </Separator>
 
-                                <!--  Informações do Torrent  -->
+                                <!--  Informações do Torrent OBSOLETO  -->
                                 <MenuItem Header="🌐 Informações do Torrent" />
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
-                    <Button
-                        x:Name="FullscreenButton"
+                    
+                    <Button x:Name="FullscreenButton"
                         Click="FullscreenButton_Click"
                         Style="{StaticResource PlayerButtonStyle}">
                         <ui:SymbolIcon

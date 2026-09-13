@@ -116,8 +116,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
-            Utils.AtualizarUI(() => _viewModel.IsVideoVisible = false);
-
+            _viewModel.IsVideoVisible = false;
             _viewModel.IsLoading = true;
 
             Media media;

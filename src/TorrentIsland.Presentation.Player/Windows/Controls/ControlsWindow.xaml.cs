@@ -34,7 +34,16 @@ public partial class ControlsWindow : Window
         _viewModel = viewModel;
         _playerWindow = playerWindow;
         DataContext = viewModel;
+        TorrentStatusButton.Content = new SymbolIcon { Symbol = SymbolRegular.Globe32 };
         ConfigurarToolTips();
+        TorrentStatusFlyout.Loaded += (s, e) =>
+        {
+            if (TorrentStatusFlyout.Template.FindName("PART_Popup", TorrentStatusFlyout) is Popup popup)
+            {
+                popup.PlacementTarget = TorrentStatusButton;
+                popup.CustomPopupPlacementCallback = PlaceFlyoutAboveCentered;
+            }
+        };
     }
 
     #region Timeline Slider
@@ -114,7 +123,6 @@ public partial class ControlsWindow : Window
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        Log.Salvar("SettingsButton_Click aberto");
         _playerWindow.ReiniciarTimerInatividade();
         if (sender is not Button btn) return;
         ConfigMenu.DataContext = DataContext;
@@ -123,7 +131,6 @@ public partial class ControlsWindow : Window
         ConfigMenu.HorizontalOffset = -120;
         ConfigMenu.VerticalOffset = -25;
         ConfigMenu.IsOpen = true;
-        Log.Salvar("SettingsButton_Click fechado");
     }
 
     private void FullscreenButton_Click(object sender, RoutedEventArgs e)
@@ -195,6 +202,11 @@ public partial class ControlsWindow : Window
                 _ = _playerWindow.CarregarStreamTorrentAsync(linkSelecionado);
             }
         }
+    }
+
+    private void TorrentStatusButton_Click(object sender, RoutedEventArgs e)
+    {
+        TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
     }
     #endregion
 
@@ -280,5 +292,18 @@ public partial class ControlsWindow : Window
         }
 
         _viewModel.SetReset();
+    }
+
+    private CustomPopupPlacement[] PlaceFlyoutAboveCentered(Size popupSize,
+                                                            Size targetSize,
+                                                            Point offset)
+    {
+        double x = (targetSize.Width - popupSize.Width) / 2;
+        double y = -popupSize.Height;
+
+        return
+        [
+            new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal)
+        ];
     }
 }
