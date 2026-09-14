@@ -31,7 +31,7 @@ public class JsonFiles
         try
         {
             var json = JsonSerializer.Serialize(instance, Options);
-            await File.WriteAllTextAsync(cachePath, json).ConfigureAwait(false);
+            await File.WriteAllTextAsync(cachePath, json, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -57,8 +57,8 @@ public class JsonFiles
     /// O conteúdo existente será completamente limpo (<see cref="IDictionary{TKey, TValue}.Clear"/>) antes do carregamento.
     /// </param>
     /// <returns>Uma tarefa que representa a operação assíncrona de leitura.</returns>
-    public static async Task LoadFromFileAsync<TKey, TValue>(string cachePath,
-                                                             IDictionary<TKey, TValue> instance,
+    public static async Task LoadFromFileAsync<TKey, TValue>(IDictionary<TKey, TValue> instance,
+                                                             string cachePath,
                                                              CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();

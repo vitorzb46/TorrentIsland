@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
-using System.Reflection;
 using System.Windows;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Services;
@@ -30,14 +29,14 @@ public partial class App : System.Windows.Application
         };
         DispatcherUnhandledException += (s, args) =>
         {
-            Log.Salvar($"DispatcherUnhandledException: {args.Exception.Message}");
+            Log.Salvar($"DispatcherUnhandledException: {args.Exception.Message} {args.Exception.StackTrace}");
             args.Handled = true;
         };
 
         ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Mica, true);
 
         base.OnStartup(e);
-        
+
         // Logs limpos a cada execução para o timeline não misturar sessões.
         foreach (var arquivo in new[] { $"{AppSettings.AppLog}", "vlc-errors.log" })
         {

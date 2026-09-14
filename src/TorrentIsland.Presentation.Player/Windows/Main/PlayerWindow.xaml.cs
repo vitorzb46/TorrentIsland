@@ -1,4 +1,5 @@
 using LibVLCSharp.Shared;
+using LibVLCSharp.WPF;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -23,7 +24,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly DispatcherTimer _inactivityTimer;
     private readonly IDLService _ytDlService;
     private readonly DispatcherTimer _osdTimer;
-    
+
     public PlayerWindow(IStreamService streamService,
                         IManagers managers,
                         IDLService ytDlService,
@@ -84,15 +85,30 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         };
         Closed += (_, _) =>
         {
-            Log.Salvar("Window fechada — dispose do ViewModel");
+            Log.Salvar($"Window fechada — dispose do {typeof(PlayerWindow).Name}");
+            _controls.FullscreenRequested -= (_, _) => ToggleFullscreen();
+            _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
+
+            LocationChanged -= (_, _) => PosicionarControles();
+            SizeChanged -= (_, _) => PosicionarControles();
+            StateChanged -= (_, _) => PosicionarControles();
+
+            _inactivityTimer?.Stop();
+            _osdTimer?.Stop();
+
+            if (_controls != null)
+            {
+                _controls.Close();
+            }
+
             Task.Run(async () =>
             {
                 await Managers.SaveEngine().ConfigureAwait(false);
             });
-            _inactivityTimer.Stop();
-            _controls.Close();
-            _viewModel.Dispose();
-            vlc.Dispose();
+
+            _viewModel?.Dispose();
+            vlc?.Dispose();
+
             Environment.Exit(0);
         };
 
@@ -101,7 +117,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         SizeChanged += (_, _) => PosicionarControles();
         StateChanged += (_, _) => PosicionarControles();
 
-        StreamService = streamService;        
+        StreamService = streamService;
         _ytDlService = ytDlService;
     }
     #endregion
@@ -125,6 +141,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
+            await MediaTimestamp.Load();
+            await SubCacheManager.Load();
             _viewModel.IsVideoVisible = false;
             _viewModel.IsLoading = true;
 
@@ -137,7 +155,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
             {
                 media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
-            }         
+
+                var torrents = await Managers.ObterTorrentsAsync();
+                if (torrents.Count > 0)
+                {
+                    PlayerViewModel.FilePath = torrents.Select(v => v.Value.FullPath).FirstOrDefault()!;
+                }
+            }
             else
             {
                 var streamUrl = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
@@ -150,13 +174,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 }
             }
 
-            // Retiro da thread principal se causar algum deadlock, até agora normal.
-            var torrents = await Managers.ObterTorrentsAsync();
-            if (torrents.Count > 0)
-            {
-                PlayerViewModel.FilePath = torrents.Select(v => v.Value.FullPath).FirstOrDefault()!;
-            }
-
             // Opções de rede para streaming
             media.AddOption(":network-caching=5000");
             media.AddOption(":file-caching=5000");
@@ -164,6 +181,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             media.AddOption(":skip-frames");
             media.AddOption(":clock-synchro=0");
             media.AddOption(":clock-jitter=5000");
+
+            if (_viewModel.GetMedia() != null)
+            {
+                Log.Salvar($"{typeof(MediaTimestamp).Name} | {PlayerViewModel.OldFilePath} | {_viewModel.GetMedia()?.Type} | {_viewModel.MediaTime}");
+                await MediaTimestamp.SaveCache(PlayerViewModel.OldFilePath, _viewModel.MediaTime);
+            }
 
             KeyGenerator.Hash(PlayerViewModel.FilePath);
             var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
@@ -173,7 +196,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 await _viewModel.PopulateTracksAsync();
                 _viewModel.SetPause(false);
                 ShowControls();
-                _viewModel.IsLoading = false;                
+                _viewModel.IsLoading = false;
                 VideoView.InvalidateVisual();
                 Utils.VideoView_Background_Black();
                 await Task.Delay(250); //Tempo de espera para evitar artefato visual
@@ -182,7 +205,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
         catch (Exception ex)
         {
-            Log.Salvar($"Erro ao carregar mídia: {ex.Message}");
+            Log.Salvar($"Erro ao carregar mídia: {ex.Message} {ex.StackTrace} {ex.InnerException}");
             MessageBox.Show($"Não foi possível carregar a mídia: {caminhoOuUrl}", "Player",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -208,8 +231,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Log.Salvar($"Erro ao iniciar stream de torrent: {ex.Message}");
             MessageBox.Show($"Não foi possível iniciar o stream do torrent!", "Player",
                 MessageBoxButton.OK, MessageBoxImage.Error);
-                
-            if (_viewModel.GetMedia != null)
+
+            if (_viewModel.GetMediaPlayer != null)
                 _viewModel.IsVideoVisible = true;
         }
         finally
@@ -264,7 +287,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _controls.Top = this.Top + this.ActualHeight - _controls.Height;
         }
     }
-    
+
     // --- Modo cinema ---
     private void ShowControls()
     {
@@ -377,7 +400,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
     #endregion
-    
+
     #region Shortcuts
     protected override void OnPreviewMouseDoubleClick(MouseButtonEventArgs e)
     {

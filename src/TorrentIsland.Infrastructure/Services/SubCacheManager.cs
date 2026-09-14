@@ -61,9 +61,9 @@ public partial class SubCacheManager
         await JsonFiles.SaveToFileAsync(_cache, CacheFile);
     }
 
-    private static async Task Load()
+    public static async Task Load()
     {
-        await JsonFiles.LoadFromFileAsync(CacheFile, _cache);
+        await JsonFiles.LoadFromFileAsync(_cache, CacheFile);
     }
 
     /// <summary>Pega <paramref name="videoPath"/> e <paramref name="trackId"/>, transformando os 2 em uma Key</summary>

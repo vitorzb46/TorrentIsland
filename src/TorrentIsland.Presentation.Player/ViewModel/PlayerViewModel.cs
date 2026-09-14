@@ -63,9 +63,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public ObservableCollection<TrackItem> AudioTracks { get; } = [];
     public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
     private static long SubtitleDelay { get; set; } = 0;
-    private long MediaTime { get; set; } = 0;
+    public long MediaTime { get; set; } = 0;
     public static string FilePath { get; set; } = string.Empty;
-    public static nint VlcHwnd { get; private set; }        
+    public static string OldFilePath { get; set; } = string.Empty;
+    public static nint VlcHwnd { get; private set; }
     public LibVLC LibVLC { get; }
 
     public string TorrentName
@@ -279,7 +280,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         TempoTotalFormatado = FormatarTempo(totalMilliseconds);
     }
 
-    public Media GetMedia() => _mediaPlayer.Media!;
+    public Media GetMediaPlayer() => _mediaPlayer.Media!;
+
+    public Media? GetMedia() => _media;
 
     public void SetMedia(Media media, long time)
     {
@@ -507,7 +510,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             if (!await MkvExtract.DownloadBinary()) return;
         }
-        
+
         if (string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
         {
             Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
@@ -517,7 +520,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         Media? media = _mediaPlayer.Media;
 
         if (media == null) return;
-        
+
         TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
         TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
 
@@ -598,10 +601,13 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
         }
 
+        OldFilePath = FilePath;
+        FilePath = string.Empty;
+
         /// Atualiza a coleção na UI
         await Utils.AtualizarUIAsync(async () =>
         {
-            SubtitleTracks.Clear();            
+            SubtitleTracks.Clear();
             SubtitleTracks.Add(new TrackItem(-1, "Desativar legenda"));
             var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name)
                                      .OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
@@ -614,7 +620,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             }
         }).ConfigureAwait(false);
     }
-    
+
     /// <summary>
     /// Gera um nome legível para uma faixa: prioriza o idioma/descrição reais dos metadados
     /// (Media.Tracks), mapeia códigos de idioma (ex.: "por" → "Português"),
@@ -667,7 +673,12 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     private void OnMute(object? sender, EventArgs e) => IsMuted = _mediaPlayer.Mute;
-    private void OnPaused(object? sender, EventArgs e) => IsPlaying = false;
+    private void OnPaused(object? sender, EventArgs e)
+    {
+        MediaTime = _mediaPlayer.Time;
+        IsPlaying = false;
+    }
+
     private void OnStopped(object? sender, EventArgs e) => IsPlaying = false;
     private void OnEndReached(object? sender, EventArgs e) => IsPlaying = false;
     private void OnPlaying(object? sender, EventArgs e)
@@ -763,8 +774,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         if (_disposed) return;
         _disposed = true;
 
-        MediaTime = _mediaPlayer.Time;
-        _ = MediaTimestamp.SaveCache(FilePath, MediaTime);
         Log.Salvar("Dispose do ViewModel iniciado");
 
         // Remove imediatamente as inscrições de eventos para evitar callbacks fantasmas
@@ -776,8 +785,21 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.Stopped -= OnStopped;
         _mediaPlayer.EndReached -= OnEndReached;
         _mediaPlayer.Buffering -= OnPlayerBuffering;
+        _mediaPlayer.MediaChanged -= OnMediaChanged;
+        _mediaPlayer.EncounteredError -= OnEncounteredError;
+        _mediaPlayer.LengthChanged -= OnLengthChanged;
         AppSettings.LoadingMessageChanged -= OnLoadingMessageChanged;
         TorrentStatusEvent.TorrentUpdated -= OnTorrentUpdated;
+
+        try
+        {
+            MediaTime = _mediaPlayer.Time;
+            _ = MediaTimestamp.SaveCache(OldFilePath, MediaTime);
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Não foi possível salvar o tempo do MediaTime: {ex.Message}");
+        }
 
         try
         {
