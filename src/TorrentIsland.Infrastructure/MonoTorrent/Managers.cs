@@ -9,7 +9,6 @@ using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Exceptions;
 using TorrentIsland.Infrastructure.DTOs;
 using TorrentIsland.Infrastructure.Interfaces;
-using TorrentIsland.Infrastructure.Logging;
 using static TorrentIsland.Application.Settings.AppSettings;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
@@ -76,7 +75,7 @@ public class Managers : IManagers
         var result = await AddAsync(magnet, savePath, Settings).ConfigureAwait(false);
         return [result];
     }
-    
+
     public async Task<Torrent> LoadAsync(string path) => await Torrent.LoadAsync(path).ConfigureAwait(false);
 
     public async Task<Torrent> LoadAsync(Memory<byte> data) => await Torrent.LoadAsync(data).ConfigureAwait(false);
@@ -149,6 +148,7 @@ public class Managers : IManagers
             progresso = manager.Bitfield.PercentComplete;
             await Task.Delay(Random.Shared.Next(200, 401));
         }
+        LoadingMessage = "Iniciando streaming...";
     }
 
     public async Task<List<Guid>> AddTorrentsAsync()
@@ -249,14 +249,16 @@ public class Managers : IManagers
     async Task<TorrentManager?> AddStreamingAsync(MagnetLink magnet, string savePath, TorrentSettings settings)
     {
         if (await IsStreamning()) return StreamingManager;
-        StreamingManager = await _engine.AddStreamingAsync(magnet, savePath, settings).ConfigureAwait(false);        
+        StreamingManager = await _engine.AddStreamingAsync(magnet, savePath, settings).ConfigureAwait(false);
         return StreamingManager;
     }
 
     private async Task<bool> IsStreamning()
     {
+        if (_engine.Torrents.Count == 0) return false;
         var sp = _engine.Torrents.Any(z => z.StreamProvider == null);
         if (sp) return false;
+
         if (!sp)
         {
             if (StreamingManager != null)
@@ -265,7 +267,8 @@ public class Managers : IManagers
                 await _engine.RemoveAsync(StreamingManager, RemoveMode.KeepAllData).ConfigureAwait(false);
                 StreamingManager = null;
                 return false;
-            }else
+            }
+            else
             {
                 StreamingManager ??= _engine.Torrents.FirstOrDefault(z => z.StreamProvider != null);
                 return true;
