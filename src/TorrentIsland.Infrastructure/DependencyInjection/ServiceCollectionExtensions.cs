@@ -13,6 +13,7 @@ using TorrentIsland.Application.Services;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Configuration;
+using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.MonoTorrent;
@@ -38,7 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddLocalization();
         services.AddSingleton(AppSettingsProvider.Carregar(configuration));
 
-        services.AddSingleton<ClientEngine>(sp =>
+        services.AddSingleton(sp =>
         {
             var engineState = AppSettings.ArquivoEngineState;
 
@@ -67,6 +68,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITorrentService, TorrentService>();
         services.AddSingleton<IPlayerLauncherService, PlayerLauncherService>();
         services.AddSingleton<IDLService, DLService>();
+        services.AddSingleton<ITorrentStatusEvent, TorrentStatusEvent>();
         
         var binaries = services.BuildServiceProvider().GetRequiredService<IDLService>();
         Task.Run(async () => await binaries.CheckBinariesAsync());

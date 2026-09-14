@@ -235,17 +235,14 @@
                     <Grid Width="0" Height="0">
                         <ui:Flyout x:Name="TorrentStatusFlyout" Placement="Custom">
                             <StackPanel Width="200">
-                                <!--  TorrentName e ProgressPercentage  -->
+                                <!--  TorrentName  -->
                                 <TextBlock
                                     Margin="0,0,0,10"
                                     FontSize="14"
                                     FontWeight="Bold"
                                     Foreground="White"
-                                    TextAlignment="Center">
-                                    <Run Text="{Binding TorrentName, Mode=OneWay}" />
-                                    <Run Text=" - " />
-                                    <Run Text="{Binding ProgressPercentage, Mode=OneWay, StringFormat={}{0}%}" />
-                                </TextBlock>
+                                    TextAlignment="Center"
+                                    Text="{Binding TorrentName, Mode=OneWay}" />
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -258,17 +255,32 @@
                                         <RowDefinition />
                                         <RowDefinition />
                                         <RowDefinition />
+                                        <RowDefinition />
                                     </Grid.RowDefinitions>
 
-                                    <!--  Estado  -->
+                                    <!--  ProgressPercentage  -->
                                     <TextBlock
                                         Grid.Row="0"
                                         Grid.Column="0"
                                         Margin="0,0,10,4"
                                         Foreground="White"
-                                        Text="Estado:" />
+                                        Text="Baixado:" />
                                     <TextBlock
                                         Grid.Row="0"
+                                        Grid.Column="1"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="{Binding ProgressPercentage, Mode=OneWay, StringFormat='{}{0:0.00}%'}" />
+
+                                    <!--  Estado  -->
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Grid.Column="0"
+                                        Margin="0,0,10,4"
+                                        Foreground="White"
+                                        Text="Estado:" />
+                                    <TextBlock
+                                        Grid.Row="1"
                                         Grid.Column="1"
                                         FontWeight="SemiBold"
                                         Foreground="White"
@@ -276,13 +288,13 @@
 
                                     <!--  Velocidade de Download  -->
                                     <TextBlock
-                                        Grid.Row="1"
+                                        Grid.Row="2"
                                         Grid.Column="0"
                                         Margin="0,0,10,4"
                                         Foreground="White"
                                         Text="Vel. Down:" />
                                     <TextBlock
-                                        Grid.Row="1"
+                                        Grid.Row="2"
                                         Grid.Column="1"
                                         FontWeight="SemiBold"
                                         Foreground="White"
@@ -290,13 +302,13 @@
 
                                     <!--  Velocidade de Upload  -->
                                     <TextBlock
-                                        Grid.Row="2"
+                                        Grid.Row="3"
                                         Grid.Column="0"
                                         Margin="0,0,10,4"
                                         Foreground="White"
                                         Text="Vel. Up:" />
                                     <TextBlock
-                                        Grid.Row="2"
+                                        Grid.Row="3"
                                         Grid.Column="1"
                                         FontWeight="SemiBold"
                                         Foreground="White"
@@ -304,13 +316,13 @@
 
                                     <!--  Seeds  -->
                                     <TextBlock
-                                        Grid.Row="3"
+                                        Grid.Row="4"
                                         Grid.Column="0"
                                         Margin="0,0,10,4"
                                         Foreground="White"
                                         Text="Seeds:" />
                                     <TextBlock
-                                        Grid.Row="3"
+                                        Grid.Row="4"
                                         Grid.Column="1"
                                         FontWeight="SemiBold"
                                         Foreground="White"
@@ -318,13 +330,13 @@
 
                                     <!--  Peers  -->
                                     <TextBlock
-                                        Grid.Row="4"
+                                        Grid.Row="5"
                                         Grid.Column="0"
                                         Margin="0,0,10,4"
                                         Foreground="White"
                                         Text="Pares:" />
                                     <TextBlock
-                                        Grid.Row="4"
+                                        Grid.Row="5"
                                         Grid.Column="1"
                                         FontWeight="SemiBold"
                                         Foreground="White"

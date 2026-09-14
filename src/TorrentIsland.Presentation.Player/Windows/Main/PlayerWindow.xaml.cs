@@ -24,15 +24,21 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly IDLService _ytDlService;
     private readonly DispatcherTimer _osdTimer;
     
-    public PlayerWindow(IStreamService streamService, IManagers managers, IDLService ytDlService)
+    public PlayerWindow(IStreamService streamService,
+                        IManagers managers,
+                        IDLService ytDlService,
+                        ITorrentStatusEvent torrentStatus,
+                        IFormattingHelper fb)
     {
         RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+
+        Managers = managers;
 
         InitializeComponent();
 
         var vlc = new VlcPlayerService();
 
-        _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer);
+        _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer, fb);
 
         DataContext = _viewModel;
 
@@ -41,7 +47,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
-        _controls = new ControlsWindow(_viewModel, this);
+        _controls = new ControlsWindow(_viewModel, this, torrentStatus);
         _controls.FullscreenRequested += (_, _) => ToggleFullscreen();
         _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
         _controls.Closed += (_, _) => Close();
@@ -79,6 +85,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         Closed += (_, _) =>
         {
             Log.Salvar("Window fechada — dispose do ViewModel");
+            Task.Run(async () =>
+            {
+                await Managers.SaveEngine().ConfigureAwait(false);
+            });
             _inactivityTimer.Stop();
             _controls.Close();
             _viewModel.Dispose();
@@ -91,8 +101,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         SizeChanged += (_, _) => PosicionarControles();
         StateChanged += (_, _) => PosicionarControles();
 
-        StreamService = streamService;
-        Managers = managers;
+        StreamService = streamService;        
         _ytDlService = ytDlService;
     }
     #endregion
@@ -186,7 +195,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _viewModel.IsVideoVisible = false;
             _viewModel.LoadingMessage = "Iniciando streaming...";
             _viewModel.IsLoading = true;
-            Log.Salvar($"Iniciando stream de torrent: {caminhoOuUrl}");
 
             string streamUrl = await Task.Run(async () =>
             {
@@ -200,6 +208,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Log.Salvar($"Erro ao iniciar stream de torrent: {ex.Message}");
             MessageBox.Show($"Não foi possível iniciar o stream do torrent!", "Player",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+                
+            if (_viewModel.GetMedia != null)
+                _viewModel.IsVideoVisible = true;
         }
         finally
         {

@@ -6,15 +6,21 @@ namespace TorrentIsland.Presentation.Console.Helpers
 {
     public class FormattingHelper : IFormattingHelper
     {
+        public double FormatarPorcentagem(double progresso)
+        {
+            double d = Math.Clamp(progresso, 0.0, 100.0);
+            return Math.Round(d, 2, MidpointRounding.AwayFromZero);
+        }
         public string FormatarBytes(long bytes)
         {
-            return bytes switch
+            string[] sufixos = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"];
+            int ordem = 0;
+            while (bytes >= 1024 && ordem < sufixos.Length - 1)
             {
-                >= 1_073_741_824 => $"{bytes / 1_073_741_824:0.00} GB",
-                >= 1_048_576 => $"{bytes / 1_048_576:0.0} MB",
-                >= 1024 => $"{bytes / 1024:0} KB",
-                _ => $"{bytes:0} B",
-            };
+                ordem++;
+                bytes /= 1024;
+            }
+            return $"{bytes:0.00} {sufixos[ordem]}";
         }
         public string TempoEstimado(long TamanhoTotal, long BytesRecebidos, double VelocidadeDownload, TorrentEstado Estado, double Progresso)
         {

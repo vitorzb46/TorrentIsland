@@ -4,12 +4,15 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using TorrentIsland.Application.DTOs;
+using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Settings;
+using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Presentation.Player.Common;
 using static TorrentIsland.Infrastructure.Services.SubCacheManager;
@@ -20,6 +23,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 {
     #region Fields
     private readonly MediaPlayer _mediaPlayer;
+    private readonly IFormattingHelper _fb;
     private Media? _media;
     private bool _disposed;
     private int _cliquesAvancar = 0;
@@ -33,11 +37,12 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Constructor
-    public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer)
+    public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer, IFormattingHelper fb)
     {
         Log.Salvar("PlayerViewModel iniciado");
         LibVLC = libVLC;
         _mediaPlayer = mediaPlayer;
+        _fb = fb;
         _mediaPlayer.PositionChanged += OnPositionChanged;
         _mediaPlayer.Playing += OnPlaying;
         _mediaPlayer.Paused += OnPaused;
@@ -50,6 +55,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.EncounteredError += OnEncounteredError;
         _mediaPlayer.LengthChanged += OnLengthChanged;
         AppSettings.LoadingMessageChanged += OnLoadingMessageChanged;
+        TorrentStatusEvent.TorrentUpdated += OnTorrentUpdated;
     }
     #endregion
 
@@ -61,6 +67,102 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public static string FilePath { get; set; } = string.Empty;
     public static nint VlcHwnd { get; private set; }        
     public LibVLC LibVLC { get; }
+
+    public string TorrentName
+    {
+        get => field ?? "N/A";
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public double ProgressPercentage
+    {
+        get;
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+                if (field >= 100)
+                {
+                    // Parar evento
+                }
+            }
+        }
+    }
+
+    public string Status
+    {
+        get => field ?? "N/A";
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    [field: AllowNull, MaybeNull]
+    public string? DownloadSpeed
+    {
+        get => field ?? "N/A";
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string UploadSpeed
+    {
+        get => field ?? "N/A";
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int Seeds
+    {
+        get;
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int Peers
+    {
+        get;
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public string SubtitleMessage
     {
@@ -176,6 +278,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         DuracaoTotalEmMilissegundos = totalMilliseconds;
         TempoTotalFormatado = FormatarTempo(totalMilliseconds);
     }
+
+    public Media GetMedia() => _mediaPlayer.Media!;
 
     public void SetMedia(Media media, long time)
     {
@@ -638,6 +742,19 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             LoadingMessage = e;
         });
     }
+    private void OnTorrentUpdated(object? sender, TorrentDto dto)
+    {
+        Utils.AtualizarUI(() =>
+        {
+            TorrentName = dto.Nome ?? "Desconhecido";
+            ProgressPercentage = _fb.FormatarPorcentagem(dto.Progresso);
+            Status = dto.Estado.ToString();
+            DownloadSpeed = _fb.FormatarBytes(dto.VelocidadeDownload);
+            UploadSpeed = _fb.FormatarBytes(dto.VelocidadeUpload);
+            Seeds = dto.Seeds;
+            Peers = dto.ParesDisponiveis;
+        });
+    }
     #endregion
 
 
@@ -660,6 +777,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.EndReached -= OnEndReached;
         _mediaPlayer.Buffering -= OnPlayerBuffering;
         AppSettings.LoadingMessageChanged -= OnLoadingMessageChanged;
+        TorrentStatusEvent.TorrentUpdated -= OnTorrentUpdated;
 
         try
         {

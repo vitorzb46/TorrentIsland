@@ -6,6 +6,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using TorrentIsland.Application.DTOs;
+using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Main;
@@ -16,23 +18,28 @@ using MenuItem = System.Windows.Controls.MenuItem;
 
 namespace TorrentIsland.Presentation.Player.Windows.Controls;
 
-public partial class ControlsWindow : Window
+public partial class ControlsWindow : Window, IDisposable
 {
     private readonly PlayerViewModel _viewModel;
     private readonly PlayerWindow _playerWindow;
+    private readonly ITorrentStatusEvent _torrentStatus;
 
     private bool _isSeeking { get; set; }
+    private bool _isDisposed { get; set; }
 
     /// <summary>Dispara quando o usuário alternar tela cheia (a janela de vídeo executa).</summary>
     public event EventHandler? FullscreenRequested;
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? ActivityDetected;
 
-    public ControlsWindow(PlayerViewModel viewModel, PlayerWindow playerWindow)
+    public ControlsWindow(PlayerViewModel viewModel,
+                          PlayerWindow playerWindow,
+                          ITorrentStatusEvent torrentStatus)
     {
         InitializeComponent();
         _viewModel = viewModel;
         _playerWindow = playerWindow;
+        _torrentStatus = torrentStatus;
         DataContext = viewModel;
         TorrentStatusButton.Content = new SymbolIcon { Symbol = SymbolRegular.Globe32 };
         ConfigurarToolTips();
@@ -206,7 +213,16 @@ public partial class ControlsWindow : Window
 
     private void TorrentStatusButton_Click(object sender, RoutedEventArgs e)
     {
-        TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
+        // TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
+        if (TorrentStatusFlyout.IsOpen)
+        {
+            _torrentStatus.Start();
+            TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
+        }else
+        {
+            _torrentStatus.Stop();
+            TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
+        }
     }
     #endregion
 
@@ -305,5 +321,25 @@ public partial class ControlsWindow : Window
         [
             new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal)
         ];
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        Dispose();
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed) return;
+
+        if (_torrentStatus.Timer != null)
+        {
+            _torrentStatus.Dispose();
+        }
+
+        _isDisposed = true;
+
+        GC.SuppressFinalize(this);
     }
 }
