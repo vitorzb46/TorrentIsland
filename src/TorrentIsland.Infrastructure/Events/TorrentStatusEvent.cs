@@ -13,32 +13,21 @@ public class TorrentStatusEvent : ITorrentStatusEvent
 
     public TorrentStatusEvent(IManagers manager)
     {
-        _timer = new System.Timers.Timer(500);
+        _timer = new System.Timers.Timer(100);
         _timer.Elapsed += OnTimerElapsed;
-        Start();
         _manager = manager;
     }
 
-    public void Start()
-    {
-        Log.Salvar($"{typeof(System.Timers.Timer)} iniciado!");
-        _timer.Start();
-    }
+    public void Start() => _timer.Start();
 
-    public void Stop()
-    {
-        Log.Salvar($"{typeof(System.Timers.Timer)} parado!");
-        _timer.Stop();
-    }
+    public void Stop() => _timer.Stop();
 
-    public System.Timers.Timer Timer()
-    {
-        return _timer;
-    }
+    public System.Timers.Timer Timer() => _timer;
 
     public void Dispose()
     {
         _timer.Stop();
+        _timer.Elapsed -= OnTimerElapsed;
         _timer.Dispose();
     }
 

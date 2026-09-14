@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,7 +8,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Main;
@@ -43,6 +43,7 @@ public partial class ControlsWindow : Window, IDisposable
         DataContext = viewModel;
         TorrentStatusButton.Content = new SymbolIcon { Symbol = SymbolRegular.Globe32 };
         ConfigurarToolTips();
+
         TorrentStatusFlyout.Loaded += (s, e) =>
         {
             if (TorrentStatusFlyout.Template.FindName("PART_Popup", TorrentStatusFlyout) is Popup popup)
@@ -51,6 +52,10 @@ public partial class ControlsWindow : Window, IDisposable
                 popup.CustomPopupPlacementCallback = PlaceFlyoutAboveCentered;
             }
         };
+
+        DependencyPropertyDescriptor
+            .FromProperty(Flyout.IsOpenProperty, typeof(Flyout))
+            .AddValueChanged(TorrentStatusFlyout, OnFlyoutIsOpenChanged);
     }
 
     #region Timeline Slider
@@ -213,16 +218,7 @@ public partial class ControlsWindow : Window, IDisposable
 
     private void TorrentStatusButton_Click(object sender, RoutedEventArgs e)
     {
-        // TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
-        if (TorrentStatusFlyout.IsOpen)
-        {
-            _torrentStatus.Start();
-            TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
-        }else
-        {
-            _torrentStatus.Stop();
-            TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
-        }
+        TorrentStatusFlyout.IsOpen = !TorrentStatusFlyout.IsOpen;
     }
     #endregion
 
@@ -323,6 +319,14 @@ public partial class ControlsWindow : Window, IDisposable
         ];
     }
 
+    private void OnFlyoutIsOpenChanged(object? sender, EventArgs e)
+    {
+        if (TorrentStatusFlyout.IsOpen)
+            _torrentStatus.Start();
+        else
+            _torrentStatus.Stop();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
@@ -332,6 +336,10 @@ public partial class ControlsWindow : Window, IDisposable
     public void Dispose()
     {
         if (_isDisposed) return;
+
+        DependencyPropertyDescriptor
+            .FromProperty(Flyout.IsOpenProperty, typeof(Flyout))
+            .RemoveValueChanged(TorrentStatusFlyout, OnFlyoutIsOpenChanged);
 
         if (_torrentStatus.Timer != null)
         {
