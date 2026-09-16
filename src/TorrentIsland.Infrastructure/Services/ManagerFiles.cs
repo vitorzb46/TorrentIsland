@@ -16,8 +16,8 @@ public class ManagerFiles : IManagerFiles
         Directory.CreateDirectory(TorrentsFolder);
         Directory.CreateDirectory(ResourcesFolder);
         if (!File.Exists(ArquivoEngineState)) File.Create(ArquivoEngineState);
-        if (!File.Exists(SubCacheFile)) File.Create(SubCacheFile);
-        if (!File.Exists(TimeCacheFile)) File.Create(TimeCacheFile);
+        if (!File.Exists(SubCacheFile)) File.WriteAllText(SubCacheFile, "{}");
+        if (!File.Exists(TimeCacheFile)) File.WriteAllText(TimeCacheFile, "{}");
     }
 
     public ITorrentManagerFile ArquivoMaiorPrimeiro(TorrentManager manager) => manager.Files.OrderBy(t => t.Length).Last();
