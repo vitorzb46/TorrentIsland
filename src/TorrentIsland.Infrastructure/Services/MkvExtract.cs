@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using SharpCompress.Archives;
 using SharpCompress.Archives.SevenZip;
+using System.Diagnostics;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Logging;
 
@@ -13,7 +13,7 @@ public class MkvExtract
         try
         {
             using HttpClient client = new();
-            var url = "https://mkvtoolnix.download/windows/releases/101.0/mkvtoolnix-64-bit-101.0.7z";            
+            var url = "https://mkvtoolnix.download/windows/releases/101.0/mkvtoolnix-64-bit-101.0.7z";
             var zipBytes = await client.GetByteArrayAsync(url);
             using var zipMem = new MemoryStream(zipBytes);
             using var zip = SevenZipArchive.OpenArchive(zipMem);
@@ -51,19 +51,28 @@ public class MkvExtract
             UseShellExecute = false,
             CreateNoWindow = true
         };
-        var process = Process.Start(processStartInfo);
-        if (process != null)
+
+        try
         {
-            string erros = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(erros))
-                Log.Salvar($"[mkvextract ERRO] {erros}");
-            await process.WaitForExitAsync().ConfigureAwait(false);
+            var process = Process.Start(processStartInfo);
+            if (process != null)
+            {
+                string erros = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(erros))
+                    Log.Salvar($"[mkvextract ERRO] {erros}");
+
+                await process.WaitForExitAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                Log.Salvar("Falha ao iniciar o processo do mkvextract (retornou null).");
+            }
+            return process;
         }
-        else
+        catch (Exception ex)
         {
-            Log.Salvar("Falha ao iniciar o processo do mkvextract.");
+            Log.Salvar($"Erro ao iniciar mkvextract: {ex.Message}");
+            return null;
         }
-        await process!.WaitForExitAsync().ConfigureAwait(false);
-        return process;
     }
 }
