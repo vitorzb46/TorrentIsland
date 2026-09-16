@@ -101,10 +101,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 _controls.Close();
             }
 
-            Task.Run(async () =>
-            {
-                await Managers.SaveEngine().ConfigureAwait(false);
-            });
+            //Task.Run(async () =>
+            //{
+            //    await Managers.SaveEngine().ConfigureAwait(false);
+            //});
 
             _viewModel?.Dispose();
             vlc?.Dispose();
