@@ -142,49 +142,15 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         try
         {
             await MediaTimestamp.Load();
-            await SubCacheManager.Load();
             _viewModel.IsVideoVisible = false;
             _viewModel.IsLoading = true;
 
-            Media media;
-            if (File.Exists(caminhoOuUrl))
-            {
-                media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
-                PlayerViewModel.FilePath = caminhoOuUrl;
-            }
-            else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
-            {
-                media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
+            var media = await EscolherMidiaAsync(caminhoOuUrl);
 
-                var torrents = await Managers.ObterTorrentsAsync();
-                if (torrents.Count > 0)
-                {
-                    PlayerViewModel.FilePath = torrents.Select(v => v.Value.FullPath).FirstOrDefault()!;
-                }
-            }
-            else
-            {
-                var streamUrl = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
-                Log.Salvar($"Iniciando stream yt-dlp: {streamUrl}");
-                media = new Media(_viewModel.LibVLC, streamUrl, FromType.FromLocation);
-                if (media == null)
-                {
-                    MessageBox.Show($"Url: {caminhoOuUrl} não suportada.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-            }
-
-            // Opções de rede para streaming
-            media.AddOption(":network-caching=5000");
-            media.AddOption(":file-caching=5000");
-            media.AddOption(":live-caching=3000");
-            media.AddOption(":skip-frames");
-            media.AddOption(":clock-synchro=0");
-            media.AddOption(":clock-jitter=5000");
+            if (media == null) return;
 
             if (_viewModel.GetMedia() != null)
             {
-                Log.Salvar($"{typeof(MediaTimestamp).Name} | {PlayerViewModel.OldFilePath} | {_viewModel.GetMedia()?.Type} | {_viewModel.MediaTime}");
                 await MediaTimestamp.SaveCache(PlayerViewModel.OldFilePath, _viewModel.MediaTime);
             }
 
@@ -208,6 +174,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Log.Salvar($"Erro ao carregar mídia: {ex.Message} {ex.StackTrace} {ex.InnerException}");
             MessageBox.Show($"Não foi possível carregar a mídia: {caminhoOuUrl}", "Player",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _viewModel.IsLoading = false;
         }
     }
 
@@ -243,6 +213,38 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     #endregion
 
     #region Private Methods
+    private async Task<Media?> EscolherMidiaAsync(string caminhoOuUrl)
+    {
+        Media? media;
+        if (File.Exists(caminhoOuUrl))
+        {
+            media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
+            PlayerViewModel.FilePath = caminhoOuUrl;
+        }
+        else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
+        {
+            media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
+
+            var torrents = await Managers.ObterTorrentsAsync();
+            if (torrents.Count > 0)
+            {
+                PlayerViewModel.FilePath = torrents.Select(v => v.Value.FullPath).FirstOrDefault()!;
+            }
+        }
+        else
+        {
+            var streamUrl = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
+            Log.Salvar($"Iniciando stream yt-dlp: {streamUrl}");
+            media = new Media(_viewModel.LibVLC, streamUrl, FromType.FromLocation);
+            if (media == null)
+            {
+                MessageBox.Show($"Url: {caminhoOuUrl} não suportada.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+        }
+
+        return media;
+    }
     /// <summary>
     /// Timer da sobreposição de tempo da legenda (On-Screen Display).
     /// </summary>
