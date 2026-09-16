@@ -91,10 +91,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             {
                 field = value;
                 OnPropertyChanged();
-                if (field >= 100)
-                {
-                    // Parar evento
-                }
             }
         }
     }
@@ -506,119 +502,127 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     private async Task ProcessarLegendasUndAsync()
     {
-        if (!File.Exists(AppSettings.MkvExtract))
+        try
         {
-            if (!await MkvExtract.DownloadBinary()) return;
-        }
+            if (!File.Exists(AppSettings.MkvExtract))
+            {
+                if (!await MkvExtract.DownloadBinary()) return;
+            }
 
-        if (string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
-        {
-            Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
-            return;
-        }
+            if (string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
+            {
+                Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
+                return;
+            }
 
-        Media? media = _mediaPlayer.Media;
+            Media? media = _mediaPlayer.Media;
 
-        if (media == null) return;
+            if (media == null) return;
 
-        TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
-        TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
+            TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
+            TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
 
-        if (audioTracks is not { Length: > 0 }) return;
-        if (spuTracks is not { Length: > 0 }) return;
+            if (audioTracks is not { Length: > 0 }) return;
+            if (spuTracks is not { Length: > 0 }) return;
 
-        string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-        string caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
-        string? extensaoSub = "srt";
+            string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+            string caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
+            string? extensaoSub = "srt";
 
-        ConcurrentBag<TrackItem> novosTracks = [];
-        Dictionary<int, (string? Language, string? Description, uint Codec)>? metadadosLegendas;
-        Dictionary<int, string> tempFiles = [];
-        List<TrackDescription> undTracks = [];
-        List<string> argsList = [];
+            ConcurrentBag<TrackItem> novosTracks = [];
+            Dictionary<int, (string? Language, string? Description, uint Codec)>? metadadosLegendas;
+            Dictionary<int, string> tempFiles = [];
+            List<TrackDescription> undTracks = [];
+            List<string> argsList = [];
 
-        metadadosLegendas = media.Tracks
-            .Where(m => m.TrackType == TrackType.Text)
-            .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
+            metadadosLegendas = media.Tracks
+                .Where(m => m.TrackType == TrackType.Text)
+                .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
 
-        undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) &&
+            undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) &&
                                              metadadosLegendas[t.Id].Language == "und").OrderBy(t => t.Id)];
 
-        if (undTracks.Count == 0) return;
+            if (undTracks.Count == 0) return;
 
-        LoadingMessage = $"Processando legendas...";
-        IsLoading = true;
+            LoadingMessage = $"Processando legendas...";
+            IsLoading = true;
 
-        // Limpa o diretório temporário se houver resquícios não tratados.
-        if (Directory.Exists(caminhoTempBase))
-            Directory.Delete(caminhoTempBase, true);
+            // Limpa o diretório temporário se houver resquícios não tratados.
+            if (Directory.Exists(caminhoTempBase))
+                Directory.Delete(caminhoTempBase, true);
 
-        Directory.CreateDirectory(caminhoTempBase);
+            Directory.CreateDirectory(caminhoTempBase);
 
-        argsList = ["tracks", $"\"{FilePath}\""];
+            argsList = ["tracks", $"\"{FilePath}\""];
 
-        AudioTracks.Clear();
-        AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
-        foreach (var t in audioTracks.Where(t => t.Id >= 0))
-        {
-            AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
-        }
-
-        SubtitleTracks.Clear();
-        SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
-
-        foreach (var track in undTracks)
-        {
-            var metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
-            if (metaCodec != 0)
+            AudioTracks.Clear();
+            AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
+            foreach (var t in audioTracks.Where(t => t.Id >= 0))
             {
-                var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
-                Log.Salvar($"Codec: {codecDesc}");
-                if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
-                else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
+                AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
             }
 
-            var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
-            var arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
-
-            var cacheEntry = await GetAsync(FilePath, track.Id);
-
-            if (cacheEntry != null)
-            {
-                novosTracks.Add(new TrackItem(track.Id, cacheEntry.Language));
-            }
-            else
-            {
-                tempFiles[track.Id] = arquivoDeSaida;
-                argsList.Add($"{track.Id}:\"{arquivoDeSaida}\"");
-            }
-
-        }
-
-        if (tempFiles.Count > 0)
-        {
-            using Process? process = await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
-            await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
-        }
-
-        OldFilePath = FilePath;
-        FilePath = string.Empty;
-
-        /// Atualiza a coleção na UI
-        await Utils.AtualizarUIAsync(async () =>
-        {
             SubtitleTracks.Clear();
-            SubtitleTracks.Add(new TrackItem(-1, "Desativar legenda"));
-            var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name)
-                                     .OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
-                                     .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
-                                     .ToList();
+            SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
 
-            foreach (var item in allSubs)
+            foreach (var track in undTracks)
             {
-                SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value)));
+                var metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
+                if (metaCodec != 0)
+                {
+                    var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
+                    Log.Salvar($"Codec: {codecDesc}");
+                    if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
+                    else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
+                }
+
+                var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
+                var arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
+
+                var cacheEntry = await GetAsync(FilePath, track.Id);
+
+                if (cacheEntry != null)
+                {
+                    novosTracks.Add(new TrackItem(track.Id, cacheEntry.Language));
+                }
+                else
+                {
+                    tempFiles[track.Id] = arquivoDeSaida;
+                    argsList.Add($"{track.Id}:\"{arquivoDeSaida}\"");
+                }
+
             }
-        }).ConfigureAwait(false);
+
+            if (tempFiles.Count > 0)
+            {
+                using Process? process = await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
+                await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
+            }
+
+            OldFilePath = FilePath;
+            FilePath = string.Empty;
+
+            /// Atualiza a coleção na UI
+            await Utils.AtualizarUIAsync(async () =>
+            {
+                SubtitleTracks.Clear();
+                SubtitleTracks.Add(new TrackItem(-1, "Desativar legenda"));
+                var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name)
+                                         .OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
+                                         .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
+                                         .ToList();
+
+                foreach (var item in allSubs)
+                {
+                    SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value)));
+                }
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro em ProcessarLegendasUndAsync: {ex.Message} {ex.StackTrace}");
+        }
+
     }
 
     /// <summary>
@@ -793,8 +797,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         try
         {
-            MediaTime = _mediaPlayer.Time;
-            _ = MediaTimestamp.SaveCache(OldFilePath, MediaTime);
+            if (_mediaPlayer.Media != null)
+            {
+                MediaTime = _mediaPlayer.Time;
+                _ = MediaTimestamp.SaveCache(OldFilePath, MediaTime);
+            }
         }
         catch (Exception ex)
         {
@@ -803,7 +810,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         try
         {
-            if (_mediaPlayer.IsPlaying)
+            if (_mediaPlayer!.IsPlaying)
             {
                 _mediaPlayer.Stop();
             }
