@@ -16,14 +16,29 @@ public sealed class VlcPlayerService
     {
         Core.Initialize();
 
-        //var options = new string[]
-        //{
-        //    "--hwdec=d3d11va",
-        //    "--video-title-show=0",
-        //    "--avcodec-hw=d3d11va"
-        //};
+        var options = new string[]
+        {
+            // Rede
+            "--network-caching=5000",       // Buffer para rede
+            "--file-caching=5000",           // Buffer arquivos
+            "--live-caching=3000",          // Buffer para live streams
+            "--http-reconnect",             // Reconexão automática HTTP
+            "--directx-3buffering",         // Buffer para DirectX
+            "--direct3d11-hw-blending",
 
-        _libVLC = new LibVLC();
+            // Decodificação
+            "--avcodec-hw=any",             // Aceleração de hardware
+            "--avcodec-skiploopfilter=all", // Pular filtro de loop
+
+            "--clock-jitter=0",             // Nitidez
+            "--swscale-mode=10",
+            "--clock-synchro=0",
+            "--drop-late-frames",           // Descartar frames atrasados
+            "--skip-frames",                // Pular frames para manter sincronia
+            "--no-video-title-show"
+        };
+
+        _libVLC = new LibVLC(options);
         _mediaPlayer = new MediaPlayer(_libVLC)
         {
             EnableMouseInput = false
