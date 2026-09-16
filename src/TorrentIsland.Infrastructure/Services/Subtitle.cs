@@ -1,7 +1,7 @@
-using System.Collections.Concurrent;
-using System.Text;
 using Panlingo.LanguageIdentification.CLD2;
 using SubtitlesParserV2;
+using System.Collections.Concurrent;
+using System.Text;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Infrastructure.Logging;
 
@@ -37,38 +37,12 @@ public class Subtitle
                     return;
                 }
 
-                using var fileStream = File.OpenRead(sub);
-                var items = SubtitleParser.ParseStream(fileStream, Encoding.UTF8);
-                if (items == null) return;
-                var sb = new StringBuilder();
+                bool flowControl = SubParser(sub, out StringBuilder sb);
 
-                var list = items.Subtitles.ToList();
-                foreach (var item in list)
-                {
-                    foreach (var line in item.Lines)
-                    {
-                        if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
-                            sb.Append(line).Append(' ');
-                    }
-                }
+                if (!flowControl) return;
 
-                string detectedLang = "und";
+                string detectedLang = await Prediction(filePath, detector, trackId, sb);
 
-                if (sb.Length > 0)
-                {
-                    var predictions = detector.PredictLanguage(sb.ToString());
-                    var best = predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
-
-                    if (best != null && best.Probability > 0.9)
-                    {
-                        detectedLang = best.Language;
-                        await SubCacheManager.SetAsync(filePath, trackId, detectedLang);
-                    }
-                    else
-                    {
-                        detectedLang = "und";
-                    }
-                }
                 novosTracks.Add(new TrackItem(trackId, detectedLang));
             }
             catch (Exception ex)
@@ -83,5 +57,51 @@ public class Subtitle
         });
 
         detector.Dispose();
+    }
+
+    private static bool SubParser(string sub, out StringBuilder sb)
+    {
+        sb = new StringBuilder();
+        using var fileStream = File.OpenRead(sub);
+        var items = SubtitleParser.ParseStream(fileStream, Encoding.UTF8);
+
+        if (items == null) return false;
+
+        var list = items.Subtitles.ToList();
+        int i = 0;
+        foreach (var item in list)
+        {
+            foreach (var line in item.Lines)
+            {
+                if (!string.IsNullOrWhiteSpace(line) && !int.TryParse(line, out _))
+                    sb.Append(line).Append(' ');
+            }
+            if (++i > 25) break;
+        }
+
+        return true;
+    }
+
+    private static async Task<string> Prediction(string filePath, CLD2Detector detector, int trackId, StringBuilder sb)
+    {
+        string detectedLang = string.Empty;
+
+        if (sb.Length > 0)
+        {
+            var predictions = detector.PredictLanguage(sb.ToString());
+            var best = predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+
+            if (best != null && best.Probability > 0.9)
+            {
+                detectedLang = best.Language;
+                await SubCacheManager.SetAsync(filePath, trackId, detectedLang);
+            }
+            else
+            {
+                detectedLang = "und";
+            }
+        }
+
+        return detectedLang;
     }
 }
