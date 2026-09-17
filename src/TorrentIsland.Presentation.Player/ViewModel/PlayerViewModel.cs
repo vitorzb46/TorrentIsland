@@ -56,18 +56,33 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.LengthChanged += OnLengthChanged;
         AppSettings.LoadingMessageChanged += OnLoadingMessageChanged;
         TorrentStatusEvent.TorrentUpdated += OnTorrentUpdated;
+        TorrentStatusEvent.TorrentQueue += OnTorrentQueue;
     }
     #endregion
 
     #region Properties
     public ObservableCollection<TrackItem> AudioTracks { get; } = [];
     public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
+    public ObservableCollection<TorrentDownloadDto> TorrentDownloads { get; } = [];
     private static long SubtitleDelay { get; set; } = 0;
     public long MediaTime { get; set; } = 0;
     public static string FilePath { get; set; } = string.Empty;
     public static string OldFilePath { get; set; } = string.Empty;
     public static nint VlcHwnd { get; private set; }
     public LibVLC LibVLC { get; }
+
+    public string TimeRemaining
+    {
+        get;
+        set
+        {
+            if (field != value)
+            {
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+    } = "∞";
 
     public string TorrentName
     {
@@ -770,6 +785,29 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             Peers = dto.ParesDisponiveis;
         });
     }
+    private void OnTorrentQueue(object? sender, TorrentDownloadDto dto)
+    {
+        Utils.AtualizarUI(() =>
+        {
+            var torrent = TorrentDownloads.FirstOrDefault(t => t.TorrentId == dto.TorrentId);
+            Log.Salvar($"var torrent é null? {torrent == null}");
+            if (torrent == null)
+            {
+                TorrentDownloads.Add(dto);
+            }
+            else
+            {
+                torrent.TorrentName = dto.TorrentName;
+                torrent.Status = dto.Status;
+                torrent.Progress = dto.Progress;
+                torrent.DownloadSpeed = dto.DownloadSpeed;
+                torrent.UploadSpeed = dto.UploadSpeed;
+                torrent.Seeds = dto.Seeds;
+                torrent.Peers = dto.Peers;
+                torrent.TimeRemaining = dto.TimeRemaining;
+            }
+        });
+    }
     #endregion
 
 
@@ -794,6 +832,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.LengthChanged -= OnLengthChanged;
         AppSettings.LoadingMessageChanged -= OnLoadingMessageChanged;
         TorrentStatusEvent.TorrentUpdated -= OnTorrentUpdated;
+        TorrentStatusEvent.TorrentQueue -= OnTorrentQueue;
 
         try
         {

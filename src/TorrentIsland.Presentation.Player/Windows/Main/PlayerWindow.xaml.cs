@@ -29,7 +29,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                         IManagers managers,
                         IDLService ytDlService,
                         ITorrentStatusEvent torrentStatus,
-                        IFormattingHelper fb)
+                        IFormattingHelper fb,
+                        ITorrentService torrentService,
+                        ITorrentStatusEvent statusEvent)
     {
         RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
@@ -48,7 +50,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
-        _controls = new ControlsWindow(_viewModel, this, torrentStatus);
+        _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService, statusEvent);
         _controls.FullscreenRequested += (_, _) => ToggleFullscreen();
         _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
         _controls.Closed += (_, _) => Close();

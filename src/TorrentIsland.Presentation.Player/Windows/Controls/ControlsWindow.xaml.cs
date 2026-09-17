@@ -23,6 +23,8 @@ public partial class ControlsWindow : Window, IDisposable
     private readonly PlayerViewModel _viewModel;
     private readonly PlayerWindow _playerWindow;
     private readonly ITorrentStatusEvent _torrentStatus;
+    private readonly ITorrentService _torrent;
+    private readonly ITorrentStatusEvent _statusEvent;
 
     private bool _isSeeking { get; set; }
     private bool _isDisposed { get; set; }
@@ -34,12 +36,16 @@ public partial class ControlsWindow : Window, IDisposable
 
     public ControlsWindow(PlayerViewModel viewModel,
                           PlayerWindow playerWindow,
-                          ITorrentStatusEvent torrentStatus)
+                          ITorrentStatusEvent torrentStatus,
+                          ITorrentService torrent,
+                          ITorrentStatusEvent statusEvent)
     {
         InitializeComponent();
         _viewModel = viewModel;
         _playerWindow = playerWindow;
         _torrentStatus = torrentStatus;
+        _torrent = torrent;
+        _statusEvent = statusEvent;
         DataContext = viewModel;
         TorrentStatusButton.Content = new SymbolIcon { Symbol = SymbolRegular.Globe32 };
         ConfigurarToolTips();
@@ -198,7 +204,7 @@ public partial class ControlsWindow : Window, IDisposable
     private void BuscarTorrentMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.SetPause(true);
-        var searchWindow = new TorrentSearchWindow
+        var searchWindow = new TorrentSearchWindow(_viewModel, _torrent, _statusEvent)
         {
             Owner = GetWindow(this),
             WindowStartupLocation = WindowStartupLocation.CenterScreen,

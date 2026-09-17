@@ -36,6 +36,18 @@
                     Symbol="Glance24" />
             </ui:TitleBar.Icon>
 
+            <ui:TitleBar.TrailingContent>
+                <ui:Button
+                    x:Name="BtnAlternarTela"
+                    Margin="0,0,10,0"
+                    Padding="12,4"
+                    VerticalAlignment="Center"
+                    Appearance="Secondary"
+                    Click="BtnAlternarTela_Click"
+                    Content="Downloads"
+                    WindowChrome.IsHitTestVisibleInChrome="True" />
+            </ui:TitleBar.TrailingContent>
+
         </ui:TitleBar>
 
         <!--  BARRA DE PESQUISA  -->
@@ -66,106 +78,290 @@
                 PressedBackground="#3F3F49" />
         </Grid>
 
-        <!--  CABEÇALHO DA LISTA  -->
-        <Grid Grid.Row="2" Margin="8,0,25,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="90" />
-                <ColumnDefinition Width="70" />
-                <ColumnDefinition Width="70" />
-            </Grid.ColumnDefinitions>
-
-            <ui:TextBlock
-                Grid.Column="0"
-                FontSize="12"
-                FontWeight="SemiBold"
-                Foreground="#888888"
-                Text="Torrent" />
-            <ui:TextBlock
-                Grid.Column="1"
-                HorizontalAlignment="Center"
-                FontSize="12"
-                FontWeight="SemiBold"
-                Foreground="#888888"
-                Text="Tamanho" />
-            <ui:TextBlock
-                Grid.Column="2"
-                HorizontalAlignment="Center"
-                FontSize="12"
-                FontWeight="SemiBold"
-                Foreground="#888888"
-                Text="Seeds" />
-            <ui:TextBlock
-                Grid.Column="3"
-                HorizontalAlignment="Center"
-                FontSize="12"
-                FontWeight="SemiBold"
-                Foreground="#888888"
-                Text="Leechers" />
-        </Grid>
-
-        <Border
+        <!--  ABA 1: TELA DE BUSCA DE TORRENTS -->
+        <Grid
+            x:Name="PainelBusca"
             Grid.Row="2"
-            Margin="0,0,0,0"
-            VerticalAlignment="Bottom"
-            BorderBrush="#33FFFFFF"
-            BorderThickness="0,0,0,1" />
+            Grid.RowSpan="2"
+            Visibility="Visible">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            
+            <Grid Grid.Row="0" Margin="8,0,25,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="90" />
+                    <ColumnDefinition Width="70" />
+                    <ColumnDefinition Width="70" />
+                </Grid.ColumnDefinitions>
 
-        <!--  LISTBOX COM ROLAGEM  -->
-        <ListBox
-            x:Name="ListBoxTorrents"
-            Grid.Row="3"
-            Background="#252526"
-            BorderBrush="#3F3F46"
-            KeyDown="ListBoxTorrents_KeyDown"
-            MouseDoubleClick="ListBoxTorrents_MouseDoubleClick">
+                <ui:TextBlock
+                    Grid.Column="0"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Torrent" />
+                <ui:TextBlock
+                    Grid.Column="1"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Tamanho" />
+                <ui:TextBlock
+                    Grid.Column="2"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Seeds" />
+                <ui:TextBlock
+                    Grid.Column="3"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Leechers" />
+            </Grid>
 
-            <ListBox.Resources>
-                <SolidColorBrush x:Key="ListBoxItemSelectedBackgroundThemeBrush" Color="#3F3F46" />
-                <SolidColorBrush x:Key="ListBoxItemSelectedForegroundThemeBrush" Color="White" />
-            </ListBox.Resources>
+            <Border
+                Grid.Row="0"
+                VerticalAlignment="Bottom"
+                BorderBrush="#33FFFFFF"
+                BorderThickness="0,0,0,1" />
 
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <Border Padding="8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="90" />
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="70" />
-                            </Grid.ColumnDefinitions>
+            <!--  LISTBOX DA BUSCA  -->
+            <ListBox
+                x:Name="ListBoxTorrents"
+                Grid.Row="1"
+                Background="#252526"
+                BorderBrush="#3F3F46"
+                KeyDown="ListBoxTorrents_KeyDown"
+                MouseDoubleClick="ListBoxTorrents_MouseDoubleClick">
+                <ListBox.Resources>
+                    <SolidColorBrush x:Key="ListBoxItemSelectedBackgroundThemeBrush" Color="#3F3F46" />
+                    <SolidColorBrush x:Key="ListBoxItemSelectedForegroundThemeBrush" Color="White" />
+                </ListBox.Resources>
+                
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="90" />
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="70" />
+                                </Grid.ColumnDefinitions>
+                                <ui:TextBlock
+                                    Grid.Column="0"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="{Binding TorrentName}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <ui:TextBlock
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#AAAAAA"
+                                    Text="{Binding Size}" />
+                                <ui:TextBlock
+                                    Grid.Column="2"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#4CAF50"
+                                    Text="{Binding Seed, StringFormat='▲ {0}'}" />
+                                <ui:TextBlock
+                                    Grid.Column="3"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#F44336"
+                                    Text="{Binding Leech, StringFormat='▼ {0}'}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+        
+        <!--  ABA 2: TELA DE PROGRESSO / DOWNLOADS  -->
+        <Grid
+            x:Name="PainelProgresso"
+            Grid.Row="2"
+            Grid.RowSpan="2"
+            Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            
+            <Grid Grid.Row="0" Margin="8,0,25,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="80" />
+                    <ColumnDefinition Width="80" />
+                    <ColumnDefinition Width="80" />
+                    <ColumnDefinition Width="80" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="100" />
+                </Grid.ColumnDefinitions>
 
-                            <ui:TextBlock
-                                Grid.Column="0"
-                                VerticalAlignment="Center"
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                Foreground="White"
-                                Text="{Binding TorrentName}"
-                                TextTrimming="CharacterEllipsis" />
-                            <ui:TextBlock
-                                Grid.Column="1"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Foreground="#AAAAAA"
-                                Text="{Binding Size}" />
-                            <ui:TextBlock
-                                Grid.Column="2"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Foreground="#4CAF50"
-                                Text="{Binding Seed, StringFormat='▲ {0}'}" />
-                            <ui:TextBlock
-                                Grid.Column="3"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Foreground="#F44336"
-                                Text="{Binding Leech, StringFormat='▼ {0}'}" />
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+                <ui:TextBlock
+                    Grid.Column="0"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Torrent" />
+                <ui:TextBlock
+                    Grid.Column="1"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Progresso" />
+                <ui:TextBlock
+                    Grid.Column="2"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Status" />
+                <ui:TextBlock
+                    Grid.Column="3"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Vel. Down" />
+                <ui:TextBlock
+                    Grid.Column="4"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Vel. Up" />
+                <ui:TextBlock
+                    Grid.Column="5"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Seeds" />
+                <ui:TextBlock
+                    Grid.Column="6"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Peers" />
+                <ui:TextBlock
+                    Grid.Column="7"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#888888"
+                    Text="Tempo Rest." />
+            </Grid>
+
+            <Border
+                Grid.Row="0"
+                VerticalAlignment="Bottom"
+                BorderBrush="#33FFFFFF"
+                BorderThickness="0,0,0,1" />
+
+            <!--  LISTBOX DE PROGRESSO  -->
+            <ListBox
+                x:Name="ListBoxProgresso"
+                Grid.Row="1"
+                Background="#252526"
+                BorderBrush="#3F3F46">
+                <ListBox.Resources>
+                    <SolidColorBrush x:Key="ListBoxItemSelectedBackgroundThemeBrush" Color="#3F3F46" />
+                    <SolidColorBrush x:Key="ListBoxItemSelectedForegroundThemeBrush" Color="White" />
+                </ListBox.Resources>
+
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="60" />
+                                    <ColumnDefinition Width="60" />
+                                    <ColumnDefinition Width="100" />
+                                </Grid.ColumnDefinitions>
+
+                                <ui:TextBlock
+                                    Grid.Column="0"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="{Binding TorrentName}"
+                                    TextTrimming="CharacterEllipsis" />
+
+                                <ui:TextBlock
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#AAAAAA"
+                                    Text="{Binding ProgressPercentage}" />
+
+                                <ui:TextBlock
+                                    Grid.Column="2"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#AAAAAA"
+                                    Text="{Binding Status}" />
+
+                                <ui:TextBlock
+                                    Grid.Column="3"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#4CAF50"
+                                    Text="{Binding DownloadSpeed}" />
+
+                                <ui:TextBlock
+                                    Grid.Column="4"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#00BCD4"
+                                    Text="{Binding UploadSpeed}" />
+
+                                <ui:TextBlock
+                                    Grid.Column="5"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#AAAAAA"
+                                    Text="{Binding Seeds}" />
+
+                                <ui:TextBlock
+                                    Grid.Column="6"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#AAAAAA"
+                                    Text="{Binding Peers}" />
+
+                                <ui:TextBlock
+                                    Grid.Column="7"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#E91E63"
+                                    Text="{Binding TimeRemaining}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
     </Grid>
 </ui:FluentWindow>
