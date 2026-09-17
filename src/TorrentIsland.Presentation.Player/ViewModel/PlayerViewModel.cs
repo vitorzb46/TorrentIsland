@@ -790,7 +790,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         Utils.AtualizarUI(() =>
         {
             var torrent = TorrentDownloads.FirstOrDefault(t => t.TorrentId == dto.TorrentId);
-            Log.Salvar($"var torrent é null? {torrent == null}");
             if (torrent == null)
             {
                 TorrentDownloads.Add(dto);

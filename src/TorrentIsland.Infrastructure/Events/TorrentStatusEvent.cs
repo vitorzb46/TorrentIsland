@@ -38,12 +38,6 @@ public class TorrentStatusEvent : ITorrentStatusEvent
 
     private async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
-        // var torrents = await _manager.ObterTorrentsAsync();
-        // var id = torrents.Select(id => id.Key).FirstOrDefault();
-        // if (torrents.TryGetValue(id, out var dto))
-        // {
-        //     TorrentUpdated?.Invoke(this, dto);
-        // }
         try
         {
             var torrents = await _manager.ObterTorrentsAsync();
