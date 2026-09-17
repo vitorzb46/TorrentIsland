@@ -59,7 +59,7 @@ public class Limao
             throw;
         }
     }
-
+    
     public static async Task<ObservableCollection<TorrentSearchDto>> SearchAsync(string query)
     {
         var results = new ObservableCollection<TorrentSearchDto>();

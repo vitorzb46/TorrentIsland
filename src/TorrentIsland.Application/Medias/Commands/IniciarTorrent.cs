@@ -23,6 +23,6 @@ public class IniciarTorrent(ITorrentRepository repository, ITorrentLoopRenderer 
             await Repository.StartTorrentAsync(id).ConfigureAwait(false);
         }
 
-        await Renderer.TorrentInfoRender().ConfigureAwait(false);
+        // await Renderer.TorrentInfoRender().ConfigureAwait(false);
     }
 }

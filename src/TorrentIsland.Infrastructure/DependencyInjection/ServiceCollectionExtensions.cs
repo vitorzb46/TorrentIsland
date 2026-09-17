@@ -69,6 +69,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPlayerLauncherService, PlayerLauncherService>();
         services.AddSingleton<IDLService, DLService>();
         services.AddSingleton<ITorrentStatusEvent, TorrentStatusEvent>();
+        services.AddSingleton<ITorrentLoopRenderer, TorrentLoopRenderer>();
+        services.AddHostedService<TorrentLoopRenderer>();
+        services.AddSingleton<IPlayerMonitorRenderer, PlayerMonitorRenderer>();
         
         var binaries = services.BuildServiceProvider().GetRequiredService<IDLService>();
         Task.Run(async () => await binaries.CheckBinariesAsync());
