@@ -22,10 +22,10 @@ public static class LoggingBuilderExtensions
     /// <summary>
     /// Registra a gravação em arquivo como provider de log.
     /// </summary>
-    public static ILoggingBuilder AddFileLogger(this ILoggingBuilder builder, string? logPath = null)
+    public static ILoggingBuilder AddFileLogger(this ILoggingBuilder builder, string? logPath = null, bool stackTrace = false)
     {
         var path = logPath ?? AppSettings.AppLog;
-        var provider = new FileLogger(path);
+        var provider = new FileLogger(path, stackTrace);
         builder.Services.AddSingleton(provider);
         builder.AddProvider(provider);
         return builder;

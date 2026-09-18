@@ -20,8 +20,9 @@ public sealed class AppSettings
         }
     } = string.Empty;
 
-    public static int PortaLivre { get; set; } = ObterPortaLivre();
-
+    // File Logging
+    public static bool StackTrace { get; } = true;
+    
     // Pastas - AppData
     public static string AppDataFolder { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
     public static string CacheFolder { get; } = Path.Combine(AppDataFolder, "TorrentIsland", "Cache");
@@ -84,6 +85,8 @@ public sealed class AppSettings
         TimeSpan.FromSeconds(9),
         TimeSpan.FromSeconds(13)
     ];
+
+    private static int PortaLivre { get; set; } = ObterPortaLivre();
 
     private static int ObterPortaLivre()
     {
