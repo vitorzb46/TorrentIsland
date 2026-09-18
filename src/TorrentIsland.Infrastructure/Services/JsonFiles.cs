@@ -62,11 +62,11 @@ public class JsonFiles
                                                              CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        await _semaphore.WaitAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (!File.Exists(cachePath)) return;
-            var json = await File.ReadAllTextAsync(cachePath).ConfigureAwait(false);
+            var json = await File.ReadAllTextAsync(cachePath, ct).ConfigureAwait(false);
             var data = JsonSerializer.Deserialize<IDictionary<TKey, TValue>>(json);
             if (data != null)
             {

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using TorrentIsland.Infrastructure.Logging;
@@ -11,8 +12,6 @@ public class KeyGenerator
     /// Lê o header de memória de um arquivo de mídia.
     /// </summary>
     /// <param name="filePath">caminho de arquivo de mídia.</param>
-    /// <param name="fileSize">tamanho total.</param>
-    /// <param name="mediaName">nome da mídia atual em reprodução.</param>
     /// <returns>Retorna um SHA256 em formato string.</returns>
     public static string Hash(string filePath)
     {
@@ -25,7 +24,10 @@ public class KeyGenerator
         var bufferOriginal = new byte[128 * 1024];
         try
         {
-            using (var stream = File.OpenRead(filePath))
+            using (var stream = new FileStream(filePath,
+                                               FileMode.Open,
+                                               FileAccess.Read,
+                                               FileShare.ReadWrite))
             {
                 _ = stream.Read(bufferOriginal, 0, bufferOriginal.Length);
             }
@@ -39,14 +41,12 @@ public class KeyGenerator
             Buffer.BlockCopy(bufferOriginal, 0, finalBytes, bytesId.Length, bufferOriginal.Length);
             var hashBytes = SHA256.HashData(finalBytes);
     
-            HashString = Convert.ToHexString(hashBytes).ToLower();
+            return HashString = Convert.ToHexString(hashBytes).ToLower();
         }
         catch (Exception ex)
         {
             Log.Salvar($"Falha ao criar hash: {ex.Message} {ex.StackTrace}");
             return string.Empty;
         }
-
-        return HashString;
     }
 }
