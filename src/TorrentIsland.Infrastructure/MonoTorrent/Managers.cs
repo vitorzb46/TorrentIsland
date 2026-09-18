@@ -41,6 +41,45 @@ public class Managers : IManagers
         }.ToSettings();
     }
 
+    public async Task PauseAsync(Guid id)
+    {
+        var manager = await ObterManagerPorIdAsync(id);
+        if (manager != null && !manager.Complete)
+            await manager.PauseAsync().ConfigureAwait(false);
+    }
+
+    public async Task PauseAllExceptAsync(Guid id)
+    {
+        await _engine.PauseAll().ConfigureAwait(false);
+
+        var manager = await ObterManagerPorIdAsync(id);
+        if (manager != null && !manager.Complete)
+            await manager.StartAsync().ConfigureAwait(false);
+    }
+
+    public bool HasTorrentActive(Guid streamingId)
+    {
+        return _engine.Torrents.Any(tm => tm.State == TorrentState.Downloading
+                                || tm.State == TorrentState.Starting
+                                || tm.State == TorrentState.Metadata);
+    }
+
+    public async Task<bool> TryStart(Guid id)
+    {
+        var manager = ObterManagerPorId(id);
+        if (manager == null || manager.Complete)
+            return false;
+        
+        if (manager.State == TorrentState.Stopped || manager.State == TorrentState.Paused)
+        {
+            await manager.StartAsync().ConfigureAwait(false);
+            await manager.DhtAnnounceAsync().ConfigureAwait(false);
+            await manager.LocalPeerAnnounceAsync().ConfigureAwait(false);
+            return true;
+        }
+        return false;
+    }
+
     public async Task SaveEngine()
     {
         await _engine.SaveStateAsync(ArquivoEngineState).ConfigureAwait(false);
@@ -84,11 +123,9 @@ public class Managers : IManagers
 
     public MagnetLink Parse(string magnet) => MagnetLink.Parse(magnet);
 
-
     public async Task<List<TorrentManager>> ObterManagersAsync() => [.. All.Values];
-
-    public async Task<TorrentManager?> ObterManagerIdAsync(Guid id) =>
-        All.TryGetValue(id, out var manager) ? manager : throw new InvalidManagerException();
+    
+    public async Task<TorrentManager?> ObterManagerPorIdAsync(Guid id) => GetManager(id);
 
     public async Task<IReadOnlyDictionary<Guid, TorrentDto>> ObterTorrentsAsync()
     {
@@ -228,6 +265,11 @@ public class Managers : IManagers
             BytesRestantes: (manager.Torrent?.Size ?? 0) - manager.Monitor.DataBytesReceived
         );
     }
+
+    TorrentManager ObterManagerPorId(Guid id) => GetManager(id);
+
+    TorrentManager GetManager(Guid id) => 
+        All.TryGetValue(id, out var manager) ? manager : null!;
 
     async Task<TorrentManager> AddAsync(Torrent torrent, string savePath, TorrentSettings settings)
     {

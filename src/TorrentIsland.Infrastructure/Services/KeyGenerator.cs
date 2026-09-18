@@ -43,7 +43,7 @@ public class KeyGenerator
         }
         catch (Exception ex)
         {
-            Log.Salvar($"Falha ao criar hash: {ex.Message}");
+            Log.Salvar($"Falha ao criar hash: {ex.Message} {ex.StackTrace}");
             return string.Empty;
         }
 

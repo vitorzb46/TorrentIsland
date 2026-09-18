@@ -164,11 +164,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 await _viewModel.PopulateTracksAsync();
                 _viewModel.SetPause(false);
                 ShowControls();
-                _viewModel.IsLoading = false;
+                // _viewModel.IsLoading = false;
                 VideoView.InvalidateVisual();
                 Utils.VideoView_Background_Black();
                 await Task.Delay(250); //Tempo de espera para evitar artefato visual
                 _viewModel.IsVideoVisible = true;
+                _viewModel.IsPlaying = true;
             });
         }
         catch (Exception ex)

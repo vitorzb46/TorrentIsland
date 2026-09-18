@@ -18,6 +18,7 @@ public class TorrentRepository : ITorrentRepository
 {
     #region Fields + Constructor
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<TorrentRepository> Localizer;
+    private readonly IDownloadQueueService _downloadQueue;
     private static HttpClient? _client;
     private AppSettings App { get; set; }
     private IManagerFiles ManagerFiles { get; }
@@ -33,9 +34,11 @@ public class TorrentRepository : ITorrentRepository
         IEntityMapping map,
         ILogger<TorrentRepository> logger,
         IStringLocalizer<TorrentRepository> localizer,
-        ITrackerService trackerService)
+        ITrackerService trackerService,
+        IDownloadQueueService downloadQueue)
     {
         TrackerService = trackerService;
+        _downloadQueue = downloadQueue;
         App = app;
         ManagerFiles = managerFiles;
         Managers = managers;
@@ -129,6 +132,7 @@ public class TorrentRepository : ITorrentRepository
             {
                 ids.Add(Guid.NewGuid());
                 Managers.RegistroId(ids[i], managers[i]);
+                await _downloadQueue.Enqueue(ids[i]);
             }
 
             return ids;
@@ -176,13 +180,7 @@ public class TorrentRepository : ITorrentRepository
     }
 
     #region Torrent Methods
-    public async Task StartTorrentAsync(Guid id)
-    {
-        var manager = await Managers.ObterManagerIdAsync(id);
-        await manager!.StartAsync().ConfigureAwait(false);
-        await manager.DhtAnnounceAsync().ConfigureAwait(false);
-        await manager.LocalPeerAnnounceAsync().ConfigureAwait(false);
-    }
+    public async Task StartTorrentAsync(Guid id) => await _downloadQueue.Enqueue(id);
 
     public async Task StartAllTorrentAsync()
     {
@@ -207,13 +205,13 @@ public class TorrentRepository : ITorrentRepository
     // Publics
     public async Task<string> StartStreamAsync(Guid id)
     {
-        var manager = await Managers.ObterManagerIdAsync(id);
-        await Managers.AguardarMetadata(manager!).ConfigureAwait(false);
+        var manager = await Managers.ObterManagerPorIdAsync(id) ?? throw new CustomException("Streaming inválido!");
         var torrent = ManagerFiles.ArquivoMaiorPrimeiro(manager!);
         var stream = OneStream == true ? await Managers.StreamHttp(manager!, torrent!) :
                                       throw new CustomException("Não é possível iniciar um segundo stream.");
 
         OneStream = false;
+        await _downloadQueue.SetStreaming(id);
         await Managers.StreamBuffer(manager!);
         return stream.FullUri;
     }

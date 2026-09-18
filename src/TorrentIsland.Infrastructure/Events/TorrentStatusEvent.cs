@@ -9,18 +9,19 @@ public class TorrentStatusEvent : ITorrentStatusEvent
 {
     public static event EventHandler<TorrentDto>? TorrentUpdated;
     public static event EventHandler<TorrentDownloadDto>? TorrentQueue;
+    private static readonly SemaphoreSlim _semaphore = new(1, 1);
     private readonly System.Timers.Timer _timer;
     private readonly IManagers _manager;
     private readonly IFormattingHelper _fb;
+    private readonly IDownloadQueueService _downloadQueue;
 
-    public static Guid? StreamAtivoId { get; set; }
-
-    public TorrentStatusEvent(IManagers manager, IFormattingHelper fb)
+    public TorrentStatusEvent(IManagers manager, IFormattingHelper fb, IDownloadQueueService downloadQueue)
     {
         _timer = new System.Timers.Timer(100);
         _timer.Elapsed += OnTimerElapsed;
         _manager = manager;
         _fb = fb;
+        _downloadQueue = downloadQueue;
     }
 
     public void Start() => _timer.Start();
@@ -38,20 +39,19 @@ public class TorrentStatusEvent : ITorrentStatusEvent
 
     private async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
+        if (!await _semaphore.WaitAsync(0).ConfigureAwait(false)) return;
         try
         {
             var torrents = await _manager.ObterTorrentsAsync();
             if (torrents.Count == 0) return;
-            if (StreamAtivoId.HasValue && torrents.TryGetValue(StreamAtivoId.Value, out var streamDto))
+            if (_downloadQueue.StreamingTorrentId != Guid.Empty
+                && torrents.TryGetValue(_downloadQueue.StreamingTorrentId, out var streamDto))
             {
                 TorrentUpdated?.Invoke(this, streamDto);
-            }
-            else
-            {
-                var primeiroId = torrents.Keys.FirstOrDefault();
-                if (torrents.TryGetValue(primeiroId, out var primeiroDto))
+
+                if (streamDto.Progresso == 100.0)
                 {
-                    TorrentUpdated?.Invoke(this, primeiroDto);
+                    await _downloadQueue.ClearStreaming();
                 }
             }
 
@@ -79,6 +79,10 @@ public class TorrentStatusEvent : ITorrentStatusEvent
         catch (Exception ex)
         {
             Log.Salvar($"Erro no timer de status: {ex.Message}");
+        }
+        finally
+        {
+            _semaphore.Release();
         }
     }
 

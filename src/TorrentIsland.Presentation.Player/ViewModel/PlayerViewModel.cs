@@ -443,7 +443,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         while (!_mediaPlayer.IsPlaying && _mediaPlayer.State != VLCState.Ended && _mediaPlayer.State != VLCState.Error)
         {
             ct.ThrowIfCancellationRequested();
-            if (await Task.WhenAny(Task.Delay(100, ct), esperaInicio).ConfigureAwait(true) == esperaInicio)
+            if (await Task.WhenAny(Task.Delay(1000, ct), esperaInicio).ConfigureAwait(true) == esperaInicio)
             {
                 break;
             }

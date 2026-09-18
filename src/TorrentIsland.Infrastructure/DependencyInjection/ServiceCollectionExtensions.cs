@@ -72,6 +72,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITorrentLoopRenderer, TorrentLoopRenderer>();
         services.AddHostedService<TorrentLoopRenderer>();
         services.AddSingleton<IPlayerMonitorRenderer, PlayerMonitorRenderer>();
+        services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
         
         var binaries = services.BuildServiceProvider().GetRequiredService<IDLService>();
         Task.Run(async () => await binaries.CheckBinariesAsync());
@@ -94,7 +95,7 @@ public static class ServiceCollectionExtensions
                     { "ipv4", settings.IpV4 }, // Porta TCP/UDP dinâmica para Peers
                     { "ipv6", settings.IpV6 }
                 },
-            MaximumConnections = settings.ConnectionsMaxima,
+            MaximumConnections = 500,
             ConnectionRetryDelays = settings.Retry,
             ConnectionTimeouts = settings.PeerTimeout,
             DhtBootstrapRouters = DhtRouter(),

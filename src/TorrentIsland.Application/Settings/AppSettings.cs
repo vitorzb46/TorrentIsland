@@ -57,7 +57,7 @@ public sealed class AppSettings
     public bool DescobertaPeerLocal { get; } = true;
     public IPEndPoint IpV4 { get; } = new(IPAddress.Any, 0);
     public IPEndPoint IpV6 { get; } = new(IPAddress.Any, 0);
-    public int ConnectionsMaxima { get; } = 150;
+    public int ConnectionsMaxima { get; } = 50;
     public bool LoadFastResume { get; } = true;
     public bool LoadMagnetLinkMetadata { get; } = true;
     public bool LoadDhtCache { get; } = true;

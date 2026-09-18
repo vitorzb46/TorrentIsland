@@ -109,7 +109,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         else
         {
             Log.Salvar("_statusEvent parou!");
-            _statusEvent.Stop();
+            // _statusEvent.Stop();
             PainelBusca.Visibility = Visibility.Visible;
             PainelProgresso.Visibility = Visibility.Collapsed;
             

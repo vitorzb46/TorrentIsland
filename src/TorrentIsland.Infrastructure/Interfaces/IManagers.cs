@@ -10,6 +10,9 @@ namespace TorrentIsland.Infrastructure.Interfaces
     public interface IManagers
     {
         ConcurrentDictionary<Guid, TorrentManager> All { get; set; }
+        Task PauseAsync(Guid id);
+        Task PauseAllExceptAsync(Guid id);
+        bool HasTorrentActive(Guid streamingId);
         Task SaveEngine();
         Task<List<Guid>> AddTorrentsAsync();
         Task AguardarMetadata(TorrentManager manager);
@@ -19,7 +22,8 @@ namespace TorrentIsland.Infrastructure.Interfaces
         Task<Torrent> LoadAsync(string path);
         Task<Torrent> LoadAsync(Memory<byte> data);
         Task<Torrent> LoadAsync(HttpClient client, Uri url, string savePath);
-        Task<TorrentManager?> ObterManagerIdAsync(Guid id);
+        Task<bool> TryStart(Guid id);
+        Task<TorrentManager?> ObterManagerPorIdAsync(Guid id);
         Task<List<TorrentManager>> ObterManagersAsync();
         Task<IReadOnlyDictionary<Guid, TorrentDto>> ObterTorrentsAsync();
         MagnetLink Parse(string magnet);
