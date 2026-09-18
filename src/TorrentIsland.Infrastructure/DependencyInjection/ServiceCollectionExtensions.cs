@@ -95,7 +95,7 @@ public static class ServiceCollectionExtensions
                     { "ipv4", settings.IpV4 }, // Porta TCP/UDP dinâmica para Peers
                     { "ipv6", settings.IpV6 }
                 },
-            MaximumConnections = 500,
+            MaximumConnections = settings.EngineConnections,
             ConnectionRetryDelays = settings.Retry,
             ConnectionTimeouts = settings.PeerTimeout,
             DhtBootstrapRouters = DhtRouter(),

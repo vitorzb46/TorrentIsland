@@ -42,6 +42,9 @@ public sealed class AppSettings
     public static string YtDlpExe { get; } = Path.Combine(ResourcesFolder, "yt-dlp.exe");
     public static string FfmpegExe { get; } = Path.Combine(ResourcesFolder, "ffmpeg.exe");
     public static string ArquivoEngineState { get; } = Path.Combine(CacheFolder, "EngineState");
+
+    // Yt-DLP
+    public static bool AllowDownload { get; set; } = false;
     public static string NomeMidia { get; } = "%(title)s.%(ext)s";
     public static string VideoAudioQualidade { get; } = "bestvideo+bestaudio/best";
 
@@ -57,7 +60,8 @@ public sealed class AppSettings
     public bool DescobertaPeerLocal { get; } = true;
     public IPEndPoint IpV4 { get; } = new(IPAddress.Any, 0);
     public IPEndPoint IpV6 { get; } = new(IPAddress.Any, 0);
-    public int ConnectionsMaxima { get; } = 50;
+    public int TorrentConnections { get; } = 100;
+    public int EngineConnections { get; } = 300;
     public bool LoadFastResume { get; } = true;
     public bool LoadMagnetLinkMetadata { get; } = true;
     public bool LoadDhtCache { get; } = true;

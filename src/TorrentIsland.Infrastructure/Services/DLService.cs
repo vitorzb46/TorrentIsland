@@ -24,7 +24,8 @@ public class DLService : IDLService
 
     public async Task CheckBinariesAsync()
     {
-        await Utils.DownloadBinaries(directoryPath: ResourcesFolder);
+        if (AppSettings.AllowDownload)
+            await Utils.DownloadBinaries(directoryPath: ResourcesFolder);      
     }
 
     public async Task<string> GetStreamingUrl(string url)

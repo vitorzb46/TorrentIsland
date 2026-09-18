@@ -34,7 +34,7 @@ public class Managers : IManagers
             AllowInitialSeeding = true,
             AllowPeerExchange = true,
             CreateContainingDirectory = true,
-            MaximumConnections = app.ConnectionsMaxima,
+            MaximumConnections = app.TorrentConnections,
             UploadSlots = app.UploadSlotsMaximo,
             MaximumDownloadRate = app.TorrentLimiteDownload,
             MaximumUploadRate = app.TorrentLimiteUpload
