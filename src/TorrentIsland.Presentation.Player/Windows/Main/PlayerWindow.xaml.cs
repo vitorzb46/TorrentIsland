@@ -30,8 +30,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                         IDLService ytDlService,
                         ITorrentStatusEvent torrentStatus,
                         IFormattingHelper fb,
-                        ITorrentService torrentService,
-                        ITorrentStatusEvent statusEvent)
+                        ITorrentService torrentService)
     {
         RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
@@ -50,10 +49,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
-        _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService, statusEvent);
+        _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService);
         _controls.FullscreenRequested += (_, _) => ToggleFullscreen();
         _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
-        _controls.Closed += (_, _) => Close();
+        _controls.Closed += (_, _) => Dispatcher.BeginInvoke(new Action(Close),
+                                                             DispatcherPriority.ContextIdle);
 
         _inactivityTimer = new DispatcherTimer
         {
@@ -324,10 +324,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             WindowState = WindowState.Maximized;
             _viewModel.IsFullscreen = true;
 
-            if (MyTitleBar != null)
-            {
-                MyTitleBar.Visibility = Visibility.Collapsed;
-            }
+            MyTitleBar?.Visibility = Visibility.Collapsed;
         }
         else
         {
@@ -337,10 +334,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             WindowState = WindowState.Normal;
             _viewModel.IsFullscreen = false;
 
-            if (MyTitleBar != null)
-            {
-                MyTitleBar.Visibility = Visibility.Visible;
-            }
+            MyTitleBar?.Visibility = Visibility.Visible;
         }
 
         _viewModel.IsFullscreen = WindowState == WindowState.Maximized;
