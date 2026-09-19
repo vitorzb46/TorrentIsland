@@ -841,23 +841,5 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             Log.Salvar($"Não foi possível salvar o tempo do MediaTime: {ex.Message}");
         }
-
-        try
-        {
-            if (_mediaPlayer!.IsPlaying)
-            {
-                _mediaPlayer.Stop();
-            }
-
-            _media?.Dispose();
-            _media = null;
-            
-            _mediaPlayer.Dispose();
-            LibVLC.Dispose();
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro durante o dispose nativo do VLC: {ex.Message}");
-        }
     }
 }

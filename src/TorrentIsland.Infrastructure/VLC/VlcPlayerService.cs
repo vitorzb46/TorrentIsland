@@ -1,4 +1,5 @@
 using LibVLCSharp.Shared;
+using TorrentIsland.Infrastructure.Logging;
 
 namespace TorrentIsland.Infrastructure.VLC;
 
@@ -9,8 +10,9 @@ namespace TorrentIsland.Infrastructure.VLC;
 public sealed class VlcPlayerService
 {
     private readonly LibVLC _libVLC;
-    private readonly MediaPlayer _mediaPlayer;
+    private MediaPlayer _mediaPlayer;
     private Media? _media;
+    private bool _disposed;
 
     public VlcPlayerService()
     {
@@ -50,9 +52,22 @@ public sealed class VlcPlayerService
 
     public void Dispose()
     {
-        _media?.Dispose();
-        _media = null;
-        _mediaPlayer.Dispose();
-        _libVLC.Dispose();
+        if (_disposed) return;
+        _disposed = true;
+
+        try
+        {
+            _mediaPlayer?.Stop();
+            _mediaPlayer?.Dispose();
+
+            _media?.Dispose();
+            _media = null;
+
+            _libVLC?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro dispose VlcPlayerService: {ex}");
+        }
     }
 }
