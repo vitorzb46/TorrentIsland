@@ -20,13 +20,20 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     public TorrentSearchWindow(PlayerViewModel viewModel, ITorrentService torrent, ITorrentStatusEvent statusEvent)
     {
         InitializeComponent();
-        TorrentDownloadQueue();
+        TorrentSearch_ContextMenu();
+        DonwloadProgress_ConextMenu();
         DataContext = viewModel;
         ListBoxProgresso.ItemsSource = viewModel.TorrentDownloads;
         _torrent = torrent;
         _statusEvent = statusEvent;
     }
-    
+
+    #region Mouse Click
+    private async void ListBoxTorrents_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        await SelectedTorrent();
+    }
+
     private async void BtnBuscar_Click(object sender, RoutedEventArgs e)
     {
         var query = TxtSearch.Text.Trim();
@@ -50,11 +57,76 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private async void ListBoxTorrents_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void BtnAlternarTela_Click(object sender, RoutedEventArgs e)
     {
-        await SelectedTorrent();
+        if (PainelBusca.Visibility == Visibility.Visible)
+        {
+            Log.Salvar("_statusEvent iniciou!");
+            _statusEvent.Start();
+            PainelBusca.Visibility = Visibility.Collapsed;
+            PainelProgresso.Visibility = Visibility.Visible;
+
+            BtnAlternarTela.Content = "Voltar para Busca";
+        }
+        else
+        {
+            Log.Salvar("_statusEvent parou!");
+            // _statusEvent.Stop();
+            PainelBusca.Visibility = Visibility.Visible;
+            PainelProgresso.Visibility = Visibility.Collapsed;
+
+            BtnAlternarTela.Content = "Downloads";
+        }
     }
-    
+
+    private async void Add_Lista_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: ListBoxItem item } })
+        {
+            var data = item.DataContext as TorrentSearchDto;
+            if (data != null)
+            {
+                try
+                {
+                    var magnet = await GetUrlMagneticAsync(data.TorrentName);
+                    // Baixar torrent
+                    await _torrent.CriarTorrentAsync(magnet);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Erro na busca: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+        e.Handled = true;
+    }
+
+    private void Start_Stream_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        throw new NotImplementedException();
+    }
+
+    private void Parar_Download_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        throw new NotImplementedException();
+    }
+
+    private void Pausar_Download_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        throw new NotImplementedException();
+    }
+
+    private void Remover_da_Lista_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        throw new NotImplementedException();
+    }
+    #endregion
+
+    #region Key Press
     private void TxtSearch_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
@@ -73,6 +145,46 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            DialogResult = false;
+            Close();
+            e.Handled = true;
+        }
+    }
+    #endregion
+
+    #region Context Menu
+    private void TorrentSearch_ContextMenu()
+    {
+        var menuContexto = new ContextMenu();
+        var itemMenu = new MenuItem { Header = "Adicionar à lista" };
+        itemMenu.Click += Add_Lista_Click;
+        menuContexto.Items.Add(itemMenu);
+        ContextMenuStyle(menuContexto, ListBoxTorrents);
+    }
+
+    private void DonwloadProgress_ConextMenu()
+    {
+        var menuContexto = new ContextMenu();
+        var stream = new MenuItem { Header = "Iniciar streaming" };
+        var parar = new MenuItem { Header = "Parar" };
+        var pausar = new MenuItem { Header = "Pausar" };
+        var remover = new MenuItem { Header = "Remover da lista" };
+        stream.Click += Start_Stream_Click;
+        parar.Click += Parar_Download_Click;
+        pausar.Click += Pausar_Download_Click;
+        remover.Click += Remover_da_Lista_Click;
+        menuContexto.Items.Add(stream);
+        menuContexto.Items.Add(parar);
+        menuContexto.Items.Add(pausar);
+        menuContexto.Items.Add(remover);
+        ContextMenuStyle(menuContexto, ListBoxProgresso);
+    }
+    #endregion
+
     private async Task SelectedTorrent()
     {
         if (ListBoxTorrents.SelectedItem is TorrentSearchDto torrent)
@@ -84,76 +196,13 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
             Close();
         }
     }
-
-    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    
+    private static void ContextMenuStyle(ContextMenu menuContexto, ListBox listBox)
     {
-        if (e.Key == Key.Escape)
-        {
-            DialogResult = false;
-            Close();
-            e.Handled = true;
-        }
-    }
-
-    private void BtnAlternarTela_Click(object sender, RoutedEventArgs e)
-    {
-        if (PainelBusca.Visibility == Visibility.Visible)
-        {
-            Log.Salvar("_statusEvent iniciou!");
-            _statusEvent.Start();
-            PainelBusca.Visibility = Visibility.Collapsed;
-            PainelProgresso.Visibility = Visibility.Visible;
-            
-            BtnAlternarTela.Content = "Voltar para Busca"; 
-        }
-        else
-        {
-            Log.Salvar("_statusEvent parou!");
-            // _statusEvent.Stop();
-            PainelBusca.Visibility = Visibility.Visible;
-            PainelProgresso.Visibility = Visibility.Collapsed;
-            
-            BtnAlternarTela.Content = "Downloads";
-        }
-    }
-
-    private async void Add_Lista_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { Parent: ContextMenu contextMenu })
-        {
-            if (contextMenu.PlacementTarget is ListBoxItem item)
-            {
-                var data = item.DataContext as TorrentSearchDto;
-                if (data != null)
-                {
-                    try
-                    {
-                        var magnet = await GetUrlMagneticAsync(data.TorrentName);
-                        // Baixar torrent
-                        await _torrent.CriarTorrentAsync(magnet);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Erro na busca: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                }
-            }
-        }
-        e.Handled = true;
-    }
-
-    private void TorrentDownloadQueue()
-    {
-        var menuContexto = new ContextMenu();
-        var itemMenu = new MenuItem { Header = "Adicionar à lista" };
-        itemMenu.Click += Add_Lista_Click;
-        menuContexto.Items.Add(itemMenu);
-
         var estiloItem = new Style(typeof(ListBoxItem));
         estiloItem.Setters.Add(new Setter(ContextMenuProperty, menuContexto));
         estiloItem.Setters.Add(new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch));
         estiloItem.Setters.Add(new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Center));
-
-        ListBoxTorrents.ItemContainerStyle = estiloItem;
+        listBox.ItemContainerStyle = estiloItem;
     }
 }
