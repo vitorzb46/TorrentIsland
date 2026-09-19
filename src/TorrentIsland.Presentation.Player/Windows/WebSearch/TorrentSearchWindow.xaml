@@ -78,7 +78,7 @@
                 PressedBackground="#3F3F49" />
         </Grid>
 
-        <!--  ABA 1: TELA DE BUSCA DE TORRENTS -->
+        <!--  ABA 1: TELA DE BUSCA DE TORRENTS  -->
         <Grid
             x:Name="PainelBusca"
             Grid.Row="2"
@@ -88,7 +88,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            
+
             <Grid Grid.Row="0" Margin="8,0,25,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -144,7 +144,7 @@
                     <SolidColorBrush x:Key="ListBoxItemSelectedBackgroundThemeBrush" Color="#3F3F46" />
                     <SolidColorBrush x:Key="ListBoxItemSelectedForegroundThemeBrush" Color="White" />
                 </ListBox.Resources>
-                
+
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Border Padding="8">
@@ -187,7 +187,7 @@
                 </ListBox.ItemTemplate>
             </ListBox>
         </Grid>
-        
+
         <!--  ABA 2: TELA DE PROGRESSO / DOWNLOADS  -->
         <Grid
             x:Name="PainelProgresso"
@@ -198,8 +198,8 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            
-            <Grid Grid.Row="0" Margin="8,0,25,8">
+
+            <Grid Grid.Row="0" Margin="8,0,8,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="80" />
@@ -209,6 +209,8 @@
                     <ColumnDefinition Width="60" />
                     <ColumnDefinition Width="60" />
                     <ColumnDefinition Width="100" />
+                    <!--  Spacer que reserva a largura do scrollbar  -->
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <ui:TextBlock
@@ -266,6 +268,8 @@
                     FontWeight="SemiBold"
                     Foreground="#888888"
                     Text="Tempo Rest." />
+
+                <Border Grid.Column="8" Width="{x:Static SystemParameters.VerticalScrollBarWidth}" />
             </Grid>
 
             <Border
@@ -278,6 +282,8 @@
             <ListBox
                 x:Name="ListBoxProgresso"
                 Grid.Row="1"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                HorizontalContentAlignment="Stretch"
                 Background="#252526"
                 BorderBrush="#3F3F46">
                 <ListBox.Resources>
@@ -314,7 +320,7 @@
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     Foreground="#AAAAAA"
-                                    Text="{Binding Progress}" />
+                                    Text="{Binding Progress, StringFormat='{}{0:0.00}%'}" />
 
                                 <ui:TextBlock
                                     Grid.Column="2"
