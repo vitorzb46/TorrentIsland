@@ -4,7 +4,7 @@ public interface IDownloadQueueService
 {
     Guid StreamingTorrentId { get; }
 
-    Task ClearStreaming();
-    Task Enqueue(Guid torrentId);
-    Task SetStreaming(Guid torrentId);
+    Task ClearStreamingAsync();
+    Task EnqueueAsync(Guid torrentId);
+    Task SetStreamingAsync(Guid torrentId);
 }

@@ -132,7 +132,7 @@ public class TorrentRepository : ITorrentRepository
             {
                 ids.Add(Guid.NewGuid());
                 Managers.RegistroId(ids[i], managers[i]);
-                await _downloadQueue.Enqueue(ids[i]);
+                await _downloadQueue.EnqueueAsync(ids[i]);
             }
 
             return ids;
@@ -180,7 +180,7 @@ public class TorrentRepository : ITorrentRepository
     }
 
     #region Torrent Methods
-    public async Task StartTorrentAsync(Guid id) => await _downloadQueue.Enqueue(id);
+    public async Task StartTorrentAsync(Guid id) => await _downloadQueue.EnqueueAsync(id);
 
     public async Task StartAllTorrentAsync()
     {
@@ -211,7 +211,7 @@ public class TorrentRepository : ITorrentRepository
                                       throw new CustomException("Não é possível iniciar um segundo stream.");
 
         OneStream = false;
-        await _downloadQueue.SetStreaming(id);
+        await _downloadQueue.SetStreamingAsync(id);
         await Managers.StreamBuffer(manager!);
         return stream.FullUri;
     }

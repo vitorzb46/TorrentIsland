@@ -51,7 +51,7 @@ public class TorrentStatusEvent : ITorrentStatusEvent
 
                 if (streamDto.Progresso == 100.0)
                 {
-                    await _downloadQueue.ClearStreaming();
+                    await _downloadQueue.ClearStreamingAsync();
                 }
             }
 

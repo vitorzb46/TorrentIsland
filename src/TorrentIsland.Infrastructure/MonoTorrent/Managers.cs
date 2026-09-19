@@ -8,6 +8,7 @@ using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Exceptions;
 using TorrentIsland.Infrastructure.DTOs;
+using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Infrastructure.Interfaces;
 using static TorrentIsland.Application.Settings.AppSettings;
 
@@ -163,7 +164,7 @@ public class Managers : IManagers
         await Task.Delay(500).ConfigureAwait(false);
         while (managers.Any(m => m.State == TorrentState.Metadata || m.State == TorrentState.Stopped || m.State == TorrentState.Hashing))
         {
-            LoadingMessage = "Aguardando Metadata...";
+            Loading.Message = "Aguardando Metadata...";
             await Task.Delay(1000).ConfigureAwait(false);
         }
     }
@@ -181,11 +182,12 @@ public class Managers : IManagers
         if (progresso > buffer) return;
         while (progresso <= buffer)
         {
-            LoadingMessage = $"Buffering {progresso / 100:P2}...";
+            Loading.Message = $"Buffering {progresso / 100:P2}...";
             progresso = manager.Bitfield.PercentComplete;
             await Task.Delay(Random.Shared.Next(200, 401));
         }
-        LoadingMessage = "Iniciando streaming...";
+
+        Loading.Message = "Iniciando streaming...";
     }
 
     public async Task<List<Guid>> AddTorrentsAsync()
