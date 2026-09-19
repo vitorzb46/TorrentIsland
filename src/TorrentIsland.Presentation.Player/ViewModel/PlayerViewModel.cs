@@ -39,7 +39,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #region Constructor
     public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer, IFormattingHelper fb)
     {
-        Log.Salvar("PlayerViewModel iniciado");
         LibVLC = libVLC;
         _mediaPlayer = mediaPlayer;
         _fb = fb;
@@ -54,7 +53,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.MediaChanged += OnMediaChanged;
         _mediaPlayer.EncounteredError += OnEncounteredError;
         _mediaPlayer.LengthChanged += OnLengthChanged;
-        AppSettings.LoadingMessageChanged += OnLoadingMessageChanged;
+        Loading.LoadingMessageChanged += OnLoadingMessageChanged;
         TorrentStatusEvent.TorrentUpdated += OnTorrentUpdated;
         TorrentStatusEvent.TorrentQueue += OnTorrentQueue;
     }
@@ -586,7 +585,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 if (metaCodec != 0)
                 {
                     var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
-                    Log.Salvar($"Codec: {codecDesc}");
+                    // Log.Salvar($"Codec: {codecDesc}");
                     if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
                     else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
                 }
@@ -814,10 +813,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         if (_disposed) return;
         _disposed = true;
-
-        Log.Salvar("Dispose do ViewModel iniciado");
-
-        // Remove imediatamente as inscrições de eventos para evitar callbacks fantasmas
+        
         _mediaPlayer.PositionChanged -= OnPositionChanged;
         _mediaPlayer.Playing -= OnPlaying;
         _mediaPlayer.Paused -= OnPaused;
@@ -829,7 +825,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaPlayer.MediaChanged -= OnMediaChanged;
         _mediaPlayer.EncounteredError -= OnEncounteredError;
         _mediaPlayer.LengthChanged -= OnLengthChanged;
-        AppSettings.LoadingMessageChanged -= OnLoadingMessageChanged;
+        Loading.LoadingMessageChanged -= OnLoadingMessageChanged;
         TorrentStatusEvent.TorrentUpdated -= OnTorrentUpdated;
         TorrentStatusEvent.TorrentQueue -= OnTorrentQueue;
 
@@ -855,8 +851,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
             _media?.Dispose();
             _media = null;
-
-            // Descarta o MediaPlayer e depois a instância do LibVLC
+            
             _mediaPlayer.Dispose();
             LibVLC.Dispose();
         }
@@ -864,7 +859,5 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             Log.Salvar($"Erro durante o dispose nativo do VLC: {ex.Message}");
         }
-
-        Log.Salvar("Dispose do ViewModel concluído");
     }
 }

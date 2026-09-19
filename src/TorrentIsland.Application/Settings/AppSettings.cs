@@ -5,21 +5,6 @@ namespace TorrentIsland.Application.Settings;
 
 public sealed class AppSettings
 {
-    public static event EventHandler<string>? LoadingMessageChanged;
-
-    public static string LoadingMessage
-    {
-        get;
-        set
-        {
-            if (field != value)
-            {
-                field = value;
-                LoadingMessageChanged?.Invoke(null, value);
-            }
-        }
-    } = string.Empty;
-
     // File Logging
     public static bool StackTrace { get; } = true;
     

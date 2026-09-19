@@ -314,7 +314,7 @@
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     Foreground="#AAAAAA"
-                                    Text="{Binding ProgressPercentage}" />
+                                    Text="{Binding Progress}" />
 
                                 <ui:TextBlock
                                     Grid.Column="2"

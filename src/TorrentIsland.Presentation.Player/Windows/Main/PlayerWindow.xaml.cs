@@ -37,7 +37,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         Managers = managers;
 
         InitializeComponent();
-
+        
         var vlc = new VlcPlayerService();
 
         _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer, fb);
@@ -45,7 +45,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         DataContext = _viewModel;
 
         VideoView.MediaPlayer = vlc.MediaPlayer;
-        Log.Salvar("MediaPlayer associado ao VideoView");
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
@@ -164,10 +163,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 await _viewModel.PopulateTracksAsync();
                 _viewModel.SetPause(false);
                 ShowControls();
-                // _viewModel.IsLoading = false;
+                _viewModel.IsLoading = false;
                 VideoView.InvalidateVisual();
                 Utils.VideoView_Background_Black();
-                await Task.Delay(250); //Tempo de espera para evitar artefato visual
+                await Task.Delay(300); //Tempo de espera para evitar artefato visual
                 _viewModel.IsVideoVisible = true;
                 _viewModel.IsPlaying = true;
             });
