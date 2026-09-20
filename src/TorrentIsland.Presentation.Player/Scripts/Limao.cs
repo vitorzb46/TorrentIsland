@@ -1,7 +1,7 @@
-﻿using System.Collections.ObjectModel;
+﻿using HtmlAgilityPack;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
-using HtmlAgilityPack;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Presentation.Player.Common;
 
@@ -34,23 +34,23 @@ public class Limao
         {
             var magnet = string.Empty;
             var doc = await LoadFromCacheOrWebAsync();
-    
+
             if (doc == null) return magnet;
-    
+
             var torrent = doc?.DocumentNode.SelectSingleNode($".//a[contains(text(),'{torrentName}')]");
-    
+
             if (torrent == null) return magnet;
-    
+
             url = string.Concat("https://www.limetorrents.fun", torrent.GetAttributeValue("href", "N/A"));
-    
+
             htmlFile = string.Concat(torrentName, ".html");
             HtmlPath = Path.Combine(CacheFolder, htmlFile);
-            
+
             var doc2 = await LoadFromCacheOrWebAsync();
-    
+
             magnet = doc2.DocumentNode.SelectSingleNode(".//a[contains(text(),'Magnet Download')]")
                                       .GetAttributeValue("href", "N/A");
-    
+
             return magnet;
         }
         catch (Exception ex)
@@ -59,7 +59,7 @@ public class Limao
             throw;
         }
     }
-    
+
     public static async Task<ObservableCollection<TorrentSearchDto>> SearchAsync(string query)
     {
         var results = new ObservableCollection<TorrentSearchDto>();
@@ -111,8 +111,8 @@ public class Limao
     private static async Task<HtmlDocument> LoadFromCacheOrWebAsync()
     {
         string loadHtml = File.Exists(HtmlPath)
-                        ? loadHtml = File.ReadAllText(HtmlPath)
-                        : loadHtml = await _client.GetStringAsync(url);
+                        ? File.ReadAllText(HtmlPath)
+                        : await _client.GetStringAsync(url);
 
         HtmlDocument doc = new();
         doc.LoadHtml(loadHtml);

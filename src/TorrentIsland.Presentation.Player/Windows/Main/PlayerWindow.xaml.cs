@@ -32,12 +32,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                         IFormattingHelper fb,
                         ITorrentService torrentService)
     {
-        RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+        //RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
         Managers = managers;
 
         InitializeComponent();
-        
+
         var vlc = new VlcPlayerService();
 
         _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer, fb);

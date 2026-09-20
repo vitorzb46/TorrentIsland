@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
@@ -11,7 +10,6 @@ using TorrentIsland.Domain.Enums;
 using TorrentIsland.Domain.Exceptions;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
-using TorrentIsland.Infrastructure.Logging;
 using static TorrentIsland.Application.Settings.AppSettings;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
@@ -62,7 +60,7 @@ public class TorrentRepository : ITorrentRepository
                 case string stringSource:
                     if (string.IsNullOrWhiteSpace(stringSource))
                         return (false, new List<TorrentManager>());
-                        
+
                     if (stringSource.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) ||
                         Path.GetExtension(stringSource).Equals(".torrent", StringComparison.OrdinalIgnoreCase))
                     {
@@ -118,8 +116,7 @@ public class TorrentRepository : ITorrentRepository
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.Message);
-            return (false, new List<TorrentManager>());
+            throw new CustomException($"O mesmo torrent não pode ser adicionado!");
         }
     }
 
@@ -158,6 +155,7 @@ public class TorrentRepository : ITorrentRepository
         ArgumentNullException.ThrowIfNull(magnetOrFolderName);
 
         var (success, managers) = await TryCreateManagersAsync(magnetOrFolderName, isStream).ConfigureAwait(false);
+
         return await Registro(success, managers).ConfigureAwait(false);
     }
 
@@ -186,7 +184,7 @@ public class TorrentRepository : ITorrentRepository
     {
         if (_downloadQueue.StreamingTorrentId == id)
             await _downloadQueue.ClearStreamingAsync().ConfigureAwait(false);
-        
+
         await Managers.RemoveTorrentAsync(id).ConfigureAwait(false);
     }
 
@@ -199,7 +197,7 @@ public class TorrentRepository : ITorrentRepository
     {
         await Managers.StopAsync(id).ConfigureAwait(false);
     }
-    
+
     public async Task StartTorrentDirectAsync(Guid id)
     {
         await Managers.StartAsync(id).ConfigureAwait(false);
@@ -231,13 +229,13 @@ public class TorrentRepository : ITorrentRepository
     public async Task<string> StartStreamAsync(Guid id)
     {
         var manager = await Managers.ObterManagerPorIdAsync(id) ?? throw new CustomException("Streaming inválido!");
-        var torrent = ManagerFiles.ArquivoMaiorPrimeiro(manager!);
+        var torrent = ManagerFiles.ArquivoMaiorPrimeiro(manager);
         var stream = OneStream == true ? await Managers.StreamHttp(manager!, torrent!) :
                                       throw new CustomException("Não é possível iniciar um segundo stream.");
 
         OneStream = false;
-        await _downloadQueue.SetStreamingAsync(id);
-        await Managers.StreamBuffer(manager!);
+        await _downloadQueue.SetStreamingAsync(id).ConfigureAwait(false);
+        await Managers.StreamBuffer(manager).ConfigureAwait(false);
         return stream.FullUri;
     }
 
@@ -251,5 +249,4 @@ public class TorrentRepository : ITorrentRepository
         p.Value.Peers.Available))];
     }
     #endregion
-
 }

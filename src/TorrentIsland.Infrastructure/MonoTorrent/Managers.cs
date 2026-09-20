@@ -98,7 +98,7 @@ public class Managers : IManagers
         var manager = ObterManagerPorId(id);
         if (manager == null || manager.Complete)
             return false;
-        
+
         if (manager.State == TorrentState.Stopped || manager.State == TorrentState.Paused)
         {
             await manager.StartAsync().ConfigureAwait(false);
@@ -153,7 +153,7 @@ public class Managers : IManagers
     public MagnetLink Parse(string magnet) => MagnetLink.Parse(magnet);
 
     public async Task<List<TorrentManager>> ObterManagersAsync() => [.. All.Values];
-    
+
     public async Task<TorrentManager?> ObterManagerPorIdAsync(Guid id) => GetManager(id);
 
     public async Task<IReadOnlyDictionary<Guid, TorrentDto>> ObterTorrentsAsync()
@@ -253,7 +253,7 @@ public class Managers : IManagers
 
         if (listaDeTorrents.Count == 0)
         {
-            throw new CustomException("Nehuma torrent encontrado!")!;
+            throw new CustomException("Nenhum torrent encontrado!")!;
         }
 
         // Logger.LogInformation(Localizer["Torrent_Registrando", listaDeTorrents.Count]);
@@ -282,7 +282,7 @@ public class Managers : IManagers
             Id: id,
             Nome: manager.Torrent?.Name ?? string.Empty,
             TamanhoTotal: manager.Torrent?.Size ?? 0,
-            Trackers: manager.TrackerManager.Tiers.SelectMany(t => t.Trackers).Select(tracker => tracker.Uri.ToString()).ToList(),
+            Trackers: [.. manager.TrackerManager.Tiers.SelectMany(t => t.Trackers).Select(tracker => tracker.Uri.ToString())],
             SavePath: manager.SavePath,
             FullPath: manager.Files.Select(f => f.FullPath).FirstOrDefault() ?? string.Empty,
             Estado: manager.Estado(),
@@ -298,7 +298,7 @@ public class Managers : IManagers
 
     TorrentManager ObterManagerPorId(Guid id) => GetManager(id);
 
-    TorrentManager GetManager(Guid id) => 
+    TorrentManager GetManager(Guid id) =>
         All.TryGetValue(id, out var manager) ? manager : null!;
 
     async Task<TorrentManager> AddAsync(Torrent torrent, string savePath, TorrentSettings settings)

@@ -1,7 +1,3 @@
-using MonoTorrent.Client;
-using Spectre.Console;
-using System.Collections.ObjectModel;
-using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Domain.Entities;
 using TorrentIsland.Infrastructure.DTOs;
@@ -11,7 +7,7 @@ namespace TorrentIsland.Infrastructure.MonoTorrent;
 
 public class EntityMapping(IFormattingHelper fb) : IEntityMapping
 {
-    private readonly IFormattingHelper fb = fb;   
+    private readonly IFormattingHelper fb = fb;
 
     public TorrentEntity ToEntity(TorrentDadosBrutos dados)
     {
@@ -19,7 +15,7 @@ public class EntityMapping(IFormattingHelper fb) : IEntityMapping
 
         var torrent = new TorrentEntity();
         torrent.SetId(dados.Id);
-        torrent.SetNome(Markup.Escape(dados.Nome));
+        torrent.SetNome(dados.Nome);
         torrent.SetTamanhoTotal(dados.TamanhoTotal);
         torrent.SetTrackers(dados.Trackers);
         torrent.SetSavePath(dados.SavePath);

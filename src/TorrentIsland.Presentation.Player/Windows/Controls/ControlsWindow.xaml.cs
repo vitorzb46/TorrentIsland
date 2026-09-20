@@ -201,7 +201,7 @@ public partial class ControlsWindow : Window, IDisposable
     private void BuscarTorrentMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.SetPause(true);
-        var searchWindow = new TorrentSearchWindow(_viewModel, _torrent, _torrentStatus)
+        var searchWindow = new TorrentSearchWindow(_viewModel, _playerWindow, _torrent, _torrentStatus)
         {
             Owner = GetWindow(this),
             WindowStartupLocation = WindowStartupLocation.CenterScreen,

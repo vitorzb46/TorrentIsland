@@ -1,33 +1,37 @@
-using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Application.Settings;
-using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Presentation.Player.ViewModel;
+using TorrentIsland.Presentation.Player.Windows.Main;
 using static TorrentIsland.Presentation.Player.Scripts.Limao;
 
 namespace TorrentIsland.Presentation.Player.Windows.WebSearch;
 
 public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
 {
+    private readonly PlayerWindow _playerWindow;
     private readonly ITorrentService _torrent;
     private readonly ITorrentStatusEvent _statusEvent;
 
     public string? LinkSelecionado { get; private set; }
 
-    public TorrentSearchWindow(PlayerViewModel viewModel, ITorrentService torrent, ITorrentStatusEvent statusEvent)
+    public TorrentSearchWindow(
+        PlayerViewModel viewModel,
+        PlayerWindow playerWindow,
+        ITorrentService torrent,
+        ITorrentStatusEvent statusEvent)
     {
         InitializeComponent();
         TorrentSearch_ContextMenu();
         DonwloadProgress_ConextMenu();
         DataContext = viewModel;
         ListBoxProgresso.ItemsSource = viewModel.TorrentDownloads;
+        _playerWindow = playerWindow;
         _torrent = torrent;
         _statusEvent = statusEvent;
+        Closed += (_, _) => _statusEvent.Stop();
     }
 
     #region Mouse Click
@@ -63,7 +67,6 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (PainelBusca.Visibility == Visibility.Visible)
         {
-            Log.Salvar("_statusEvent iniciou!");
             _statusEvent.Start();
             PainelBusca.Visibility = Visibility.Collapsed;
             PainelProgresso.Visibility = Visibility.Visible;
@@ -72,8 +75,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         }
         else
         {
-            Log.Salvar("_statusEvent parou!");
-            // _statusEvent.Stop();
+            _statusEvent.Stop();
             PainelBusca.Visibility = Visibility.Visible;
             PainelProgresso.Visibility = Visibility.Collapsed;
 
@@ -83,30 +85,17 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
 
     private async void Add_Lista_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: ListBoxItem item } })
-        {
-            var data = item.DataContext as TorrentSearchDto;
-            if (data != null)
-            {
-                try
-                {
-                    var magnet = await GetUrlMagneticAsync(data.TorrentName);
-                    // Baixar torrent
-                    await _torrent.CriarTorrentAsync(magnet);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Erro na busca: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-        }
-        e.Handled = true;
+        await ExecutarTorrentAsync(sender, e, _torrent.CriarTorrentAsync).ConfigureAwait(false);
     }
 
-    private void Start_Stream_Click(object sender, RoutedEventArgs e)
+    private async void Start_Stream_Click(object sender, RoutedEventArgs e)
     {
-        e.Handled = true;
-        throw new NotImplementedException();
+        await ExecutarTorrentAsync(sender, e, async magnet =>
+        {
+            await _playerWindow.CarregarStreamTorrentAsync(magnet)
+                                       .ContinueWith(_ => Dispatcher.Invoke(() => Close()))
+                                       .ConfigureAwait(false);
+        }).ConfigureAwait(false);
     }
 
     private async void Iniciar_Download_Click(object sender, RoutedEventArgs e)
@@ -140,7 +129,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (ListBoxProgresso.SelectedItem is not TorrentDownloadDto selecionado)
             return;
-        
+
         if (DataContext is PlayerViewModel vm)
         {
             await _torrent.RemoverAsync(selecionado.TorrentId);
@@ -184,8 +173,11 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     private void TorrentSearch_ContextMenu()
     {
         var menuContexto = new ContextMenu();
+        var stream = new MenuItem { Header = "Iniciar Stream" };
         var itemMenu = new MenuItem { Header = "Adicionar à lista" };
+        stream.Click += Start_Stream_Click;
         itemMenu.Click += Add_Lista_Click;
+        menuContexto.Items.Add(stream);
         menuContexto.Items.Add(itemMenu);
         ContextMenuStyle(menuContexto, ListBoxTorrents);
     }
@@ -193,17 +185,14 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     private void DonwloadProgress_ConextMenu()
     {
         var menuContexto = new ContextMenu();
-        var stream = new MenuItem { Header = "Reproduzir" };
         var iniciar = new MenuItem { Header = "Iniciar / Resumir" };
         var parar = new MenuItem { Header = "Parar" };
         var pausar = new MenuItem { Header = "Pausar" };
         var remover = new MenuItem { Header = "Remover da lista" };
-        stream.Click += Start_Stream_Click;
         iniciar.Click += Iniciar_Download_Click;
         parar.Click += Parar_Download_Click;
         pausar.Click += Pausar_Download_Click;
         remover.Click += Remover_da_Lista_Click;
-        menuContexto.Items.Add(stream);
         menuContexto.Items.Add(iniciar);
         menuContexto.Items.Add(parar);
         menuContexto.Items.Add(pausar);
@@ -223,7 +212,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
             Close();
         }
     }
-    
+
     private static void ContextMenuStyle(ContextMenu menuContexto, ListBox listBox)
     {
         var estiloItem = new Style(typeof(ListBoxItem));
@@ -231,5 +220,27 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         estiloItem.Setters.Add(new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch));
         estiloItem.Setters.Add(new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Center));
         listBox.ItemContainerStyle = estiloItem;
+    }
+
+    private static async Task ExecutarTorrentAsync(object sender, RoutedEventArgs e, Func<string, Task> executar)
+    {
+        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: ListBoxItem item } })
+        {
+            var data = item.DataContext as TorrentSearchDto;
+            if (data != null)
+            {
+                try
+                {
+                    var magnet = await GetUrlMagneticAsync(data.TorrentName);
+
+                    await executar(magnet).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Erro: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+        e.Handled = true;
     }
 }
