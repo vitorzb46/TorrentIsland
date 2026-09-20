@@ -17,7 +17,7 @@ public class TorrentStatusEvent : ITorrentStatusEvent
 
     public TorrentStatusEvent(IManagers manager, IFormattingHelper fb, IDownloadQueueService downloadQueue)
     {
-        _timer = new System.Timers.Timer(100);
+        _timer = new System.Timers.Timer(500);
         _timer.Elapsed += OnTimerElapsed;
         _manager = manager;
         _fb = fb;

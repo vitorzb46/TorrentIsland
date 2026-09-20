@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
@@ -10,6 +11,7 @@ using TorrentIsland.Domain.Enums;
 using TorrentIsland.Domain.Exceptions;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
+using TorrentIsland.Infrastructure.Logging;
 using static TorrentIsland.Application.Settings.AppSettings;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
@@ -180,6 +182,29 @@ public class TorrentRepository : ITorrentRepository
     }
 
     #region Torrent Methods
+    public async Task RemoveTorrentAsync(Guid id)
+    {
+        if (_downloadQueue.StreamingTorrentId == id)
+            await _downloadQueue.ClearStreamingAsync().ConfigureAwait(false);
+        
+        await Managers.RemoveTorrentAsync(id).ConfigureAwait(false);
+    }
+
+    public async Task PauseTorrentAsync(Guid id)
+    {
+        await Managers.PauseAsync(id).ConfigureAwait(false);
+    }
+
+    public async Task StopTorrentAsync(Guid id)
+    {
+        await Managers.StopAsync(id).ConfigureAwait(false);
+    }
+    
+    public async Task StartTorrentDirectAsync(Guid id)
+    {
+        await Managers.StartAsync(id).ConfigureAwait(false);
+    }
+
     public async Task StartTorrentAsync(Guid id) => await _downloadQueue.EnqueueAsync(id);
 
     public async Task StartAllTorrentAsync()
@@ -225,7 +250,6 @@ public class TorrentRepository : ITorrentRepository
         p.Value.Peers.Seeds,
         p.Value.Peers.Available))];
     }
-
     #endregion
 
 }

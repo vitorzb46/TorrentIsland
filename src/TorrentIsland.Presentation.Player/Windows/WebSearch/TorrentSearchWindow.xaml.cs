@@ -1,9 +1,11 @@
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using TorrentIsland.Application.Contracts;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Presentation.Player.ViewModel;
 using static TorrentIsland.Presentation.Player.Scripts.Limao;
@@ -107,22 +109,44 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         throw new NotImplementedException();
     }
 
-    private void Parar_Download_Click(object sender, RoutedEventArgs e)
+    private async void Iniciar_Download_Click(object sender, RoutedEventArgs e)
     {
-        e.Handled = true;
-        throw new NotImplementedException();
+        if (ListBoxProgresso.SelectedItem is TorrentDownloadDto selecionado)
+        {
+            await _torrent.IniciarAsync(selecionado.TorrentId);
+            e.Handled = true;
+        }
     }
 
-    private void Pausar_Download_Click(object sender, RoutedEventArgs e)
+    private async void Parar_Download_Click(object sender, RoutedEventArgs e)
     {
-        e.Handled = true;
-        throw new NotImplementedException();
+        if (ListBoxProgresso.SelectedItem is TorrentDownloadDto selecionado)
+        {
+            await _torrent.PararAsync(selecionado.TorrentId);
+            e.Handled = true;
+        }
     }
 
-    private void Remover_da_Lista_Click(object sender, RoutedEventArgs e)
+    private async void Pausar_Download_Click(object sender, RoutedEventArgs e)
     {
-        e.Handled = true;
-        throw new NotImplementedException();
+        if (ListBoxProgresso.SelectedItem is TorrentDownloadDto selecionado)
+        {
+            await _torrent.PausarAsync(selecionado.TorrentId);
+            e.Handled = true;
+        }
+    }
+
+    private async void Remover_da_Lista_Click(object sender, RoutedEventArgs e)
+    {
+        if (ListBoxProgresso.SelectedItem is not TorrentDownloadDto selecionado)
+            return;
+        
+        if (DataContext is PlayerViewModel vm)
+        {
+            await _torrent.RemoverAsync(selecionado.TorrentId);
+            vm.TorrentDownloads.Remove(selecionado);
+            e.Handled = true;
+        }
     }
     #endregion
 
@@ -169,15 +193,18 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     private void DonwloadProgress_ConextMenu()
     {
         var menuContexto = new ContextMenu();
-        var stream = new MenuItem { Header = "Iniciar streaming" };
+        var stream = new MenuItem { Header = "Reproduzir" };
+        var iniciar = new MenuItem { Header = "Iniciar / Resumir" };
         var parar = new MenuItem { Header = "Parar" };
         var pausar = new MenuItem { Header = "Pausar" };
         var remover = new MenuItem { Header = "Remover da lista" };
         stream.Click += Start_Stream_Click;
+        iniciar.Click += Iniciar_Download_Click;
         parar.Click += Parar_Download_Click;
         pausar.Click += Pausar_Download_Click;
         remover.Click += Remover_da_Lista_Click;
         menuContexto.Items.Add(stream);
+        menuContexto.Items.Add(iniciar);
         menuContexto.Items.Add(parar);
         menuContexto.Items.Add(pausar);
         menuContexto.Items.Add(remover);

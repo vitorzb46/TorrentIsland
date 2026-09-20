@@ -34,5 +34,8 @@ namespace TorrentIsland.Infrastructure.Interfaces
         Task<IList<TorrentManager>> StreamingAsync(MagnetLink magnet, string savePath);
         Task<IList<TorrentManager>> TorrentDownloadAsync(Torrent torrent, string savePath);
         Task<IList<TorrentManager>> TorrentDownloadAsync(MagnetLink magnet, string savePath);
+        Task RemoveTorrentAsync(Guid id);
+        Task StopAsync(Guid id);
+        Task StartAsync(Guid id);
     }
 }

@@ -10,6 +10,7 @@ using TorrentIsland.Domain.Exceptions;
 using TorrentIsland.Infrastructure.DTOs;
 using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Infrastructure.Interfaces;
+using TorrentIsland.Infrastructure.Logging;
 using static TorrentIsland.Application.Settings.AppSettings;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
@@ -42,10 +43,37 @@ public class Managers : IManagers
         }.ToSettings();
     }
 
+    public async Task StartAsync(Guid id)
+    {
+        var manager = await ObterManagerPorIdAsync(id) ?? throw new CustomException("Torrent Inválido!");
+        await manager.StartAsync().ConfigureAwait(false);
+    }
+
+    public async Task StopAsync(Guid id)
+    {
+        var manager = await ObterManagerPorIdAsync(id) ?? throw new CustomException("Torrent Inválido!");
+        await manager.StopAsync().ConfigureAwait(false);
+    }
+
+    public async Task RemoveTorrentAsync(Guid id)
+    {
+        try
+        {
+            var manager = await ObterManagerPorIdAsync(id) ?? throw new CustomException("Torrent Inválido!");
+            await manager.StopAsync().ConfigureAwait(false);
+            await _engine.RemoveAsync(manager).ConfigureAwait(false);
+            All.TryRemove(id, out var _);
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Falha em remover torrent do Engine: {ex.Message}");
+        }
+    }
+
     public async Task PauseAsync(Guid id)
     {
         var manager = await ObterManagerPorIdAsync(id);
-        if (manager != null && !manager.Complete)
+        if (manager != null)
             await manager.PauseAsync().ConfigureAwait(false);
     }
 

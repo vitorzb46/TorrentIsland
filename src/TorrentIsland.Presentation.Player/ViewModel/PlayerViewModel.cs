@@ -788,6 +788,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         Utils.AtualizarUI(() =>
         {
+
             var torrent = TorrentDownloads.FirstOrDefault(t => t.TorrentId == dto.TorrentId);
             if (torrent == null)
             {
@@ -795,7 +796,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             }
             else
             {
-                torrent.TorrentName = dto.TorrentName;
+                torrent!.TorrentName = dto.TorrentName;
                 torrent.Status = dto.Status;
                 torrent.Progress = dto.Progress;
                 torrent.DownloadSpeed = dto.DownloadSpeed;
@@ -813,7 +814,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         if (_disposed) return;
         _disposed = true;
-        
+
         _mediaPlayer.PositionChanged -= OnPositionChanged;
         _mediaPlayer.Playing -= OnPlaying;
         _mediaPlayer.Paused -= OnPaused;
