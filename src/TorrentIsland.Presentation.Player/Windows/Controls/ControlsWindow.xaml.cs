@@ -24,6 +24,7 @@ public partial class ControlsWindow : Window, IDisposable
     private readonly PlayerWindow _playerWindow;
     private readonly ITorrentStatusEvent _torrentStatus;
     private readonly ITorrentService _torrent;
+    private static TorrentSearchWindow? _searchWindow;
 
     private bool _isSeeking { get; set; }
     private bool _isDisposed { get; set; }
@@ -201,21 +202,21 @@ public partial class ControlsWindow : Window, IDisposable
     private void BuscarTorrentMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.SetPause(true);
-        var searchWindow = new TorrentSearchWindow(_viewModel, _playerWindow, _torrent, _torrentStatus)
-        {
-            Owner = GetWindow(this),
-            WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            ExtendsContentIntoTitleBar = true,
-            WindowCornerPreference = WindowCornerPreference.Round
-        };
 
-        if (searchWindow.ShowDialog() == true)
+        if (_searchWindow != null)
         {
-            string? linkSelecionado = searchWindow.LinkSelecionado;
-            if (!string.IsNullOrEmpty(linkSelecionado))
+            _searchWindow?.Show();
+        }
+        else
+        {
+            _searchWindow = new TorrentSearchWindow(_viewModel, _playerWindow, _torrent, _torrentStatus)
             {
-                _ = _playerWindow.CarregarStreamTorrentAsync(linkSelecionado);
-            }
+                Owner = GetWindow(this),
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                ExtendsContentIntoTitleBar = true,
+                WindowCornerPreference = WindowCornerPreference.Round
+            };
+            _searchWindow?.Show();
         }
     }
 

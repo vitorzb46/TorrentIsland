@@ -10,7 +10,7 @@ namespace TorrentIsland.Presentation.Player.Common;
 internal class TimeLogging
 {
     /// <summary>
-    /// Executa a operação síncrona <paramref name="action"/> e registra o tempo decorrido.
+    /// Executa a operação síncrona <paramref name="action"/> e registra o tempo decorrido em milissegundos.
     /// </summary>
     /// <param name="action">
     /// A operação síncrona a ser executada e cronometrada. Não pode ser <see langword="null"/>.
@@ -71,7 +71,7 @@ internal class TimeLogging
 
     /// <summary>
     /// Executa <paramref name="func"/> de forma assíncrona, registra no log o tempo total decorrido
-    /// em milissegundos e retorna o resultado produzido pela operação.
+    /// em milissegundos.
     /// </summary>
     /// <typeparam name="T">Tipo do resultado retornado pela operação assíncrona.</typeparam>
     /// <param name="func">
@@ -152,8 +152,7 @@ internal class TimeLogging
     /// <param name="d">O delegate do qual se deseja obter o nome do método.</param>
     /// <returns>
     /// O nome do método encapsulado, ou <see langword="null"/> caso o delegate referencie
-    /// um lambda ou método anônimo gerado pelo compilador (identificado pela presença do
-    /// caractere <c>'&lt;'</c> no nome).
+    /// um lambda ou método anônimo.
     /// </returns>
     private static string? DelegateName(Delegate d)
     {

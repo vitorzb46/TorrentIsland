@@ -1,4 +1,5 @@
 using System.Collections;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,8 +17,6 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     private readonly ITorrentService _torrent;
     private readonly ITorrentStatusEvent _statusEvent;
     private static IEnumerable? SnapShot { get; set; }
-
-    public string? LinkSelecionado { get; private set; }
 
     public TorrentSearchWindow(
         PlayerViewModel viewModel,
@@ -55,6 +54,9 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     {
         var query = TxtSearch.Text.Trim();
         if (string.IsNullOrEmpty(query)) return;
+
+        if (PainelProgresso.Visibility == Visibility.Visible)
+            BtnAlternarTela_Click(sender, e);
 
         TxtSearch.IsEnabled = false;
         BtnBuscar.IsEnabled = false;
@@ -217,10 +219,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (ListBoxTorrents.SelectedItem is TorrentSearchDto torrent)
         {
-            var magnet = await GetUrlMagneticAsync(torrent.TorrentName);
-            LinkSelecionado = magnet;
-
-            DialogResult = true;
+            Start_Stream_Click(torrent, null!);
             Close();
         }
     }
@@ -234,11 +233,20 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         listBox.ItemContainerStyle = estiloItem;
     }
 
-    private static async Task ExecutarTorrentAsync(object sender, RoutedEventArgs e, Func<string, Task> executar)
+    private async Task ExecutarTorrentAsync(object sender, RoutedEventArgs e, Func<string, Task> executar)
     {
         if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: ListBoxItem item } })
         {
-            var data = item.DataContext as TorrentSearchDto;
+            await ExecutarTaskAsync(executar, item, null).ConfigureAwait(false);
+        }
+        else if (ListBoxTorrents.SelectedItem is TorrentSearchDto torrent)
+        {
+            await ExecutarTaskAsync(executar, null, torrent).ConfigureAwait(false);
+        }
+
+        static async Task ExecutarTaskAsync(Func<string, Task> executar, ListBoxItem? item, TorrentSearchDto? torrent)
+        {
+            var data = item?.DataContext as TorrentSearchDto ?? torrent;
             if (data != null)
             {
                 try
@@ -253,6 +261,13 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
                 }
             }
         }
-        e.Handled = true;
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        base.OnClosing(e);
+
+        e.Cancel = true;
+        Hide();
     }
 }
