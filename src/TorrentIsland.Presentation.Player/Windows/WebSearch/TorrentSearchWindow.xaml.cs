@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,6 +15,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     private readonly PlayerWindow _playerWindow;
     private readonly ITorrentService _torrent;
     private readonly ITorrentStatusEvent _statusEvent;
+    private static IEnumerable? SnapShot { get; set; }
 
     public string? LinkSelecionado { get; private set; }
 
@@ -31,7 +33,16 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         _playerWindow = playerWindow;
         _torrent = torrent;
         _statusEvent = statusEvent;
-        Closed += (_, _) => _statusEvent.Stop();
+        Closed += (_, _) =>
+        {
+            _statusEvent.Stop();
+            SnapShot = ListBoxTorrents.ItemsSource;
+        };
+        Loaded += (_, _) =>
+        {
+            if (SnapShot is null) return;
+            ListBoxTorrents.ItemsSource = SnapShot;
+        };
     }
 
     #region Mouse Click
@@ -51,6 +62,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         {
             var resultado = await SearchAsync(query);
             ListBoxTorrents.ItemsSource = resultado;
+            SnapShot = resultado;
         }
         catch (Exception ex)
         {

@@ -3,7 +3,6 @@ using LibVLCSharp.Shared.Structures;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
@@ -454,7 +453,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             return;
         }
 
-        await ProcessarLegendasUndAsync();
+        await TimeLogging.Time(ProcessarLegendasUndAsync);
+        //await ProcessarLegendasUndAsync().ConfigureAwait(false);
     }
 
     public void LoadExternalSubtitle(object? filePath)
@@ -609,8 +609,20 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
             if (tempFiles.Count > 0)
             {
-                using Process? process = await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
-                await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
+                using var process = await TimeLogging.Time(async () =>
+                {
+                    return await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
+
+                }, nameMethod: "MkvExtract");
+
+                await TimeLogging.Time(async () =>
+                {
+                    await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
+
+                }, nameMethod: "Subtitle.Detection");
+
+                //using Process? process = await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
+                //await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
             }
 
             OldFilePath = FilePath;
