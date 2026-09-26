@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
+using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Infrastructure.VLC;
 using TorrentIsland.Presentation.Player.Common;
@@ -154,7 +155,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             {
                 await MediaTimestamp.SaveCache(PlayerViewModel.OldFilePath, _viewModel.MediaTime);
             }
-
+            
             KeyGenerator.Hash(PlayerViewModel.FilePath);
             var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
             _viewModel.SetMedia(media, timeCached.Time);

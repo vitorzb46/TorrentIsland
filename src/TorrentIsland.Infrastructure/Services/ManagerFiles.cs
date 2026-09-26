@@ -15,6 +15,7 @@ public class ManagerFiles : IManagerFiles
         Directory.CreateDirectory(DownloadsFolder);
         Directory.CreateDirectory(TorrentsFolder);
         Directory.CreateDirectory(ResourcesFolder);
+        Directory.CreateDirectory(LimaoFolder);
         if (!File.Exists(ArquivoEngineState)) File.Create(ArquivoEngineState);
         if (!File.Exists(SubCacheFile)) File.WriteAllText(SubCacheFile, "{}");
         if (!File.Exists(TimeCacheFile)) File.WriteAllText(TimeCacheFile, "{}");

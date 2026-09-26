@@ -7,9 +7,9 @@ using TorrentIsland.Application.Services;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.DependencyInjection;
 using TorrentIsland.Infrastructure.Interfaces;
+using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Presentation.Console.Helpers;
 using TorrentIsland.Presentation.Console.Renderers;
-using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.Windows.Main;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
@@ -27,7 +27,7 @@ public partial class App : System.Windows.Application
         {
             Log.Salvar($"UnhandledException: {args.ExceptionObject}");
         };
-        DispatcherUnhandledException += (s, args) =>
+        DispatcherUnhandledException += static (s, args) =>
         {
             Log.Salvar($"DispatcherUnhandledException: {args.Exception.Message} {args.Exception.StackTrace}");
             args.Handled = true;

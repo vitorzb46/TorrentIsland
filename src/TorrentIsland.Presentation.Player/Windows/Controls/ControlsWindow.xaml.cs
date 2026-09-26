@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Main;

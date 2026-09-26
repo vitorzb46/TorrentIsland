@@ -12,7 +12,9 @@ using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Events;
+using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.Services;
+using TorrentIsland.Infrastructure.Subtitles.Extraction;
 using TorrentIsland.Presentation.Player.Common;
 using static TorrentIsland.Infrastructure.Services.SubCacheManager;
 
@@ -518,11 +520,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         try
         {
-            if (!File.Exists(AppSettings.MkvExtract))
-            {
-                if (!await MkvExtract.DownloadBinary()) return;
-            }
-
             if (string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
             {
                 Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
@@ -541,20 +538,20 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
             string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
             string caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
-            string? extensaoSub = "srt";
 
             ConcurrentBag<TrackItem> novosTracks = [];
             Dictionary<int, (string? Language, string? Description, uint Codec)>? metadadosLegendas;
-            Dictionary<int, string> tempFiles = [];
+            Dictionary<int, ulong> tracksParaDetectar = [];
             List<TrackDescription> undTracks = [];
-            List<string> argsList = [];
+            List<int> vlcIdsPorPosicao = [];
 
             metadadosLegendas = media.Tracks
                 .Where(m => m.TrackType == TrackType.Text)
                 .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
 
             undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) &&
-                                             metadadosLegendas[t.Id].Language == "und").OrderBy(t => t.Id)];
+                                                 metadadosLegendas[t.Id].Language == "und")
+                                                                  .OrderBy(t => t.Id)];
 
             if (undTracks.Count == 0) return;
 
@@ -567,8 +564,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
             Directory.CreateDirectory(caminhoTempBase);
 
-            argsList = ["tracks", $"\"{FilePath}\""];
-
             AudioTracks.Clear();
             AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
             foreach (var t in audioTracks.Where(t => t.Id >= 0))
@@ -579,50 +574,68 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             SubtitleTracks.Clear();
             SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
 
-            foreach (var track in undTracks)
+            var mkvMetaOrdenada = SubtitleExtractor.GetSubtitleTracksMetadata(FilePath);
+            if (undTracks.Count != mkvMetaOrdenada.Count)
             {
-                var metaCodec = metadadosLegendas.ContainsKey(track.Id) ? metadadosLegendas[track.Id].Codec : 0;
-                if (metaCodec != 0)
-                {
-                    var codecDesc = media.CodecDescription(TrackType.Text, metaCodec)?.ToLower() ?? "";
-                    // Log.Salvar($"Codec: {codecDesc}");
-                    if (codecDesc.Contains("vtt")) extensaoSub = "vtt";
-                    else if (codecDesc.Contains("ssa") || codecDesc.Contains("ass")) extensaoSub = "ass";
-                }
+                Log.Salvar($"[Aviso] undTracks={undTracks.Count} " +
+                        $"mkvTracks={mkvMetaOrdenada.Count} — mapeamento pode estar errado");
+            }
 
-                var nomeArquivo = $"{Guid.NewGuid():N}.{extensaoSub}";
-                var arquivoDeSaida = Path.Combine(caminhoTempBase, nomeArquivo);
+            var n = Math.Min(undTracks.Count, mkvMetaOrdenada.Count);
+            var semCacheMkv = new HashSet<ulong>();
+            var mkvParaVlc  = new Dictionary<ulong, int>();
 
-                var cacheEntry = await GetAsync(FilePath, track.Id);
+            for (int i = 0; i < n; i++)
+            {
+                var vlcId   = undTracks[i].Id;
+                var mkvNum  = mkvMetaOrdenada[i].TrackNumber;                
+                var cacheEntry = await GetAsync(FilePath, vlcId);
 
                 if (cacheEntry != null)
                 {
-                    novosTracks.Add(new TrackItem(track.Id, cacheEntry.Language));
-                }
-                else
-                {
-                    tempFiles[track.Id] = arquivoDeSaida;
-                    argsList.Add($"{track.Id}:\"{arquivoDeSaida}\"");
+                    novosTracks.Add(new TrackItem(vlcId, cacheEntry.Language));
+                    continue;
                 }
 
+                semCacheMkv.Add(mkvNum);
+                mkvParaVlc[mkvNum] = vlcId;
+                Log.Salvar($"Track sem cache: {mkvNum}");
             }
 
-            if (tempFiles.Count > 0)
+            if (semCacheMkv.Count > 0)
             {
-                using var process = await TimeLogging.Time(async () =>
-                {
-                    return await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
+                const int maxChars = 2000;
 
-                }, nameMethod: "MkvExtract");
+                var lista = await Task.Run(async () =>
+                {
+                    return await TimeLogging.Time(async () =>
+                    {
+                        return SubtitleExtractor.ExtractSubtitles(FilePath, semCacheMkv);
+                    }, "SubtitleExtractor");
+                });
+                
+                // Correlaciona VLC Id ↔ SubtitleTrack por índice
+                var trackTexts = new Dictionary<int, string>(mkvParaVlc.Count);
+
+                foreach (var track in lista)
+                {
+                    if (!mkvParaVlc.TryGetValue(track.TrackNumber, out var vlcId))
+                        continue;
+
+                    var text = string.Join("\n", track.Cues
+                        .Where(c => !string.IsNullOrEmpty(c.Text))
+                        .Select(c => c.Text));
+
+                    if (text.Length > maxChars)
+                        text = text[..maxChars];
+
+                    trackTexts[vlcId] = text;
+                }
 
                 await TimeLogging.Time(async () =>
                 {
-                    await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
-
-                }, nameMethod: "Subtitle.Detection");
-
-                //using Process? process = await MkvExtract.WaitForProcess(argsList).ConfigureAwait(false);
-                //await Subtitle.Detection(novosTracks, tempFiles, FilePath).ConfigureAwait(false);
+                    await Subtitle.Detection(novosTracks, trackTexts, FilePath).ConfigureAwait(false);
+                }, "Subtitle.Detection");
             }
 
             OldFilePath = FilePath;

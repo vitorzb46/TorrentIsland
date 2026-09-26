@@ -6,13 +6,14 @@ namespace TorrentIsland.Application.Settings;
 public sealed class AppSettings
 {
     // File Logging
-    public static bool StackTrace { get; } = true;
+    public static bool StackTrace { get; } = false;
     
     // Pastas - AppData
     public static string AppDataFolder { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
     public static string CacheFolder { get; } = Path.Combine(AppDataFolder, "TorrentIsland", "Cache");
     public static string HtmlsFolder { get; } = Path.Combine(CacheFolder, "htmls");
     public static string TempFolder { get; } = Path.Combine(CacheFolder, "Temp");
+    public static string LimaoFolder { get; } = Path.Combine(HtmlsFolder, "Limao");
 
     // Pastas - CurrentDirectory
     public static string CurrentFolder { get; } = Path.Combine(AppContext.BaseDirectory);

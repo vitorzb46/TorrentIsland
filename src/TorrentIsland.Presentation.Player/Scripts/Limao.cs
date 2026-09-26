@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using TorrentIsland.Application.DTOs;
+using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Presentation.Player.Common;
 
 namespace TorrentIsland.Presentation.Player.Scripts;
@@ -95,8 +96,7 @@ public class Limao
                 string seed = tds[3].InnerText.Trim();
                 string leech = tds[4].InnerText.Trim();
 
-                results.Add(new TorrentSearchDto
-            (downloadUrl, torrentName, size, seed, leech));
+                results.Add(new TorrentSearchDto(downloadUrl, torrentName, size, seed, leech));
             }
 
             return results;

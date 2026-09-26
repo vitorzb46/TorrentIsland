@@ -1,13 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace TorrentIsland.Presentation.Player.Common;
+namespace TorrentIsland.Infrastructure.Logging;
 
 /// <summary>
 /// Utilitário para medição de tempo de execução de operações síncronas e assíncronas.
 /// Registra o tempo decorrido em milissegundos através do log personalizado <see cref="Log.Salvar(string)"/>.
 /// </summary>
-internal class TimeLogging
+public class TimeLogging
 {
     /// <summary>
     /// Executa a operação síncrona <paramref name="action"/> e registra o tempo decorrido em milissegundos.
@@ -26,7 +26,7 @@ internal class TimeLogging
     /// <exception cref="ArgumentNullException">
     /// Lançada quando <paramref name="action"/> é <see langword="null"/>.
     /// </exception>
-    public static Task Time(Action action, [CallerMemberName] string? caller = default, string? nameMethod = null)
+    public static Task Time(Action action, string? nameMethod = null, [CallerMemberName] string? caller = default)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -56,7 +56,7 @@ internal class TimeLogging
     /// <exception cref="ArgumentNullException">
     /// Lançada quando <paramref name="func"/> é <see langword="null"/>.
     /// </exception>
-    public static async Task Time(Func<Task> func, [CallerMemberName] string? caller = default, string? nameMethod = null)
+    public static async Task Time(Func<Task> func, string? nameMethod = null, [CallerMemberName] string? caller = default)
     {
         ArgumentNullException.ThrowIfNull(func);
 
@@ -90,7 +90,7 @@ internal class TimeLogging
     /// <exception cref="ArgumentNullException">
     /// Lançada quando <paramref name="func"/> é <see langword="null"/>.
     /// </exception>
-    public static async Task<T> Time<T>(Func<Task<T>> func, [CallerMemberName] string? caller = default, string? nameMethod = null)
+    public static async Task<T> Time<T>(Func<Task<T>> func, string? nameMethod = null, [CallerMemberName] string? caller = default)
     {
         ArgumentNullException.ThrowIfNull(func);
 
