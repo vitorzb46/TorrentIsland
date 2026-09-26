@@ -10,13 +10,10 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Infrastructure.Logging;
-using TorrentIsland.Infrastructure.Services;
-using TorrentIsland.Infrastructure.Subtitles.Extraction;
+using TorrentIsland.Infrastructure.Subtitles;
 using TorrentIsland.Presentation.Player.Common;
-using static TorrentIsland.Infrastructure.Services.SubCacheManager;
 
 namespace TorrentIsland.Presentation.Player.ViewModel;
 
@@ -574,7 +571,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             SubtitleTracks.Clear();
             SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
 
-            var mkvMetaOrdenada = SubtitleExtractor.GetSubtitleTracksMetadata(FilePath);
+            var mkvMetaOrdenada = Subtitle.GetMetadata(FilePath);
             if (undTracks.Count != mkvMetaOrdenada.Count)
             {
                 Log.Salvar($"[Aviso] undTracks={undTracks.Count} " +
@@ -589,7 +586,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             {
                 var vlcId   = undTracks[i].Id;
                 var mkvNum  = mkvMetaOrdenada[i].TrackNumber;                
-                var cacheEntry = await GetAsync(FilePath, vlcId);
+                var cacheEntry = await Subtitle.TryGetAsync(FilePath, vlcId);
 
                 if (cacheEntry != null)
                 {
@@ -610,7 +607,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 {
                     return await TimeLogging.Time(async () =>
                     {
-                        return SubtitleExtractor.ExtractSubtitles(FilePath, semCacheMkv);
+                        return Subtitle.Extraction(FilePath, semCacheMkv);
                     }, "SubtitleExtractor");
                 });
                 

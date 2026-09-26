@@ -25,7 +25,7 @@ namespace TorrentIsland.Infrastructure.Subtitles.Extraction;
 /// Esta classe realiza I/O síncrono.
 /// </para>
 /// </remarks>
-public sealed class SubtitleExtractor
+internal sealed class SubtitleExtractor
 {
 
     /// <summary>
@@ -40,7 +40,7 @@ public sealed class SubtitleExtractor
     /// </returns>
     /// <exception cref="FileNotFoundException">Arquivo não encontrado no caminho informado.</exception>
     /// <exception cref="InvalidDataException">Falha ao parsear o documento EBML.</exception>
-    public static IReadOnlyList<SubtitleTrackMetadata> GetSubtitleTracksMetadata(string filePath)
+    internal static IReadOnlyList<SubtitleTrackMetadata> GetSubtitleTracksMetadata(string filePath)
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException("Arquivo não encontrado.", filePath);
@@ -76,7 +76,7 @@ public sealed class SubtitleExtractor
     /// </returns>
     /// <exception cref="FileNotFoundException">Arquivo não encontrado no caminho informado.</exception>
     /// <exception cref="InvalidDataException">Falha ao parsear o documento EBML.</exception>
-    public static IReadOnlyList<SubtitleTrack> ExtractSubtitles(
+    internal static IReadOnlyList<SubtitleTrack> ExtractSubtitles(
         string filePath,
         IReadOnlySet<ulong>? trackNumbersFilter = null,
         int maxCuesPerTrack = 15,

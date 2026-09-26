@@ -4,7 +4,7 @@ using TorrentIsland.Application.Settings;
 
 namespace TorrentIsland.Infrastructure.Services;
 
-public partial class SubCacheManager
+public sealed class SubCacheManager
 {
     private static readonly string CacheFile = AppSettings.SubCacheFile;
 
@@ -25,7 +25,7 @@ public partial class SubCacheManager
     /// caso contrário, remove a entrada inválida do cache, persiste a alteração via
     /// <see cref="Save"/> e retorna <see langword="null"/>.
     /// </returns>
-    public static async Task<CacheEntry?> GetAsync(string caminhoDoVideo, int trackId)
+    internal static async Task<CacheEntry?> GetAsync(string caminhoDoVideo, int trackId)
     {
         var key = MakeKey(caminhoDoVideo, trackId);
         _cache.TryGetValue(key, out var entry);
@@ -47,7 +47,7 @@ public partial class SubCacheManager
     /// <remarks>
     /// Inclui a chave hash gerada pelo <see cref="KeyGenerator"/> e persiste alteração via <see cref="Save"/>.
     /// </remarks>
-    public static async Task SetAsync(string caminhoDoVideo, int trackId, string language)
+    internal static async Task SetAsync(string caminhoDoVideo, int trackId, string language)
     {
         var entry = new CacheEntry
         {
@@ -61,7 +61,7 @@ public partial class SubCacheManager
         await JsonFiles.SaveToFileAsync(_cache, CacheFile);
     }
 
-    public static async Task Load()
+    private static async Task Load()
     {
         await JsonFiles.LoadFromFileAsync(_cache, CacheFile);
     }
