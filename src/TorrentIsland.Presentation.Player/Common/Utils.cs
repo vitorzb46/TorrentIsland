@@ -105,7 +105,10 @@ public class Utils
     /// <returns>Uma task que representa operação assíncrona.</returns>
     public static async Task AtualizarUIAsync(Func<Task> callbackAsync)
     {
-        await System.Windows.Application.Current.Dispatcher.InvokeAsync(callbackAsync);
+        await System.Windows.Application.Current.Dispatcher
+            .InvokeAsync(callbackAsync)
+            .Task
+            .Unwrap();
     }
 
 
