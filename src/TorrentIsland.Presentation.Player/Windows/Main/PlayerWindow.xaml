@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
+    Title="TorrentIsland"
     Width="1280"
     Height="720"
     AllowDrop="True"
@@ -14,6 +15,77 @@
     Icon="pack://application:,,,/Resources/torrent_island.ico"
     MouseMove="Player_Mouse"
     WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <DrawingImage x:Key="IconPlay">
+            <DrawingImage.Drawing>
+                <GeometryDrawing Brush="White" Geometry="M 3,2 L 14,8 L 3,14 Z" />
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
+        <DrawingImage x:Key="IconPause">
+            <DrawingImage.Drawing>
+                <GeometryDrawing Brush="White">
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <RectangleGeometry Rect="3,3,4,10" />
+                            <RectangleGeometry Rect="9,3,4,10" />
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
+        <DrawingImage x:Key="IconStop">
+            <DrawingImage.Drawing>
+                <GeometryDrawing Brush="White" Geometry="M 3,3 L 13,3 L 13,13 L 3,13 Z" />
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
+        <DrawingImage x:Key="IconFullscreen">
+            <DrawingImage.Drawing>
+                <GeometryDrawing Brush="White">
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <PathGeometry Figures="M 2,2 L 6,2 L 6,3.5 L 3.5,3.5 L 3.5,6 L 2,6 Z" />
+                            <PathGeometry Figures="M 14,2 L 14,6 L 12.5,6 L 12.5,3.5 L 10,3.5 L 10,2 Z" />
+                            <PathGeometry Figures="M 2,14 L 2,10 L 3.5,10 L 3.5,12.5 L 6,12.5 L 6,14 Z" />
+                            <PathGeometry Figures="M 14,14 L 10,14 L 10,12.5 L 12.5,12.5 L 12.5,10 L 14,10 Z" />
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+    </Window.Resources>
+
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo>
+            <TaskbarItemInfo.ThumbButtonInfos>
+                <ThumbButtonInfoCollection>
+                    <ThumbButtonInfo
+                        x:Name="BtnPlayPause"
+                        Click="ThumbPlayPause_Click"
+                        Description="Reproduzir"
+                        DismissWhenClicked="False"
+                        ImageSource="{StaticResource IconPlay}" />
+
+                    <ThumbButtonInfo
+                        x:Name="BtnStop"
+                        Click="ThumbStop_Click"
+                        Description="Parar"
+                        DismissWhenClicked="False"
+                        ImageSource="{StaticResource IconStop}" />
+
+                    <ThumbButtonInfo
+                        x:Name="BtnFullscreen"
+                        Click="ThumbFullscreen_Click"
+                        Description="Tela cheia"
+                        DismissWhenClicked="true"
+                        ImageSource="{StaticResource IconFullscreen}" />
+                </ThumbButtonInfoCollection>
+            </TaskbarItemInfo.ThumbButtonInfos>
+        </TaskbarItemInfo>
+    </Window.TaskbarItemInfo>
 
     <ui:ClientAreaBorder Background="Black">
 
@@ -30,15 +102,34 @@
             </Grid.Resources>
 
 
-            <ui:TitleBar
-                x:Name="MyTitleBar"
-                Title="Torrent Island"
-                Grid.Row="0"
-                Height="32"
-                Background="#FF1A1A1A"
-                Foreground="White"
-                Icon="{ui:ImageIcon 'pack://application:,,,/Resources/torrent_island.ico'}"
-                Style="{StaticResource TituloGlobalStyle}" />
+            <Grid Grid.Row="0">
+                <ui:TitleBar
+                    x:Name="MyTitleBar"
+                    Height="32"
+                    Background="#FF1A1A1A"
+                    Foreground="White"
+                    Icon="{ui:ImageIcon 'pack://application:,,,/Resources/torrent_island.ico'}"
+                    Style="{StaticResource TituloGlobalStyle}">
+                    <ui:TitleBar.Header>
+                        <TextBlock
+                            x:Name="TitleLeft"
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Foreground="White" />
+                    </ui:TitleBar.Header>
+                </ui:TitleBar>
+
+                <TextBlock
+                    x:Name="TitleCenter"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Panel.ZIndex="1"
+                    FontSize="12"
+                    Foreground="#888888"
+                    IsHitTestVisible="False"
+                    TextTrimming="CharacterEllipsis"
+                    Visibility="{Binding Visibility, ElementName=MyTitleBar}" />
+            </Grid>
 
             <Grid Grid.Row="1" Background="Black">
 

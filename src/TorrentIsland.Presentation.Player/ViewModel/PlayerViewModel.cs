@@ -28,6 +28,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private int _cliquesRetroceder = 0;
     private DateTime _ultimoCliqueAvancar = DateTime.MinValue;
     private DateTime _ultimoCliqueRetroceder = DateTime.MinValue;
+    public static string FileName =>
+        Path.GetFileName(FilePath) ?? string.Empty;
 
 
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
@@ -63,23 +65,18 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public ObservableCollection<TorrentDownloadDto> TorrentDownloads { get; } = [];
     private static long SubtitleDelay { get; set; } = 0;
     public long MediaTime { get; set; } = 0;
-    public static string FilePath { get; set; } = string.Empty;
-    public static string OldFilePath { get; set; } = string.Empty;
     public static nint VlcHwnd { get; private set; }
     public LibVLC LibVLC { get; }
-
-    public string TimeRemaining
+    public static string FilePath
     {
         get;
         set
         {
-            if (field != value)
-            {
-                field = value;
-                OnPropertyChanged();
-            }
+            if (field == value) return;
+            field = value;
+            FilePathChanged?.Invoke();
         }
-    } = "∞";
+    } = string.Empty;
 
     public string TorrentName
     {
@@ -268,7 +265,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Public Methods
-    public void ToggleLoading() => IsLoading = !IsLoading;
+    public async Task SaveCacheAsync()
+    {
+        await MediaTimestamp.SaveCache(FilePath, MediaTime);
+    }
 
     public void SelectAudioTrack(int trackId) => _mediaPlayer.SetAudioTrack(trackId);
 
@@ -278,6 +278,15 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         _mediaPlayer.SetPause(true);
         _mediaPlayer.SetPause(false);
+    }
+
+    public void Stop()
+    {
+        MediaDispose();
+        _ = SaveCacheAsync();
+        IsPlaying = false;
+        IsVideoVisible = false;
+        _mediaPlayer.Stop();
     }
 
     public void SetPause(bool pause) => _mediaPlayer.SetPause(pause);
@@ -292,9 +301,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     public Media? GetMedia() => _media;
 
-    public void SetMedia(Media media, long time)
+    public Media? MediaDispose()
     {
         _media?.Dispose();
+        _mediaPlayer.Media?.Dispose();
+        _mediaPlayer.Media = null;
+        return _media = null;
+    }
+
+    public void SetMedia(Media media, long time)
+    {
+        MediaDispose();
         _media = media;
         _mediaPlayer.Media = media;
         _mediaPlayer.Play(_media);
@@ -635,9 +652,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 }, "Subtitle.Detection");
             }
 
-            OldFilePath = FilePath;
-            FilePath = string.Empty;
-
             /// Atualiza a coleção na UI
             await Utils.AtualizarUIAsync(async () =>
             {
@@ -710,6 +724,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     #region Events Handlers
     public event PropertyChangedEventHandler? PropertyChanged;
+    public static event Action? FilePathChanged;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     private void OnMute(object? sender, EventArgs e) => IsMuted = _mediaPlayer.Mute;
@@ -857,7 +872,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             if (_mediaPlayer.Media != null)
             {
                 MediaTime = _mediaPlayer.Time;
-                _ = MediaTimestamp.SaveCache(OldFilePath, MediaTime);
+                _ = MediaTimestamp.SaveCache(FilePath, MediaTime);
             }
         }
         catch (Exception ex)

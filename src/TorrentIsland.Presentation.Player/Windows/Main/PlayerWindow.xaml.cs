@@ -33,11 +33,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                         IFormattingHelper fb,
                         ITorrentService torrentService)
     {
-        //RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
-
         Managers = managers;
 
         InitializeComponent();
+
+        TitleLeft.Text = "TorrentIsland";
 
         var vlc = new VlcPlayerService();
 
@@ -46,6 +46,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         DataContext = _viewModel;
 
         VideoView.MediaPlayer = vlc.MediaPlayer;
+
+        PlayerViewModel.FilePathChanged += OnFilePathChanged;
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
@@ -90,6 +92,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Log.Salvar($"Window fechada — dispose do {typeof(PlayerWindow).Name}");
             _controls.FullscreenRequested -= (_, _) => ToggleFullscreen();
             _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
+            PlayerViewModel.FilePathChanged -= OnFilePathChanged;
 
             LocationChanged -= (_, _) => PosicionarControles();
             SizeChanged -= (_, _) => PosicionarControles();
@@ -151,11 +154,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
             if (media == null) return;
 
-            if (_viewModel.GetMedia() != null)
-            {
-                await MediaTimestamp.SaveCache(PlayerViewModel.OldFilePath, _viewModel.MediaTime);
-            }
-            
             KeyGenerator.Hash(PlayerViewModel.FilePath);
             var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
             _viewModel.SetMedia(media, timeCached.Time);
@@ -218,6 +216,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     #region Private Methods
     private async Task<Media?> EscolherMidiaAsync(string caminhoOuUrl)
     {
+        if (_viewModel.GetMedia != null)
+        {
+            await _viewModel.SaveCacheAsync();
+            _viewModel.MediaDispose();
+        }
+
         Media? media;
         if (File.Exists(caminhoOuUrl))
         {
@@ -319,22 +323,20 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         if (WindowState == WindowState.Normal)
         {
             // Entra em tela cheia
+            MyTitleBar?.Visibility = Visibility.Collapsed;
             Background = Brushes.Black;
             WindowStyle = WindowStyle.None;
             WindowState = WindowState.Maximized;
             _viewModel.IsFullscreen = true;
-
-            MyTitleBar?.Visibility = Visibility.Collapsed;
         }
         else
         {
             // Volta para o modo janela
+            MyTitleBar?.Visibility = Visibility.Visible;
             Background = Brushes.Black;
             WindowStyle = WindowStyle.SingleBorderWindow;
             WindowState = WindowState.Normal;
             _viewModel.IsFullscreen = false;
-
-            MyTitleBar?.Visibility = Visibility.Visible;
         }
 
         _viewModel.IsFullscreen = WindowState == WindowState.Maximized;
@@ -397,6 +399,36 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
+    }
+
+    private void ThumbPlayPause_Click(object sender, EventArgs e)
+    {
+        _viewModel.IsPlaying = !_viewModel.IsPlaying;
+
+        BtnPlayPause.ImageSource = (ImageSource)FindResource(
+            _viewModel.IsPlaying ? "IconPause" : "IconPlay");
+        BtnPlayPause.Description = _viewModel.IsPlaying ? "Pausar" : "Reproduzir";
+
+        if (_viewModel.IsPlaying) _viewModel.TogglePlay();
+        else                      _viewModel.TogglePlay();
+    }
+
+    private void ThumbStop_Click(object sender, EventArgs e)
+    {
+        _viewModel.Stop();
+
+        // Reseta o botão para estado "reproduzir"
+        if (_viewModel.IsPlaying)
+        {
+            _viewModel.IsPlaying = false;
+            BtnPlayPause.ImageSource = (ImageSource)FindResource("IconPlay");
+            BtnPlayPause.Description = "Reproduzir";
+        }
+    }
+
+    private void ThumbFullscreen_Click(object sender, EventArgs e)
+    {
+        ToggleFullscreen();
     }
     #endregion
 
@@ -487,4 +519,15 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
     public event EventHandler? MouseDetected;
+
+    private void OnFilePathChanged()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            TitleCenter.Text = PlayerViewModel.FileName;
+            Title = string.IsNullOrEmpty(PlayerViewModel.FileName) 
+                ? "TorrentIsland" 
+                : $"{PlayerViewModel.FileName} - TorrentIsland";
+        });
+    }
 }

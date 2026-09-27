@@ -10,11 +10,6 @@ public sealed class SubCacheManager
 
     private static readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
 
-    static SubCacheManager()
-    {
-        _ = Load();
-    }
-
     /// <summary>
     /// Recupera de forma assíncrona uma entrada do cache e valida sua integridade contra o arquivo em disco.
     /// </summary>
@@ -27,6 +22,7 @@ public sealed class SubCacheManager
     /// </returns>
     internal static async Task<CacheEntry?> GetAsync(string caminhoDoVideo, int trackId)
     {
+        await Load();
         var key = MakeKey(caminhoDoVideo, trackId);
         _cache.TryGetValue(key, out var entry);
         if (!IsValid(caminhoDoVideo, entry!))
