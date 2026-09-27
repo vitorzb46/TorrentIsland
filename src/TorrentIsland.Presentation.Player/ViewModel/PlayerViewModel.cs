@@ -3,11 +3,13 @@ using LibVLCSharp.Shared.Structures;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Windows.Threading;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Infrastructure.Events;
@@ -22,16 +24,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #region Fields
     private readonly MediaPlayer _mediaPlayer;
     private readonly IFormattingHelper _fb;
+    private readonly DispatcherTimer _loadingDebounce;
     private Media? _media;
     private bool _disposed;
     private int _cliquesAvancar = 0;
     private int _cliquesRetroceder = 0;
     private DateTime _ultimoCliqueAvancar = DateTime.MinValue;
     private DateTime _ultimoCliqueRetroceder = DateTime.MinValue;
-    public static string FileName =>
-        Path.GetFileName(FilePath) ?? string.Empty;
-
-
+    
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
     #endregion
@@ -56,6 +56,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         Loading.LoadingMessageChanged += OnLoadingMessageChanged;
         TorrentStatusEvent.TorrentUpdated += OnTorrentUpdated;
         TorrentStatusEvent.TorrentQueue += OnTorrentQueue;
+
+        _loadingDebounce = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _loadingDebounce.Tick += (_, _) =>
+        {
+            Log.Salvar("[Debounce] Tick disparou — fechando IsLoading");
+            _loadingDebounce.Stop();
+            IsLoading = false;
+        };
     }
     #endregion
 
@@ -67,6 +78,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public long MediaTime { get; set; } = 0;
     public static nint VlcHwnd { get; private set; }
     public LibVLC LibVLC { get; }
+    public static string FileName =>
+        Path.GetFileName(FilePath) ?? string.Empty;
+
+    public bool IsOpening { get; set { field = value; OnPropertyChanged(); } } = false;
     public static string FilePath
     {
         get;
@@ -201,11 +216,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             if (field == value) return;
             field = value;
-
-            if (value)
-            {
-                IsPlaying = false;
-            }
             OnPropertyChanged();
         }
     }
@@ -218,11 +228,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             if (field == value) return;
             field = value;
-
-            if (value)
-            {
-                IsLoading = false;
-            }
             OnPropertyChanged();
         }
     }
@@ -462,8 +467,12 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             await app.Dispatcher.InvokeAsync(() => PopulateTracksAsync(ct)).Task.ConfigureAwait(true);
             return;
         }
-
-        await TimeLogging.Time(ProcessarLegendasUndAsync);
+        
+        await Task.Run(async () =>
+        {
+            await TimeLogging.Time(ProcessarLegendasUndAsync);
+        }, ct);
+        
         //await ProcessarLegendasUndAsync().ConfigureAwait(false);
     }
 
@@ -563,9 +572,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
             if (undTracks.Count == 0) return;
 
-            LoadingMessage = $"Processando legendas...";
-            IsLoading = true;
-
+            LoadingMessage = "Processando legendas...";
+            
             // Limpa o diretório temporário se houver resquícios não tratados.
             if (Directory.Exists(caminhoTempBase))
                 Directory.Delete(caminhoTempBase, true);
@@ -613,14 +621,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             if (semCacheMkv.Count > 0)
             {
                 const int maxChars = 2000;
-
-                var lista = await Task.Run(async () =>
-                {
-                    return await TimeLogging.Time(async () =>
-                    {
-                        return Subtitle.Extraction(FilePath, semCacheMkv);
-                    }, "SubtitleExtractor");
-                });
+                
+                var lista = Subtitle.Extraction(FilePath, semCacheMkv);
                 
                 // Correlaciona VLC Id ↔ SubtitleTrack por índice
                 var trackTexts = new Dictionary<int, string>(mkvParaVlc.Count);
@@ -640,10 +642,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                     trackTexts[vlcId] = text;
                 }
 
-                await TimeLogging.Time(async () =>
-                {
-                    await Subtitle.Detection(novosTracks, trackTexts, FilePath).ConfigureAwait(false);
-                }, "Subtitle.Detection");
+                await Subtitle.Detection(novosTracks, trackTexts, FilePath).ConfigureAwait(false);
             }
 
             /// Atualiza a coleção na UI
@@ -666,7 +665,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             Log.Salvar($"Erro em ProcessarLegendasUndAsync: {ex.Message} {ex.StackTrace}");
         }
-
     }
 
     /// <summary>
@@ -726,10 +724,20 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         MediaTime = _mediaPlayer.Time;
         IsPlaying = false;
+        if (IsOpening) return;
+        IsLoading = false;
     }
 
-    private void OnStopped(object? sender, EventArgs e) => IsPlaying = false;
-    private void OnEndReached(object? sender, EventArgs e) => IsPlaying = false;
+    private void OnStopped(object? sender, EventArgs e)
+    {
+        IsPlaying = false;
+        IsLoading = false;
+    }
+    private void OnEndReached(object? sender, EventArgs e)
+    {
+        IsPlaying = false;
+        IsLoading = false;
+    }
     private void OnPlaying(object? sender, EventArgs e)
     {
         IsPlaying = true;
@@ -737,11 +745,20 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     }
     private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
     {
-        System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+        System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            if (e.Cache < 100 && !IsPlaying)
+            if (IsOpening) return;
+            
+            if (e.Cache < 100 && IsPlaying)
             {
                 IsLoading = true;
+                _loadingDebounce.Stop();
+                _loadingDebounce.Start();
+            }
+            else if (e.Cache >= 100)
+            {
+                _loadingDebounce.Stop();
+                IsLoading = false;
             }
         });
     }
@@ -767,7 +784,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     }
     private void OnMediaChanged(object? sender, MediaPlayerMediaChangedEventArgs e)
     {
-        IsLoading = true;
+        // IsLoading = true;
         AudioTracks.Clear();
         SubtitleTracks.Clear();
         VlcHwnd = _mediaPlayer.Hwnd;
