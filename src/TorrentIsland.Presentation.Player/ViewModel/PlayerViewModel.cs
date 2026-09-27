@@ -345,15 +345,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public void TogglePlay()
     {
         if (_mediaPlayer.IsPlaying)
-        {
-            IsPlaying = false;
             _mediaPlayer.Pause();
-        }
         else
-        {
-            IsPlaying = true;
             _mediaPlayer.Play();
-        }
     }
 
     public void ToggleVolume(bool volume)
@@ -738,8 +732,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private void OnEndReached(object? sender, EventArgs e) => IsPlaying = false;
     private void OnPlaying(object? sender, EventArgs e)
     {
+        IsPlaying = true;
         VlcHwnd = _mediaPlayer.Hwnd;
-        IsPlaying = false;
     }
     private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
     {

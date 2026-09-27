@@ -1,5 +1,6 @@
 using LibVLCSharp.Shared;
 using LibVLCSharp.WPF;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -48,6 +49,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         VideoView.MediaPlayer = vlc.MediaPlayer;
 
         PlayerViewModel.FilePathChanged += OnFilePathChanged;
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
@@ -93,6 +95,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _controls.FullscreenRequested -= (_, _) => ToggleFullscreen();
             _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
             PlayerViewModel.FilePathChanged -= OnFilePathChanged;
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
 
             LocationChanged -= (_, _) => PosicionarControles();
             SizeChanged -= (_, _) => PosicionarControles();
@@ -401,17 +404,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private void ThumbPlayPause_Click(object sender, EventArgs e)
-    {
-        _viewModel.IsPlaying = !_viewModel.IsPlaying;
-
-        BtnPlayPause.ImageSource = (ImageSource)FindResource(
-            _viewModel.IsPlaying ? "IconPause" : "IconPlay");
-        BtnPlayPause.Description = _viewModel.IsPlaying ? "Pausar" : "Reproduzir";
-
-        if (_viewModel.IsPlaying) _viewModel.TogglePlay();
-        else                      _viewModel.TogglePlay();
-    }
+    private void ThumbPlayPause_Click(object sender, EventArgs e) => _viewModel.TogglePlay();
 
     private void ThumbStop_Click(object sender, EventArgs e)
     {
@@ -528,6 +521,18 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Title = string.IsNullOrEmpty(PlayerViewModel.FileName) 
                 ? "TorrentIsland" 
                 : $"{PlayerViewModel.FileName} - TorrentIsland";
+        });
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PlayerViewModel.IsPlaying)) return;
+
+        Dispatcher.Invoke(() =>
+        {
+            BtnPlayPause.ImageSource = (ImageSource)FindResource(
+                _viewModel.IsPlaying ? "IconPause" : "IconPlay");
+            BtnPlayPause.Description = _viewModel.IsPlaying ? "Pausar" : "Reproduzir";
         });
     }
 }
