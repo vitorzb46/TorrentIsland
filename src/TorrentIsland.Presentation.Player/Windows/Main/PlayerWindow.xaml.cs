@@ -151,21 +151,22 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             await MediaTimestamp.Load();
             _viewModel.IsVideoVisible = false;
+            _viewModel.IsOpening = true;            
             _viewModel.IsLoading = true;
+            _viewModel.LoadingMessage = "Carregando mídia...";
 
             var media = await EscolherMidiaAsync(caminhoOuUrl);
-
             if (media == null) return;
 
             KeyGenerator.Hash(PlayerViewModel.FilePath);
             var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
             _viewModel.SetMedia(media, timeCached.Time);
+            
             await Utils.AtualizarUIAsync(async () =>
             {
                 await _viewModel.PopulateTracksAsync();
                 _viewModel.SetPause(false);
                 ShowControls();
-                _viewModel.IsLoading = false;
                 VideoView.InvalidateVisual();
                 Utils.VideoView_Background_Black();
                 await Task.Delay(300); //Tempo de espera para evitar artefato visual
@@ -181,7 +182,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
         finally
         {
+            _viewModel.IsOpening = false;
             _viewModel.IsLoading = false;
+            _viewModel.LoadingMessage = "Carregando...";
         }
     }
 
@@ -190,8 +193,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         try
         {
             _viewModel.IsVideoVisible = false;
-            _viewModel.LoadingMessage = "Iniciando streaming...";
+            _viewModel.IsOpening = true;
             _viewModel.IsLoading = true;
+            _viewModel.LoadingMessage = "Iniciando streaming...";
 
             string streamUrl = await Task.Run(async () =>
             {
@@ -422,6 +426,18 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private void ThumbFullscreen_Click(object sender, EventArgs e)
     {
         ToggleFullscreen();
+        AtivarJanela();
+    }
+
+    private void AtivarJanela()
+    {
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+
+        Activate();
+        Topmost = true;
+        Topmost = false;
+        Focus();
     }
     #endregion
 
