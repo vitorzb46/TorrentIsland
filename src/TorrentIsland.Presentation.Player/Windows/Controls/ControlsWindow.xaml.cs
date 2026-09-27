@@ -30,6 +30,8 @@ public partial class ControlsWindow : Window, IDisposable
     private bool _isSeeking { get; set; }
     private bool _isDisposed { get; set; }
 
+    private ToolTip? _timelineTooltip;
+
     /// <summary>Dispara quando o usuário alternar tela cheia (a janela de vídeo executa).</summary>
     public event EventHandler? FullscreenRequested;
     /// <summary>Dispara quando há movimento do mouse sobre os controles (modo cinema).</summary>
@@ -48,6 +50,14 @@ public partial class ControlsWindow : Window, IDisposable
         DataContext = viewModel;
         TorrentStatusButton.Content = new SymbolIcon { Symbol = SymbolRegular.Globe32 };
         ConfigurarToolTips();
+
+        _timelineTooltip = Utils.ToolTipDesign(
+            "00:00",
+            TimelineSlider,
+            horiOffset: 0,
+            vertOffset: -42);
+        _timelineTooltip.Placement = PlacementMode.Relative;
+        _timelineTooltip.PlacementTarget = TimelineSlider;
 
         TorrentStatusFlyout.Loaded += (s, e) =>
         {
@@ -69,40 +79,36 @@ public partial class ControlsWindow : Window, IDisposable
     private void TimelineSlider_PreviewMouseUp(object sender, MouseButtonEventArgs e)
     {
         _isSeeking = false;
-        if (TimelineSlider.ToolTip is ToolTip tooltip)
-        {
-            tooltip.IsOpen = false;
-        }
+
+        if (_timelineTooltip is not null)
+            _timelineTooltip.IsOpen = false;
 
         var tempoAlvo = TimeSpan.FromMilliseconds(TimelineSlider.Value);
-
         _viewModel.SeekTo(tempoAlvo);
     }
 
     private void TimelineSlider_MouseMove(object sender, MouseEventArgs e)
     {
-        // Só formata e mostra se o usuário estiver ativamente arrastando/clicando
-        if (_isSeeking && _viewModel != null)
-        {
-            double milissegundosAlvo = TimelineSlider.Value;
+        if (!_isSeeking || _viewModel is null || _timelineTooltip is null) return;
 
-            milissegundosAlvo = Math.Max(0, Math.Min(milissegundosAlvo, TimelineSlider.Maximum));
+        double ms = Math.Max(0, Math.Min(TimelineSlider.Value, TimelineSlider.Maximum));
+        var tempo = TimeSpan.FromMilliseconds(ms);
 
-            TimeSpan tempo = TimeSpan.FromMilliseconds(milissegundosAlvo);
-
-            string tempoFormatado = tempo.TotalHours >= 1
+        string texto = tempo.TotalHours >= 1
             ? tempo.ToString(@"hh\:mm\:ss")
             : tempo.ToString(@"mm\:ss");
-
-            TimelineSlider.ToolTip = Utils.ToolTipDesign(
-                tempoFormatado,
-                TimelineSlider,
-                e.GetPosition(TimelineSlider).X - 28.0,
-                -42.0);
-
-            var tip = TimelineSlider.ToolTip as ToolTip;
-            tip?.IsOpen = true;
+            
+        if (_timelineTooltip.Content is Border border &&
+            border.Child is System.Windows.Controls.TextBlock tb)
+        {
+            tb.Text = texto;
         }
+        
+        _timelineTooltip.HorizontalOffset = e.GetPosition(TimelineSlider).X - 28.0;
+        _timelineTooltip.VerticalOffset = -42.0;
+
+        if (!_timelineTooltip.IsOpen)
+            _timelineTooltip.IsOpen = true;
     }
     #endregion
 
