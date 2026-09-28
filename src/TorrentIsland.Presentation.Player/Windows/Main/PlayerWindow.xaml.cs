@@ -13,6 +13,7 @@ using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Infrastructure.VLC;
 using TorrentIsland.Presentation.Player.Common;
+using TorrentIsland.Presentation.Player.ContextMenus;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Controls;
 
@@ -50,6 +51,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         PlayerViewModel.FilePathChanged += OnFilePathChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.OpenMediaRequested += OnOpenMediaRequested;
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
@@ -58,6 +60,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
         _controls.Closed += (_, _) => Dispatcher.BeginInvoke(new Action(Close),
                                                              DispatcherPriority.ContextIdle);
+
+        MainGrid.ContextMenuOpening += (_,_) =>
+        {
+            var builder = new PlayerContextMenuBuilder(_viewModel);
+            MainGrid.ContextMenu = builder.Build();
+        };
 
         _inactivityTimer = new DispatcherTimer
         {
@@ -96,6 +104,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
             PlayerViewModel.FilePathChanged -= OnFilePathChanged;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _viewModel.OpenMediaRequested -= OnOpenMediaRequested;
 
             LocationChanged -= (_, _) => PosicionarControles();
             SizeChanged -= (_, _) => PosicionarControles();
@@ -551,4 +560,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             BtnPlayPause.Description = _viewModel.IsPlaying ? "Pausar" : "Reproduzir";
         });
     }
+
+    private async void OnOpenMediaRequested(object? sender, EventArgs e) =>
+        await _controls.ProcessarEscolhaDeArquivoAsync();
 }

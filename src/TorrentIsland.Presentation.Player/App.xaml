@@ -10,6 +10,8 @@
                 <!--  Dicionários de Recursos Oficiais do WPF-UI  -->
                 <ResourceDictionary Source="pack://application:,,,/Wpf.Ui;component/Resources/Theme/Dark.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/Wpf.Ui;component/Resources/Wpf.Ui.xaml" />
+
+                <ResourceDictionary Source="ContextMenus/PlayerContextMenuStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <Style TargetType="{x:Type ui:TextBlock}">

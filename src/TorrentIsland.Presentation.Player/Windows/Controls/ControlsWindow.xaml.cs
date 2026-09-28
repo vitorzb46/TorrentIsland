@@ -254,7 +254,7 @@ public partial class ControlsWindow : Window, IDisposable
         LoadMediaButton.ToolTip = Utils.ToolTipDesign("Carregar legenda ou vídeo", LoadMediaButton, horiOffset: -75);
     }
 
-    private async Task ProcessarEscolhaDeArquivoAsync()
+    public async Task ProcessarEscolhaDeArquivoAsync()
     {
         var dialog = new OpenFileDialog
         {

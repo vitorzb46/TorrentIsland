@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Windows.Input;
 using System.Windows.Threading;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
@@ -31,6 +32,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private int _cliquesRetroceder = 0;
     private DateTime _ultimoCliqueAvancar = DateTime.MinValue;
     private DateTime _ultimoCliqueRetroceder = DateTime.MinValue;
+
+    private ICommand? _openMediaCommand;
     
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
@@ -74,6 +77,13 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public ObservableCollection<TrackItem> AudioTracks { get; } = [];
     public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
     public ObservableCollection<TorrentDownloadDto> TorrentDownloads { get; } = [];
+
+    #region Commands
+    public ICommand OpenMediaCommand =>
+        _openMediaCommand ??= new RelayCommand(
+            () => OpenMediaRequested?.Invoke(this, EventArgs.Empty));
+    #endregion
+    
     private static long SubtitleDelay { get; set; } = 0;
     public long MediaTime { get; set; } = 0;
     public static nint VlcHwnd { get; private set; }
@@ -716,8 +726,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     #region Events Handlers
     public event PropertyChangedEventHandler? PropertyChanged;
+    /// <summary> Disparado toda vez que um novo valor é setado em FilePath </summary>
     public static event Action? FilePathChanged;
-
+    /// <summary>Disparado quando o usuário pede para abrir uma mídia pelo menu de contexto.</summary>
+    public event EventHandler? OpenMediaRequested;
+    
     private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     private void OnMute(object? sender, EventArgs e) => IsMuted = _mediaPlayer.Mute;
     private void OnPaused(object? sender, EventArgs e)
