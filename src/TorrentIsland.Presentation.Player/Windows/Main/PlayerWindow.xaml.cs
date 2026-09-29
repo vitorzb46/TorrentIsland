@@ -52,6 +52,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         PlayerViewModel.FilePathChanged += OnFilePathChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.OpenMediaRequested += OnOpenMediaRequested;
+        _viewModel.OpenSubtitleExternalRequested += OnOpenSubtitleExternalRequested;
+        _viewModel.OpenTorrentFileRequested += OnOpenTorrentFileRequested;
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
@@ -61,7 +63,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _controls.Closed += (_, _) => Dispatcher.BeginInvoke(new Action(Close),
                                                              DispatcherPriority.ContextIdle);
 
-        MainGrid.ContextMenuOpening += (_,_) =>
+        MainGrid.ContextMenuOpening += (_, _) =>
         {
             var builder = new PlayerContextMenuBuilder(_viewModel);
             MainGrid.ContextMenu = builder.Build();
@@ -105,6 +107,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             PlayerViewModel.FilePathChanged -= OnFilePathChanged;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.OpenMediaRequested -= OnOpenMediaRequested;
+            _viewModel.OpenSubtitleExternalRequested -= OnOpenSubtitleExternalRequested;
+            _viewModel.OpenTorrentFileRequested -= OnOpenTorrentFileRequested;
 
             LocationChanged -= (_, _) => PosicionarControles();
             SizeChanged -= (_, _) => PosicionarControles();
@@ -160,7 +164,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             await MediaTimestamp.Load();
             _viewModel.IsVideoVisible = false;
-            _viewModel.IsOpening = true;            
+            _viewModel.IsOpening = true;
             _viewModel.IsLoading = true;
             _viewModel.LoadingMessage = "Carregando mídia...";
 
@@ -170,7 +174,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             KeyGenerator.Hash(PlayerViewModel.FilePath);
             var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
             _viewModel.SetMedia(media, timeCached.Time);
-            
+
             await Utils.AtualizarUIAsync(async () =>
             {
                 await _viewModel.PopulateTracksAsync();
@@ -543,8 +547,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         Dispatcher.Invoke(() =>
         {
             TitleCenter.Text = PlayerViewModel.FileName;
-            Title = string.IsNullOrEmpty(PlayerViewModel.FileName) 
-                ? "TorrentIsland" 
+            Title = string.IsNullOrEmpty(PlayerViewModel.FileName)
+                ? "TorrentIsland"
                 : $"{PlayerViewModel.FileName} - TorrentIsland";
         });
     }
@@ -562,5 +566,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     }
 
     private async void OnOpenMediaRequested(object? sender, EventArgs e) =>
-        await _controls.ProcessarEscolhaDeArquivoAsync();
+        await _controls.ProcessarMidiaAsync();
+
+    private async void OnOpenSubtitleExternalRequested(object? sender, EventArgs e) =>
+        await _controls.ProcessarLegendaExternaAsync();
+
+    private async void OnOpenTorrentFileRequested(object? sender, EventArgs e) =>
+        await _controls.ProcessarTorrentAsync();
 }

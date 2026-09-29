@@ -24,10 +24,23 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     /// </summary>
     public ContextMenu Build()
     {
-        MenuInstance(out var menu);
-        menu.Items.Add(BuildItem("Abrir mídia...", _viewModel.OpenMediaCommand, Key.O, ModifierKeys.Control));
+        ContextMenuInstance(out var menu);
+        menu.Items.Add(BuildSubmenu("Abrir", MenuToOpen()));
         return menu;
     }
+
+    private object[] MenuToOpen() =>
+    [
+        // TODO all shortcuts
+        BuildItem("Abrir mídia...", _viewModel.OpenMediaCommand, Key.O, ModifierKeys.Control),
+        BuildItem("Abrir arquivo torrent...", _viewModel.OpenTorrentFileCommand, Key.Y, ModifierKeys.Control), // TODO
+        BuildItem("Abrir URL Mídia Streaming", null, Key.P, ModifierKeys.Control), // TODO
+        BuildItem("Abrir URL Youtube", null, Key.L, ModifierKeys.Control), // TODO
+        BuildItem("Abrir Pasta...", null, Key.Y, ModifierKeys.Control), // TODO
+        new Separator(),
+        BuildItem("Carregar legenda externa...", _viewModel.OpenSubtitleExternalCommand, Key.U, ModifierKeys.Control),
+        BuildItem("Carregar áudio externo...", null, Key.I, ModifierKeys.Control), // TODO
+    ];
 
     private static MenuItem BuildItem(string header, ICommand? command = null,
         Key key = Key.None, ModifierKeys mods = ModifierKeys.None)
@@ -43,7 +56,15 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         return item;
     }
 
-    private static void MenuInstance(out ContextMenu menu)
+    private static MenuItem BuildSubmenu(string header, object[] children)
+    {
+        var menu = new MenuItem { Header = header, Style = _styleMI };
+        foreach (var child in children)
+            menu.Items.Add(child);
+        return menu;
+    }
+
+    private static void ContextMenuInstance(out ContextMenu menu)
     {
         menu = new ContextMenu
         {

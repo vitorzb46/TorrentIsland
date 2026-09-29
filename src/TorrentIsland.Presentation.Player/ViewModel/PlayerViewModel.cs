@@ -3,7 +3,6 @@ using LibVLCSharp.Shared.Structures;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
@@ -34,7 +33,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private DateTime _ultimoCliqueRetroceder = DateTime.MinValue;
 
     private ICommand? _openMediaCommand;
-    
+    private ICommand? _openSubtitleExternalCommand;
+    private ICommand? _openTorrentFileCommand;
+
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
     #endregion
@@ -82,8 +83,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public ICommand OpenMediaCommand =>
         _openMediaCommand ??= new RelayCommand(
             () => OpenMediaRequested?.Invoke(this, EventArgs.Empty));
+    public ICommand OpenSubtitleExternalCommand =>
+        _openSubtitleExternalCommand ??= new RelayCommand(
+            () => OpenSubtitleExternalRequested?.Invoke(this, EventArgs.Empty));
+    public ICommand OpenTorrentFileCommand =>
+        _openTorrentFileCommand ??= new RelayCommand(
+            () => OpenTorrentFileRequested?.Invoke(this, EventArgs.Empty));
     #endregion
-    
+
     private static long SubtitleDelay { get; set; } = 0;
     public long MediaTime { get; set; } = 0;
     public static nint VlcHwnd { get; private set; }
@@ -477,12 +484,12 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             await app.Dispatcher.InvokeAsync(() => PopulateTracksAsync(ct)).Task.ConfigureAwait(true);
             return;
         }
-        
+
         await Task.Run(async () =>
         {
             await TimeLogging.Time(ProcessarLegendasUndAsync);
         }, ct);
-        
+
         //await ProcessarLegendasUndAsync().ConfigureAwait(false);
     }
 
@@ -583,7 +590,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             if (undTracks.Count == 0) return;
 
             LoadingMessage = "Processando legendas...";
-            
+
             // Limpa o diretório temporário se houver resquícios não tratados.
             if (Directory.Exists(caminhoTempBase))
                 Directory.Delete(caminhoTempBase, true);
@@ -609,12 +616,12 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
             var n = Math.Min(undTracks.Count, mkvMetaOrdenada.Count);
             var semCacheMkv = new HashSet<ulong>();
-            var mkvParaVlc  = new Dictionary<ulong, int>();
+            var mkvParaVlc = new Dictionary<ulong, int>();
 
             for (int i = 0; i < n; i++)
             {
-                var vlcId   = undTracks[i].Id;
-                var mkvNum  = mkvMetaOrdenada[i].TrackNumber;                
+                var vlcId = undTracks[i].Id;
+                var mkvNum = mkvMetaOrdenada[i].TrackNumber;
                 var cacheEntry = await Subtitle.TryGetAsync(FilePath, vlcId);
 
                 if (cacheEntry != null)
@@ -631,9 +638,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             if (semCacheMkv.Count > 0)
             {
                 const int maxChars = 2000;
-                
+
                 var lista = Subtitle.Extraction(FilePath, semCacheMkv);
-                
+
                 // Correlaciona VLC Id ↔ SubtitleTrack por índice
                 var trackTexts = new Dictionary<int, string>(mkvParaVlc.Count);
 
@@ -730,7 +737,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public static event Action? FilePathChanged;
     /// <summary>Disparado quando o usuário pede para abrir uma mídia pelo menu de contexto.</summary>
     public event EventHandler? OpenMediaRequested;
-    
+    /// <summary>Disparado quando o usuário pede para abrir uma legenda externa.</summary>
+    public event EventHandler? OpenSubtitleExternalRequested;
+    /// <summary>Disparado quando o usuário pede para abrir um arquivo torrent.</summary>
+    public event EventHandler? OpenTorrentFileRequested;
+
     private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     private void OnMute(object? sender, EventArgs e) => IsMuted = _mediaPlayer.Mute;
     private void OnPaused(object? sender, EventArgs e)
@@ -761,7 +772,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
         {
             if (IsOpening) return;
-            
+
             if (e.Cache < 100 && IsPlaying)
             {
                 IsLoading = true;

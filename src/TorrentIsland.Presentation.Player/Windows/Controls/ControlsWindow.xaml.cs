@@ -97,13 +97,13 @@ public partial class ControlsWindow : Window, IDisposable
         string texto = tempo.TotalHours >= 1
             ? tempo.ToString(@"hh\:mm\:ss")
             : tempo.ToString(@"mm\:ss");
-            
+
         if (_timelineTooltip.Content is Border border &&
             border.Child is System.Windows.Controls.TextBlock tb)
         {
             tb.Text = texto;
         }
-        
+
         _timelineTooltip.HorizontalOffset = e.GetPosition(TimelineSlider).X - 28.0;
         _timelineTooltip.VerticalOffset = -42.0;
 
@@ -136,7 +136,7 @@ public partial class ControlsWindow : Window, IDisposable
     {
         try
         {
-            await ProcessarEscolhaDeArquivoAsync();
+            await ProcessarMidiaAsync();
         }
         catch (Exception ex)
         {
@@ -254,15 +254,13 @@ public partial class ControlsWindow : Window, IDisposable
         LoadMediaButton.ToolTip = Utils.ToolTipDesign("Carregar legenda ou vídeo", LoadMediaButton, horiOffset: -75);
     }
 
-    public async Task ProcessarEscolhaDeArquivoAsync()
+    public async Task ProcessarMidiaAsync()
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "Arquivos Suportados (*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi)|*.srt;*.vtt;*.ssa;*.ass;*.mp4;*.mkv;*.avi|" +
-                 "Legendas (*.srt;*.vtt;*.ssa;*.ass)|*.srt;*.vtt;*.ssa;*.ass|" +
-                 "Vídeos (*.mp4;*.mkv;*.avi)|*.mp4;*.mkv;*.avi|" +
+            Filter = "Vídeos (*.mp4;*.mkv;*.webm;*.avi)|*.mp4;*.mkv;*.webm;*.avi|" +
                  "Todos os arquivos (*.*)|*.*",
-            Title = "Carregar legenda externa"
+            Title = "Carregar mídia externa"
         };
 
         if (dialog.ShowDialog(this) == true)
@@ -274,23 +272,44 @@ public partial class ControlsWindow : Window, IDisposable
                 _viewModel.LoadingMessage = "Carregando mídia...";
                 await _playerWindow.CarregarMidiaAsync(dialog.FileName);
             }
-            else if (Utils.ExtensoesSubs.Contains(extensao))
+        }
+    }
+
+    public async Task ProcessarLegendaExternaAsync()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Legendas (*.srt;*.vtt;*.ssa;*.ass)|*.srt;*.vtt;*.ssa;*.ass|" +
+                 "Todos os arquivos (*.*)|*.*",
+            Title = "Carregar legenda externa"
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            string extensao = Path.GetExtension(dialog.FileName).ToLowerInvariant();
+            if (Utils.ExtensoesSubs.Contains(extensao))
             {
                 _viewModel.LoadExternalSubtitle(dialog.FileName);
             }
         }
     }
 
-    private async Task ProcessarTorrentAsync()
+    public async Task ProcessarTorrentAsync()
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "Arquivos Torrent (*.torrent)|*.torrent",
+            Filter = "Torrent (*.torrent)|*.torrent|" +
+                 "Todos os arquivos (*.*)|*.*",
             Title = "Carregar arquivo torrent"
         };
+
         if (dialog.ShowDialog(this) == true)
         {
-            await _playerWindow.CarregarStreamTorrentAsync(dialog.FileName);
+            string extensao = Path.GetExtension(dialog.FileName).ToLowerInvariant();
+            if (Utils.ExtensaoTorrent.Contains(extensao))
+            {
+                await _playerWindow.CarregarStreamTorrentAsync(dialog.FileName);
+            }
         }
     }
 
