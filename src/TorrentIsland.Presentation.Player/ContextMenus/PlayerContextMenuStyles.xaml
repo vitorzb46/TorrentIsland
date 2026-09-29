@@ -16,7 +16,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Foreground" Value="{StaticResource MenuForegroundBrush}" />
         <Setter Property="FontFamily" Value="Segoe UI" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="Padding" Value="2" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
@@ -41,70 +41,112 @@
     <Style x:Key="ClassicMenuItemStyle" TargetType="MenuItem">
         <Setter Property="Foreground" Value="{StaticResource MenuForegroundBrush}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="20,4,20,4" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
-                    <Border
-                        x:Name="Bd"
-                        Background="{TemplateBinding Background}"
-                        SnapsToDevicePixels="True">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="Icon" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="Shortcut" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                    <Grid>
+                        <Border
+                            x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Icon" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Shortcut" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
 
-                            <!--  Ícone / check  -->
-                            <ContentPresenter
-                                x:Name="Icon"
-                                Grid.Column="0"
-                                Margin="4,0,4,0"
-                                VerticalAlignment="Center"
-                                ContentSource="Icon" />
+                                <!--  Icone  -->
+                                <ContentPresenter
+                                    x:Name="Icon"
+                                    Grid.Column="0"
+                                    Margin="4,0,4,0"
+                                    VerticalAlignment="Center"
+                                    ContentSource="Icon" />
 
-                            <!--  Texto  -->
-                            <ContentPresenter
-                                Grid.Column="1"
-                                Margin="4,0,20,0"
-                                VerticalAlignment="Center"
-                                ContentSource="Header"
-                                RecognizesAccessKey="True" />
+                                <!--  Texto  -->
+                                <ContentPresenter
+                                    Grid.Column="1"
+                                    Margin="4,0,20,0"
+                                    VerticalAlignment="Center"
+                                    ContentSource="Header"
+                                    RecognizesAccessKey="True" />
 
-                            <!--  Atalho (Ctrl+Z etc.)  -->
-                            <TextBlock
-                                Grid.Column="2"
-                                Margin="20,0,8,0"
-                                VerticalAlignment="Center"
-                                Foreground="{StaticResource MenuDisabledBrush}"
-                                Text="{TemplateBinding InputGestureText}" />
+                                <!--  Atalho  -->
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Margin="20,0,8,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{StaticResource MenuDisabledBrush}"
+                                    Text="{TemplateBinding InputGestureText}" />
 
-                            <!--  Seta de submenu  -->
-                            <Path
-                                x:Name="SubmenuArrow"
-                                Grid.Column="3"
-                                Margin="0,0,4,0"
-                                VerticalAlignment="Center"
-                                Data="M 0,0 L 4,4 L 0,8 Z"
-                                Fill="{StaticResource MenuForegroundBrush}"
-                                Visibility="Collapsed" />
-                        </Grid>
-                    </Border>
+                                <!--  Seta de submenu  -->
+                                <Path
+                                    x:Name="SubmenuArrow"
+                                    Grid.Column="3"
+                                    Margin="0,0,4,0"
+                                    VerticalAlignment="Center"
+                                    Data="M 0,0 L 4,4 L 0,8 Z"
+                                    Fill="{StaticResource MenuForegroundBrush}"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+
+                        <!--  Popup que hospeda os submenus  -->
+                        <Popup
+                            x:Name="PART_Popup"
+                            AllowsTransparency="True"
+                            Focusable="False"
+                            IsOpen="{TemplateBinding IsSubmenuOpen}"
+                            Placement="Bottom"
+                            PopupAnimation="None">
+                            <Border
+                                Padding="2"
+                                Background="{StaticResource MenuBackgroundBrush}"
+                                BorderBrush="{StaticResource MenuBorderBrush}"
+                                BorderThickness="1"
+                                SnapsToDevicePixels="True">
+                                <ItemsPresenter
+                                    x:Name="ItemsPresenter"
+                                    Grid.IsSharedSizeScope="True"
+                                    KeyboardNavigation.DirectionalNavigation="Cycle" />
+                            </Border>
+                        </Popup>
+                    </Grid>
 
                     <ControlTemplate.Triggers>
+                        <!--  Item de submenu: seta à direita, popup à direita  -->
+                        <Trigger Property="Role" Value="SubmenuHeader">
+                            <Setter TargetName="SubmenuArrow" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="PART_Popup" Property="Placement" Value="Right" />
+                            <Setter TargetName="PART_Popup" Property="HorizontalOffset" Value="-2" />
+                            <Setter TargetName="PART_Popup" Property="VerticalOffset" Value="-3" />
+                        </Trigger>
+
+                        <!--  Item top-level: popup abaixo  -->
+                        <Trigger Property="Role" Value="TopLevelHeader">
+                            <Setter TargetName="PART_Popup" Property="Placement" Value="Bottom" />
+                        </Trigger>
+
+                        <!--  Hover  -->
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource MenuHoverBrush}" />
                             <Setter Property="Foreground" Value="{StaticResource MenuHoverForeground}" />
                             <Setter TargetName="SubmenuArrow" Property="Fill" Value="{StaticResource MenuHoverForeground}" />
                         </Trigger>
+
+                        <!--  Mantém o hover enquanto o submenu está aberto  -->
+                        <Trigger Property="IsSubmenuOpen" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource MenuHoverBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource MenuHoverForeground}" />
+                            <Setter TargetName="SubmenuArrow" Property="Fill" Value="{StaticResource MenuHoverForeground}" />
+                        </Trigger>
+
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Foreground" Value="{StaticResource MenuDisabledBrush}" />
-                        </Trigger>
-                        <Trigger Property="Role" Value="SubmenuHeader">
-                            <Setter TargetName="SubmenuArrow" Property="Visibility" Value="Visible" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -128,5 +170,10 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <Style
+        x:Key="{x:Static MenuItem.SeparatorStyleKey}"
+        BasedOn="{StaticResource ClassicMenuSeparatorStyle}"
+        TargetType="Separator" />
 
 </ResourceDictionary>
