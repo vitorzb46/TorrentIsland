@@ -43,7 +43,8 @@ public sealed class VlcPlayerService
         _libVLC = new LibVLC(options);
         _mediaPlayer = new MediaPlayer(_libVLC)
         {
-            EnableMouseInput = false
+            EnableMouseInput = false,
+            EnableKeyInput = false            
         };
     }
 

@@ -3,6 +3,7 @@ using LibVLCSharp.WPF;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -49,6 +50,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         VideoView.MediaPlayer = vlc.MediaPlayer;
 
+        OverlayGrid.ContextMenuOpening += OverlayGrid_ContextMenuOpening;
         PlayerViewModel.FilePathChanged += OnFilePathChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.OpenMediaRequested += OnOpenMediaRequested;
@@ -62,13 +64,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
         _controls.Closed += (_, _) => Dispatcher.BeginInvoke(new Action(Close),
                                                              DispatcherPriority.ContextIdle);
-
-        MainGrid.ContextMenuOpening += (_, _) =>
-        {
-            var builder = new PlayerContextMenuBuilder(_viewModel);
-            MainGrid.ContextMenu = builder.Build();
-        };
-
+                                                             
         _inactivityTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(5)
@@ -92,8 +88,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _controls.Owner = this;
 
             // --- RESOLUÇÃO DO BUG DO MENU FLUTUANTE (Foco do Windows) ---
-            this.Activated += (s, e) => _controls.Topmost = true;
-            this.Deactivated += (s, e) => _controls.Topmost = false;
+            Activated += (s, e) => ReforcarTopmostControles();
+            Deactivated += (s, e) => _controls.Topmost = false;
 
             PosicionarControles();
             _controls.ShowActivated = false;
@@ -104,6 +100,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Log.Salvar($"Window fechada — dispose do {typeof(PlayerWindow).Name}");
             _controls.FullscreenRequested -= (_, _) => ToggleFullscreen();
             _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
+            OverlayGrid.ContextMenuOpening -= OverlayGrid_ContextMenuOpening;
             PlayerViewModel.FilePathChanged -= OnFilePathChanged;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.OpenMediaRequested -= OnOpenMediaRequested;
@@ -132,7 +129,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
             Environment.Exit(0);
         };
-
+        
         // Sincroniza a janela de controles com a janela de vídeo.
         LocationChanged += (_, _) => PosicionarControles();
         SizeChanged += (_, _) => PosicionarControles();
@@ -302,7 +299,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _controls.Top = SystemParameters.PrimaryScreenHeight - _controls.Height;
         }
         // Janela Maximizada (Botão maximizar do windows (do player))
-        else if (this.WindowState == WindowState.Maximized)
+        else if (WindowState == WindowState.Maximized)
         {
             _controls.Width = SystemParameters.WorkArea.Width;
             _controls.Left = SystemParameters.WorkArea.Left;
@@ -311,9 +308,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         // Se estiver em modo janela normal, usamos a matemática baseada no Player (this)
         else
         {
-            _controls.Width = this.ActualWidth;
-            _controls.Left = this.Left;
-            _controls.Top = this.Top + this.ActualHeight - _controls.Height;
+            _controls.Width = ActualWidth;
+            _controls.Left = Left;
+            _controls.Top = Top + ActualHeight - _controls.Height;
         }
     }
 
@@ -452,6 +449,31 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         Topmost = false;
         Focus();
     }
+
+    private void ReforcarTopmostControles()
+    {
+        if (_controls is null) return;
+        Keyboard.Focus(this);
+        _controls.Topmost = false;
+        _controls.Topmost = true;
+    }
+
+    private void OverlayGrid_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        e.Handled = true;
+        
+        ReforcarTopmostControles();
+
+        var builder = new PlayerContextMenuBuilder(_viewModel);
+        var menu = builder.Build();
+        menu.PlacementTarget = OverlayGrid;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        menu.Closed += (_, _) => ReforcarTopmostControles();
+        menu.IsOpen = true;
+    }
+
+    private void OverlayGrid_MouseDown(object sender, MouseButtonEventArgs e) =>
+        ReforcarTopmostControles();
     #endregion
 
     #region Shortcuts

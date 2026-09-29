@@ -137,7 +137,12 @@
                     x:Name="VideoView"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
-                    Visibility="{Binding IsVideoVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    Visibility="{Binding IsVideoVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid
+                        x:Name="OverlayGrid"
+                        Background="#01000000"
+                        MouseDown="OverlayGrid_MouseDown" />
+                </vlc:VideoView>
 
                 <Border
                     x:Name="OsdNotification"
