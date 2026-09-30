@@ -35,6 +35,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private ICommand? _openMediaCommand;
     private ICommand? _openSubtitleExternalCommand;
     private ICommand? _openTorrentFileCommand;
+    private ICommand? _selectSubtitleCommand;
+    private ICommand? _selectAudioCommand;
+    private ICommand? _toggleFullScreenCommand;
+    private ICommand? _togglePlayCommand;
+    private ICommand? _toggleMuteCommand;
+    private ICommand? _stopPlayerCommand;
+    private ICommand? _torrentSearchCommand;
+    private ICommand? _torrentQueueCommand;
 
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
@@ -88,7 +96,27 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             () => OpenSubtitleExternalRequested?.Invoke(this, EventArgs.Empty));
     public ICommand OpenTorrentFileCommand =>
         _openTorrentFileCommand ??= new RelayCommand(
-            () => OpenTorrentFileRequested?.Invoke(this, EventArgs.Empty));
+            () => OpenTorrentFileRequested?.Invoke(this, EventArgs.Empty));    
+    public ICommand ToggleFullscreenCommand =>
+        _toggleFullScreenCommand ??= new RelayCommand(
+            () => ToggleFullscreenRequested?.Invoke(this, EventArgs.Empty));
+    public ICommand StopPlayerCommand =>
+        _stopPlayerCommand ??= new RelayCommand(
+            () => StopPlayerRequested?.Invoke(this, EventArgs.Empty));
+    public ICommand TorrentSearchCommand =>
+        _torrentSearchCommand ??= new RelayCommand(
+            () => TorrentSearchRequested?.Invoke(this, EventArgs.Empty));
+    public ICommand TorrentQueueCommand =>
+        _torrentQueueCommand ??= new RelayCommand(
+            () => TorrentQueueRequested?.Invoke(this, EventArgs.Empty));
+    public ICommand SelectSubtitleCommand =>
+        _selectSubtitleCommand ??= new RelayCommand<int>(SelectSubtitleTrack);
+    public ICommand SelectAudioCommand =>
+        _selectAudioCommand ??= new RelayCommand<int>(SelectAudioTrack);
+    public ICommand TogglePlayCommand =>
+        _togglePlayCommand ??= new RelayCommand(TogglePlay);
+    public ICommand ToggleMuteCommand =>
+        _toggleMuteCommand ??= new RelayCommand(ToggleMute);
     #endregion
 
     private static long SubtitleDelay { get; set; } = 0;
@@ -277,9 +305,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
     public long PosicaoEmMilissegundos { get; set { field = value; OnPropertyChanged(); TempoAtualFormatado = FormatarTempo(value); } }
 
-    public string TempoAtualFormatado { get; private set { field = value; OnPropertyChanged(); } } = "00:00:00";
+    public string TempoAtualFormatado { get; set { field = value; OnPropertyChanged(); } } = "00:00:00";
 
-    public string TempoTotalFormatado { get; private set { field = value; OnPropertyChanged(); } } = "00:00:00";
+    public string TempoTotalFormatado { get; set { field = value; OnPropertyChanged(); } } = "00:00:00";
 
     public string FeedbackTempo { get; private set { field = value; OnPropertyChanged(); } } = "";
 
@@ -741,6 +769,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public event EventHandler? OpenSubtitleExternalRequested;
     /// <summary>Disparado quando o usuário pede para abrir um arquivo torrent.</summary>
     public event EventHandler? OpenTorrentFileRequested;
+    /// <summary>Disparado quando o usuário aciona o atalho de full screen.</summary>
+    public event EventHandler? ToggleFullscreenRequested;
+    /// <summary>Disparado quando o usuário aciona o botão de stop.</summary>
+    public event EventHandler? StopPlayerRequested;
+    /// <summary>Disparado quando o usuário aciona o atalho da janela de torrents.</summary>
+    public event EventHandler? TorrentSearchRequested;
+    /// <summary>Disparado quando o usuário aciona o atalho da janela de torrents.</summary>
+    public event EventHandler? TorrentQueueRequested;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     private void OnMute(object? sender, EventArgs e) => IsMuted = _mediaPlayer.Mute;

@@ -77,7 +77,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private void BtnAlternarTela_Click(object sender, RoutedEventArgs e)
+    public void BtnAlternarTela_Click(object? sender, EventArgs e)
     {
         if (PainelBusca.Visibility == Visibility.Visible)
         {

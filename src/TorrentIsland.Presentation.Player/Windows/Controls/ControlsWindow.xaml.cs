@@ -140,7 +140,7 @@ public partial class ControlsWindow : Window, IDisposable
         }
         catch (Exception ex)
         {
-            Log.Salvar($"Erro ao carregar legenda: {ex.Message}");
+            Log.Salvar($"Erro ao carregar mídia: {ex.Message}");
         }
     }
 
@@ -206,7 +206,7 @@ public partial class ControlsWindow : Window, IDisposable
         }
     }
 
-    private void BuscarTorrentMenuItem_Click(object sender, RoutedEventArgs e)
+    public void BuscarTorrentMenuItem_Click(object? sender, EventArgs e)
     {
         _viewModel.SetPause(true);
 

@@ -17,6 +17,7 @@ using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ContextMenus;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Controls;
+using TorrentIsland.Presentation.Player.Windows.WebSearch;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
 
@@ -27,6 +28,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly ControlsWindow _controls;
     private readonly DispatcherTimer _inactivityTimer;
     private readonly IDLService _ytDlService;
+    private readonly TorrentSearchWindow _torrentSearch;
     private readonly DispatcherTimer _osdTimer;
 
     public PlayerWindow(IStreamService streamService,
@@ -56,6 +58,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.OpenMediaRequested += OnOpenMediaRequested;
         _viewModel.OpenSubtitleExternalRequested += OnOpenSubtitleExternalRequested;
         _viewModel.OpenTorrentFileRequested += OnOpenTorrentFileRequested;
+        _viewModel.ToggleFullscreenRequested += OnToggleFullscreenRequested;
+        _viewModel.StopPlayerRequested += OnStopPlayerRequested;
+        _viewModel.TorrentSearchRequested += OnTorrentSearchRequested;
+        _viewModel.TorrentQueueRequested += OnTorrentQueueRequested;
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
@@ -106,6 +112,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _viewModel.OpenMediaRequested -= OnOpenMediaRequested;
             _viewModel.OpenSubtitleExternalRequested -= OnOpenSubtitleExternalRequested;
             _viewModel.OpenTorrentFileRequested -= OnOpenTorrentFileRequested;
+            _viewModel.ToggleFullscreenRequested -= OnToggleFullscreenRequested;
+            _viewModel.StopPlayerRequested -= OnStopPlayerRequested;
+            _viewModel.TorrentSearchRequested -= OnTorrentSearchRequested;
+            _viewModel.TorrentQueueRequested -= OnTorrentQueueRequested;
 
             LocationChanged -= (_, _) => PosicionarControles();
             SizeChanged -= (_, _) => PosicionarControles();
@@ -137,6 +147,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         StreamService = streamService;
         _ytDlService = ytDlService;
+        _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
     }
     #endregion
 
@@ -420,17 +431,19 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private void ThumbPlayPause_Click(object sender, EventArgs e) => _viewModel.TogglePlay();
 
-    private void ThumbStop_Click(object sender, EventArgs e)
+    private void ThumbStop_Click(object? sender, EventArgs e)
     {
         _viewModel.Stop();
-
-        // Reseta o botão para estado "reproduzir"
+        
         if (_viewModel.IsPlaying)
         {
             _viewModel.IsPlaying = false;
             BtnPlayPause.ImageSource = (ImageSource)FindResource("IconPlay");
             BtnPlayPause.Description = "Reproduzir";
         }
+
+        _viewModel.TempoAtualFormatado = "00:00:00";
+        _viewModel.TempoTotalFormatado = "00:00:00";
     }
 
     private void ThumbFullscreen_Click(object sender, EventArgs e)
@@ -486,7 +499,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
-        //Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
+        Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
         base.OnPreviewKeyDown(e);
 
         if (e.Key == Key.Escape && _viewModel.IsFullscreen) ToggleFullscreen();
@@ -595,4 +608,19 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private async void OnOpenTorrentFileRequested(object? sender, EventArgs e) =>
         await _controls.ProcessarTorrentAsync();
+
+    private void OnToggleFullscreenRequested(object? sender, EventArgs e) =>
+        ToggleFullscreen();
+    
+    private void OnStopPlayerRequested(object? sender, EventArgs e) =>
+        ThumbStop_Click(sender, e);
+    
+    private void OnTorrentSearchRequested(object? sender, EventArgs e) =>
+        _controls.BuscarTorrentMenuItem_Click(sender, e);
+
+    private async void OnTorrentQueueRequested(object? sender, EventArgs e)
+    {
+        _controls.BuscarTorrentMenuItem_Click(sender, e);
+        _torrentSearch.BtnAlternarTela_Click(sender, e);
+    }
 }
