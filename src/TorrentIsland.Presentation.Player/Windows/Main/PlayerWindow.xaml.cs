@@ -25,11 +25,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 {
     #region Fields + Constructor
     private readonly PlayerViewModel _viewModel;
-    private readonly ControlsWindow _controls;
-    private readonly DispatcherTimer _inactivityTimer;
+    private readonly ControlsWindow _controls;    
     private readonly IDLService _ytDlService;
     private readonly TorrentSearchWindow _torrentSearch;
-    private readonly DispatcherTimer _osdTimer;
+    private readonly DispatcherTimer _inactivityTimer;
+    private readonly DispatcherTimer _osdTimer;    
 
     public PlayerWindow(IStreamService streamService,
                         IManagers managers,
@@ -69,14 +69,18 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService);
         _controls.FullscreenRequested += (_, _) => ToggleFullscreen();
         _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
-        _controls.Closed += (_, _) => Dispatcher.BeginInvoke(new Action(Close),
-                                                             DispatcherPriority.ContextIdle);
-                                                             
-        _inactivityTimer = new DispatcherTimer
+        _controls.Closed += (_, _) =>
         {
-            Interval = TimeSpan.FromSeconds(5)
+            _inactivityTimer?.Stop();
+            Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.ContextIdle);
         };
-        _inactivityTimer.Tick += (_, _) => HideControls();
+                                                             
+        _inactivityTimer = new DispatcherTimer();
+        _inactivityTimer.Tick += (_, _) =>
+        {
+            if(!_viewModel.IsFullscreen || MenuAberto) return;
+            HideControls();
+        };
 
         _osdTimer = new DispatcherTimer
         {
@@ -90,7 +94,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         Loaded += (_, _) =>
         {
-            Log.Salvar("Loaded disparado — posicionando controles");
             // Owner garante que a janela de controles fique sempre à frente do player.
             _controls.Owner = this;
 
@@ -104,7 +107,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         };
         Closed += (_, _) =>
         {
-            Log.Salvar($"Window fechada — dispose do {typeof(PlayerWindow).Name}");
             _controls.FullscreenRequested -= (_, _) => ToggleFullscreen();
             _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
             OverlayGrid.ContextMenuOpening -= OverlayGrid_ContextMenuOpening;
@@ -154,19 +156,20 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     #endregion
 
     #region Properties
+    public bool MenuAberto { get; set; }
     public string MediaUrl { get; set; } = "";
     private IStreamService StreamService { get; }
     private IManagers Managers { get; }
     #endregion
 
     #region Public Methods
-    public void ReiniciarTimerInatividade()
+    public void ReiniciarTimerInatividade(double time = 5)
     {
-        if (_viewModel.IsFullscreen)
-        {
-            _inactivityTimer.Stop();
-            _inactivityTimer.Start();
-        }
+        if (!_viewModel.IsFullscreen ||
+            (MenuAberto && Math.Abs(time - 5) < 0.01)) return;
+        _inactivityTimer.Stop();
+        _inactivityTimer.Interval = TimeSpan.FromSeconds(time);
+        _inactivityTimer.Start();
     }
     public async Task CarregarMidiaAsync(string caminhoOuUrl)
     {
@@ -340,12 +343,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private void HideControls()
     {
-        if (_viewModel.IsFullscreen)
-        {
-            _controls.Visibility = Visibility.Collapsed;
-            Mouse.OverrideCursor = Cursors.None;
-        }
-        ReiniciarTimerInatividade();
+        if (!_viewModel.IsFullscreen) return;
+
+        _controls.Visibility = Visibility.Collapsed;
+        Mouse.OverrideCursor = Cursors.None;
     }
 
     private void ToggleFullscreen()
@@ -476,14 +477,20 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private void OverlayGrid_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         e.Handled = true;
-        
+        MenuAberto = true;
+        ReiniciarTimerInatividade();
         ReforcarTopmostControles();
 
         var builder = new PlayerContextMenuBuilder(_viewModel);
         var menu = builder.Build();
         menu.PlacementTarget = OverlayGrid;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
-        menu.Closed += (_, _) => ReforcarTopmostControles();
+        menu.Closed += (_, _) =>
+        {
+            MenuAberto = false;
+            ReiniciarTimerInatividade();
+            ReforcarTopmostControles();
+        };
         menu.IsOpen = true;
     }
 

@@ -71,6 +71,8 @@ public partial class ControlsWindow : Window, IDisposable
         DependencyPropertyDescriptor
             .FromProperty(Flyout.IsOpenProperty, typeof(Flyout))
             .AddValueChanged(TorrentStatusFlyout, OnFlyoutIsOpenChanged);
+
+        ConfigMenu.Closed += OnConfigMenuClosed;        
     }
 
     #region Timeline Slider
@@ -146,27 +148,29 @@ public partial class ControlsWindow : Window, IDisposable
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        _playerWindow.ReiniciarTimerInatividade();
         if (sender is not Button btn) return;
+
+        _playerWindow.MenuAberto = true;
+        _playerWindow.ReiniciarTimerInatividade();
+
         ConfigMenu.DataContext = DataContext;
         ConfigMenu.PlacementTarget = btn;
         ConfigMenu.Placement = PlacementMode.Top;
         ConfigMenu.HorizontalOffset = -120;
         ConfigMenu.VerticalOffset = -25;
-        ConfigMenu.IsOpen = true;
+        ConfigMenu.IsOpen = true;        
     }
 
-    private void FullscreenButton_Click(object sender, RoutedEventArgs e)
-    {
+    private void OnConfigMenuClosed(object? sender, EventArgs e) =>
+        _playerWindow.MenuAberto = false;
+
+    private void FullscreenButton_Click(object sender, RoutedEventArgs e) =>
         FullscreenRequested?.Invoke(this, EventArgs.Empty);
-    }
 
     private void SubtitleMenuGroup_Click(object sender, RoutedEventArgs e)
     {
-        Log.Salvar("SubtitleMenuGroup_Click");
         if (e.OriginalSource is MenuItem { Header: TrackItem track } dObject)
         {
-            Log.Salvar("SubtitleMenuGroup_Click dentro do if");
             _playerWindow.ReiniciarTimerInatividade();
             _viewModel.SelectSubtitleTrack(track.Id);
 
@@ -366,6 +370,8 @@ public partial class ControlsWindow : Window, IDisposable
     public void Dispose()
     {
         if (_isDisposed) return;
+
+        ConfigMenu.Closed -= OnConfigMenuClosed;
 
         DependencyPropertyDescriptor
             .FromProperty(Flyout.IsOpenProperty, typeof(Flyout))
