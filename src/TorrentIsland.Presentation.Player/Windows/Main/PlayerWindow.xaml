@@ -141,7 +141,8 @@
                     <Grid
                         x:Name="OverlayGrid"
                         Background="#01000000"
-                        MouseDown="OverlayGrid_MouseDown" />
+                        MouseDown="OverlayGrid_MouseDown"
+                        MouseMove="OverlayGrid_MouseMove" />
                 </vlc:VideoView>
 
                 <Border

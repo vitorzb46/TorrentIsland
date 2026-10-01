@@ -875,7 +875,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 {
                     SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value)));
                 }
-            }).ConfigureAwait(false);
+            });
         }
         catch (Exception ex)
         {

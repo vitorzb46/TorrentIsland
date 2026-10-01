@@ -503,6 +503,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         OsdNotification.Visibility = Visibility.Visible;
         ReiniciarTimerOsd();
     }
+
+    private void OverlayGrid_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_viewModel.IsFullscreen) return;
+        Mouse.OverrideCursor = Cursors.Arrow;
+    }
     #endregion
 
     #region Shortcuts
