@@ -31,6 +31,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private int _cliquesRetroceder = 0;
     private DateTime _ultimoCliqueAvancar = DateTime.MinValue;
     private DateTime _ultimoCliqueRetroceder = DateTime.MinValue;
+    private const float ContrastMin = 0.0f, ContrastMax = 2.0f, ContrastDefault = 1.0f;
+    private const float BrightnessMin = 0.0f, BrightnessMax = 2.0f, BrightnessDefault = 1.0f;
+    private const int   HueMin = -180,  HueMax = 180,  HueDefault = 0;
+    private const float SaturationMin = 0.0f, SaturationMax = 3.0f, SaturationDefault = 1.0f;
+    private const float GammaMin = 0.01f, GammaMax = 10.0f, GammaDefault = 1.0f;
+
+    private float _contrast = ContrastDefault;
+    private float _brightness = BrightnessDefault;
+    private int   _hue = HueDefault;
+    private float _saturation = SaturationDefault;
+    private float _gamma = GammaDefault;
 
     private ICommand? _openMediaCommand;
     private ICommand? _openSubtitleExternalCommand;
@@ -43,6 +54,15 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private ICommand? _stopPlayerCommand;
     private ICommand? _torrentSearchCommand;
     private ICommand? _torrentQueueCommand;
+    private ICommand? _delaySpuCommand;
+    private ICommand? _setAspectRatioCommand;
+    private ICommand? _setZoomCommand;
+    private ICommand? _setContrastCommand;
+    private ICommand? _setBrightnessCommand;
+    private ICommand? _setHueCommand;
+    private ICommand? _setSaturationCommand;
+    private ICommand? _setGammaCommand;
+    private ICommand? _resetImageCommand;
 
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
@@ -53,6 +73,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         LibVLC = libVLC;
         _mediaPlayer = mediaPlayer;
+        _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Enable, 1.0f);
         _fb = fb;
         _mediaPlayer.PositionChanged += OnPositionChanged;
         _mediaPlayer.Playing += OnPlaying;
@@ -113,20 +134,139 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _selectSubtitleCommand ??= new RelayCommand<int>(SelectSubtitleTrack);
     public ICommand SelectAudioCommand =>
         _selectAudioCommand ??= new RelayCommand<int>(SelectAudioTrack);
+    public ICommand DelaySpuCommand =>
+        _delaySpuCommand ??= new RelayCommand<(bool delay, double timeDelay)>(
+            args =>
+            {
+                ToggleDelaySpu(args.delay, args.timeDelay);
+                SubtitleDelayChanged?.Invoke(this, EventArgs.Empty);
+            });
     public ICommand TogglePlayCommand =>
         _togglePlayCommand ??= new RelayCommand(TogglePlay);
     public ICommand ToggleMuteCommand =>
         _toggleMuteCommand ??= new RelayCommand(ToggleMute);
+    public ICommand SetAspectRatioCommand =>
+        _setAspectRatioCommand ??= new RelayCommand<string>(SetAspectRatio);
+    public ICommand SetZoomCommand =>
+        _setZoomCommand ??= new RelayCommand<float>(SetZoom);
+    public ICommand SetContrastCommand   => _setContrastCommand   
+        ??= new RelayCommand<float>(value => Contrast = value);
+    public ICommand SetBrightnessCommand => _setBrightnessCommand 
+        ??= new RelayCommand<float>(value => Brightness = value);
+    public ICommand SetHueCommand        => _setHueCommand        
+        ??= new RelayCommand<float>(value => Hue = (int)value);
+    public ICommand SetSaturationCommand => _setSaturationCommand 
+        ??= new RelayCommand<float>(value => Saturation = value);
+    public ICommand SetGammaCommand      => _setGammaCommand      
+        ??= new RelayCommand<float>(value => Gamma = value);
+
+    public ICommand ResetImageCommand =>
+        _resetImageCommand ??= new RelayCommand(() =>
+        {
+            Contrast = ContrastDefault;
+            Brightness = BrightnessDefault;
+            Hue = HueDefault;
+            Saturation = SaturationDefault;
+            Gamma = GammaDefault;
+        });
     #endregion
 
-    private static long SubtitleDelay { get; set; } = 0;
+    public int CurrentAudio { get => _mediaPlayer.AudioTrack; }
+    public int CurrentSpu { get => _mediaPlayer.Spu; }
+    private static double SubtitleDelay { get; set; } = 0;
     public long MediaTime { get; set; } = 0;
     public static nint VlcHwnd { get; private set; }
     public LibVLC LibVLC { get; }
     public static string FileName =>
         Path.GetFileName(FilePath) ?? string.Empty;
-
     public bool IsOpening { get; set { field = value; OnPropertyChanged(); } } = false;
+
+    public float Contrast
+    {
+        get => _contrast;
+        private set
+        {
+            var estimate = Math.Clamp(value, ContrastMin, ContrastMax);
+            if (Math.Abs(_contrast - estimate) < 0.001f) return;
+            _contrast = estimate;
+            _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Contrast, estimate);
+            OnPropertyChanged();
+        }
+    }
+
+    public float Brightness
+    {
+        get => _brightness;
+        private set
+        {
+            var estimate = Math.Clamp(value, BrightnessMin, BrightnessMax);
+            if (Math.Abs(_brightness - estimate) < 0.001f) return;
+            _brightness = estimate;
+            _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Brightness, estimate);
+            OnPropertyChanged();
+        }
+    }
+
+    public int Hue
+    {
+        get => _hue;
+        private set
+        {
+            var estimate = Math.Clamp(value, HueMin, HueMax);
+            if (_hue == estimate) return;
+            _hue = estimate;
+            _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Hue, estimate);
+            OnPropertyChanged();
+        }
+    }
+
+    public float Saturation
+    {
+        get => _saturation;
+        private set
+        {
+            var estimate = Math.Clamp(value, SaturationMin, SaturationMax);
+            if (Math.Abs(_saturation - estimate) < 0.001f) return;
+            _saturation = estimate;
+            _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Saturation, estimate);
+            OnPropertyChanged();
+        }
+    }
+
+    public float Gamma
+    {
+        get => _gamma;
+        private set
+        {
+            var estimate = Math.Clamp(value, GammaMin, GammaMax);
+            if (Math.Abs(_gamma - estimate) < 0.001f) return;
+            _gamma = estimate;
+            _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Gamma, estimate);
+            OnPropertyChanged();
+        }
+    }
+
+    public string? CurrentAspectRatio
+    {
+        get;
+        private set
+        {
+            if (field == value) return;
+            field = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public float CurrentZoom
+    {
+        get;
+        private set
+        {
+            if (Math.Abs(field - value) < 0.001f) return;
+            field = value;
+            OnPropertyChanged();
+        }
+    }
     public static string FilePath
     {
         get;
@@ -230,7 +370,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         }
     }
 
-    public string SubtitleMessage
+    public string OsdMessage
     {
         get;
         set
@@ -238,7 +378,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             field = value;
             OnPropertyChanged();
         }
-    } = $"Ressincronizar legenda: 0,000 seg.";
+    } = string.Empty;
 
     public string LoadingMessage
     {
@@ -315,6 +455,26 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Public Methods
+    public void IncrementBrightness(float step = 0.05f) => Brightness = _brightness + step;
+
+    public void DecrementBrightness(float step = 0.05f) => Brightness = _brightness - step;
+
+    public void IncrementContrast(float step = 0.05f) => Contrast = _contrast + step;
+
+    public void DecrementContrast(float step = 0.05f) => Contrast = _contrast - step;
+
+    public void IncrementHue(int step = 5) => Hue = _hue + step;
+
+    public void DecrementHue(int step = 5) => Hue = _hue - step;
+
+    public void IncrementSaturation(float step = 0.1f) => Saturation = _saturation + step;
+
+    public void DecrementSaturation(float step = 0.1f) => Saturation = _saturation - step;
+
+    public void IncrementGamma(float step = 0.1f) => Gamma = _gamma + step;
+
+    public void DecrementGamma(float step = 0.1f) => Gamma = _gamma - step;
+
     public async Task SaveCacheAsync()
     {
         await MediaTimestamp.SaveCache(FilePath, MediaTime);
@@ -418,23 +578,23 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         }
     }
 
-    public void ToggleDelaySpu(bool delay)
-    {
-        long d = 500000;
+    private void ZeroingDelaySpu(bool delay) => ToggleDelaySpu(delay, 0);
 
+    private void DelaySpu5s(bool delay) => ToggleDelaySpu(delay, 5);
+
+    public void ToggleDelaySpu(bool delay, double timeDelay = 0.5)
+    {
         if (delay)
         {
-            SubtitleDelay += d;
+            SubtitleDelay += timeDelay;
         }
         else
         {
-            SubtitleDelay -= d;
+            SubtitleDelay -= timeDelay;
         }
-
-        _mediaPlayer.SetSpuDelay(SubtitleDelay);
-
-        double segundos = (double)SubtitleDelay / 1000000;
-        SubtitleMessage = $"Ressincronizar legenda: {segundos:0.000;-0.000;0.000} seg.";
+        
+        _mediaPlayer.SetSpuDelay((long)SubtitleDelay * 1000000);
+        OsdMessage = $"Ressincronizar legenda: {SubtitleDelay:0.000;-0.000;0.000} seg.";
     }
 
     public void AvancarTempo()
@@ -544,6 +704,17 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Private Methods    
+    private void SetAspectRatio(string? ratio)
+    {
+        CurrentAspectRatio = ratio;
+        _mediaPlayer.AspectRatio = ratio;
+    }
+
+    private void SetZoom(float scale)
+    {
+        CurrentZoom = scale;
+        _mediaPlayer.Scale = scale;
+    }
     private int ObterSegundosProgressivos(int cliques)
     {
         return cliques switch
@@ -777,6 +948,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public event EventHandler? TorrentSearchRequested;
     /// <summary>Disparado quando o usuário aciona o atalho da janela de torrents.</summary>
     public event EventHandler? TorrentQueueRequested;
+    public event EventHandler? SubtitleDelayChanged;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     private void OnMute(object? sender, EventArgs e) => IsMuted = _mediaPlayer.Mute;
@@ -802,6 +974,13 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         IsPlaying = true;
         VlcHwnd = _mediaPlayer.Hwnd;
+
+        _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Enable, 1.0f);
+        _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Contrast, _contrast);
+        _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Brightness, _brightness);
+        _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Hue, _hue);
+        _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Saturation, _saturation);
+        _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Gamma, _gamma);
     }
     private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
     {

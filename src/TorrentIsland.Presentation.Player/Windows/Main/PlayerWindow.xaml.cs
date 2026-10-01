@@ -62,6 +62,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.StopPlayerRequested += OnStopPlayerRequested;
         _viewModel.TorrentSearchRequested += OnTorrentSearchRequested;
         _viewModel.TorrentQueueRequested += OnTorrentQueueRequested;
+        _viewModel.SubtitleDelayChanged += OnSubtitleDelayChanged;
 
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
@@ -116,6 +117,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _viewModel.StopPlayerRequested -= OnStopPlayerRequested;
             _viewModel.TorrentSearchRequested -= OnTorrentSearchRequested;
             _viewModel.TorrentQueueRequested -= OnTorrentQueueRequested;
+            _viewModel.SubtitleDelayChanged -= OnSubtitleDelayChanged;
 
             LocationChanged -= (_, _) => PosicionarControles();
             SizeChanged -= (_, _) => PosicionarControles();
@@ -487,6 +489,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private void OverlayGrid_MouseDown(object sender, MouseButtonEventArgs e) =>
         ReforcarTopmostControles();
+
+    private void ShowOsd(string texto)
+    {
+        _viewModel.OsdMessage = texto;
+        OsdNotification.Visibility = Visibility.Visible;
+        ReiniciarTimerOsd();
+    }
     #endregion
 
     #region Shortcuts
@@ -501,6 +510,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
         base.OnPreviewKeyDown(e);
+
+        bool isOpenBracket  = e.Key == Key.OemOpenBrackets  || e.Key == Key.Oem5;
+        bool isCloseBracket = e.Key == Key.OemCloseBrackets || e.Key == Key.Oem6;
+        bool isNotMod = Keyboard.Modifiers == ModifierKeys.None;
+        bool isControlKey = Keyboard.Modifiers == ModifierKeys.Control;
+        bool isShiftKey = Keyboard.Modifiers == ModifierKeys.Shift;
 
         if (e.Key == Key.Escape && _viewModel.IsFullscreen) ToggleFullscreen();
 
@@ -518,22 +533,106 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         if (e.Key == Key.M) _viewModel.ToggleMute();
 
-        if (e.Key == Key.OemOpenBrackets || e.Key == Key.Oem5)
+        if (isOpenBracket && isNotMod)
         {
-            OsdNotification.Visibility = Visibility.Visible;
-            _viewModel.ToggleDelaySpu(false);
-            ReiniciarTimerOsd();
+            _viewModel.DelaySpuCommand.Execute((false, 0.5));
             e.Handled = true;
         }
-        else if (e.Key == Key.OemCloseBrackets || e.Key == Key.Oem6)
+        else if (isCloseBracket && isNotMod)
         {
-            OsdNotification.Visibility = Visibility.Visible;
-            _viewModel.ToggleDelaySpu(true);
-            ReiniciarTimerOsd();
+            _viewModel.DelaySpuCommand.Execute((true, 0.5));
+            e.Handled = true;
+        }
+        else if (isOpenBracket && isControlKey)
+        {
+            _viewModel.DelaySpuCommand.Execute((false, 5.0));
+            e.Handled = true;
+        }
+        else if (isCloseBracket && isControlKey)
+        {
+            _viewModel.DelaySpuCommand.Execute((true, 5.0));
             e.Handled = true;
         }
 
-        if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
+        // Brilho
+        if (e.Key == Key.B && isControlKey)
+        {
+            _viewModel.DecrementBrightness();
+            ShowOsd($"Brilho: {_viewModel.Brightness:P0}");
+            e.Handled = true;
+        }
+        else if (e.Key == Key.B && isShiftKey)
+        {
+            _viewModel.IncrementBrightness();
+            ShowOsd($"Brilho: {_viewModel.Brightness:P0}");
+            e.Handled = true;
+        }
+
+        // Contraste
+        else if (e.Key == Key.C && isControlKey)
+        {
+            _viewModel.DecrementContrast();
+            ShowOsd($"Contraste: {_viewModel.Contrast:P0}");
+            e.Handled = true;
+        }
+        else if (e.Key == Key.C && isShiftKey)
+        {
+            _viewModel.IncrementContrast();
+            ShowOsd($"Contraste: {_viewModel.Contrast:P0}");
+            e.Handled = true;
+        }
+
+        // Matiz
+        else if (e.Key == Key.H && isControlKey)
+        {
+            _viewModel.DecrementHue();
+            ShowOsd($"Matiz: {_viewModel.Hue}");
+            e.Handled = true;
+        }
+        else if (e.Key == Key.H && isShiftKey)
+        {
+            _viewModel.IncrementHue();
+            ShowOsd($"Matiz: {_viewModel.Hue}");
+            e.Handled = true;
+        }
+
+        // Saturação
+        else if (e.Key == Key.S && isControlKey)
+        {
+            _viewModel.DecrementSaturation();
+            ShowOsd($"Saturação: {_viewModel.Saturation:P0}");
+            e.Handled = true;
+        }
+        else if (e.Key == Key.S && isShiftKey)
+        {
+            _viewModel.IncrementSaturation();
+            ShowOsd($"Saturação: {_viewModel.Saturation:P0}");
+            e.Handled = true;
+        }
+
+        // Gamma
+        else if (e.Key == Key.G && isControlKey)
+        {
+            _viewModel.DecrementGamma();
+            ShowOsd($"Gamma: {_viewModel.Gamma:F1}");
+            e.Handled = true;
+        }
+        else if (e.Key == Key.G && isShiftKey)
+        {
+            _viewModel.IncrementGamma();
+            ShowOsd($"Gamma: {_viewModel.Gamma:F1}");
+            e.Handled = true;
+        }
+
+        // Reset
+        else if (e.Key == Key.R && isShiftKey)
+        {
+            _viewModel.ResetImageCommand.Execute(null);
+            ShowOsd("Ajustes de imagem resetados");
+            e.Handled = true;
+        }
+
+        if (e.Key == Key.V && isControlKey)
         {
             var dataObject = Clipboard.GetDataObject();
             if (dataObject == null) return;
@@ -622,5 +721,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         _controls.BuscarTorrentMenuItem_Click(sender, e);
         _torrentSearch.BtnAlternarTela_Click(sender, e);
+    }
+    private void OnSubtitleDelayChanged(object? sender, EventArgs e)
+    {
+        OsdNotification.Visibility = Visibility.Visible;
+        ReiniciarTimerOsd();
     }
 }

@@ -176,7 +176,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (e.Key == Key.Escape)
         {
-            DialogResult = false;
+            // DialogResult = false;
             Close();
             e.Handled = true;
         }
