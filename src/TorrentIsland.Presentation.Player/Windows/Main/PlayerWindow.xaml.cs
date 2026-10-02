@@ -52,45 +52,14 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         VideoView.MediaPlayer = vlc.MediaPlayer;
 
-        OverlayGrid.ContextMenuOpening += OverlayGrid_ContextMenuOpening;
-        PlayerViewModel.FilePathChanged += OnFilePathChanged;
-        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        _viewModel.OpenMediaRequested += OnOpenMediaRequested;
-        _viewModel.OpenSubtitleExternalRequested += OnOpenSubtitleExternalRequested;
-        _viewModel.OpenTorrentFileRequested += OnOpenTorrentFileRequested;
-        _viewModel.ToggleFullscreenRequested += OnToggleFullscreenRequested;
-        _viewModel.StopPlayerRequested += OnStopPlayerRequested;
-        _viewModel.TorrentSearchRequested += OnTorrentSearchRequested;
-        _viewModel.TorrentQueueRequested += OnTorrentQueueRequested;
-        _viewModel.SubtitleDelayChanged += OnSubtitleDelayChanged;
-
-        // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
-        // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).
         _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService);
-        _controls.FullscreenRequested += (_, _) => ToggleFullscreen();
-        _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
-        _controls.Closed += (_, _) =>
-        {
-            _inactivityTimer?.Stop();
-            Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.ContextIdle);
-        };
-                                                             
         _inactivityTimer = new DispatcherTimer();
-        _inactivityTimer.Tick += (_, _) =>
-        {
-            if(!_viewModel.IsFullscreen || MenuAberto) return;
-            HideControls();
-        };
-
         _osdTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(2)
         };
-        _osdTimer.Tick += (s, e) =>
-        {
-            OsdNotification.Visibility = Visibility.Collapsed;
-            _osdTimer.Stop();
-        };
+
+        SubscribeEvents();
 
         Loaded += (_, _) =>
         {
@@ -107,31 +76,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         };
         Closed += (_, _) =>
         {
-            _controls.FullscreenRequested -= (_, _) => ToggleFullscreen();
-            _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
-            OverlayGrid.ContextMenuOpening -= OverlayGrid_ContextMenuOpening;
-            PlayerViewModel.FilePathChanged -= OnFilePathChanged;
-            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-            _viewModel.OpenMediaRequested -= OnOpenMediaRequested;
-            _viewModel.OpenSubtitleExternalRequested -= OnOpenSubtitleExternalRequested;
-            _viewModel.OpenTorrentFileRequested -= OnOpenTorrentFileRequested;
-            _viewModel.ToggleFullscreenRequested -= OnToggleFullscreenRequested;
-            _viewModel.StopPlayerRequested -= OnStopPlayerRequested;
-            _viewModel.TorrentSearchRequested -= OnTorrentSearchRequested;
-            _viewModel.TorrentQueueRequested -= OnTorrentQueueRequested;
-            _viewModel.SubtitleDelayChanged -= OnSubtitleDelayChanged;
-
-            LocationChanged -= (_, _) => PosicionarControles();
-            SizeChanged -= (_, _) => PosicionarControles();
-            StateChanged -= (_, _) => PosicionarControles();
+            UnsubscribeEvents();
 
             _inactivityTimer?.Stop();
             _osdTimer?.Stop();
 
-            if (_controls != null)
-            {
-                _controls.Close();
-            }
+            _controls?.Close();
 
             //Task.Run(async () =>
             //{
@@ -144,11 +94,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Environment.Exit(0);
         };
         
-        // Sincroniza a janela de controles com a janela de vídeo.
-        LocationChanged += (_, _) => PosicionarControles();
-        SizeChanged += (_, _) => PosicionarControles();
-        StateChanged += (_, _) => PosicionarControles();
-
         StreamService = streamService;
         _ytDlService = ytDlService;
         _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
@@ -509,6 +454,72 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         if (!_viewModel.IsFullscreen) return;
         Mouse.OverrideCursor = Cursors.Arrow;
     }
+
+    private void SubscribeEvents()
+    {
+        OverlayGrid.ContextMenuOpening += OverlayGrid_ContextMenuOpening;
+
+        PlayerViewModel.FilePathChanged += OnFilePathChanged;
+
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.OpenMediaRequested += OnOpenMediaRequested;
+        _viewModel.OpenSubtitleExternalRequested += OnOpenSubtitleExternalRequested;
+        _viewModel.OpenTorrentFileRequested += OnOpenTorrentFileRequested;
+        _viewModel.ToggleFullscreenRequested += OnToggleFullscreenRequested;
+        _viewModel.StopPlayerRequested += OnStopPlayerRequested;
+        _viewModel.TorrentSearchRequested += OnTorrentSearchRequested;
+        _viewModel.TorrentQueueRequested += OnTorrentQueueRequested;
+        _viewModel.SubtitleDelayChanged += OnSubtitleDelayChanged;
+
+        // Sincroniza a janela de controles com a janela de vídeo.
+        LocationChanged += (_, _) => PosicionarControles();
+        SizeChanged += (_, _) => PosicionarControles();
+        StateChanged += (_, _) => PosicionarControles();
+
+        // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
+        // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).        
+        _controls.FullscreenRequested += (_, _) => ToggleFullscreen();
+        _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
+        _controls.Closed += (_, _) =>
+        {
+            _inactivityTimer?.Stop();
+            Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.ContextIdle);
+        };
+
+        
+        _inactivityTimer.Tick += (_, _) =>
+        {
+            if (!_viewModel.IsFullscreen || MenuAberto) return;
+            HideControls();
+        };
+        
+        _osdTimer.Tick += (s, e) =>
+        {
+            OsdNotification.Visibility = Visibility.Collapsed;
+            _osdTimer.Stop();
+        };
+    }
+
+    private void UnsubscribeEvents()
+    {
+        _controls.FullscreenRequested -= (_, _) => ToggleFullscreen();
+        _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
+        OverlayGrid.ContextMenuOpening -= OverlayGrid_ContextMenuOpening;
+        PlayerViewModel.FilePathChanged -= OnFilePathChanged;
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.OpenMediaRequested -= OnOpenMediaRequested;
+        _viewModel.OpenSubtitleExternalRequested -= OnOpenSubtitleExternalRequested;
+        _viewModel.OpenTorrentFileRequested -= OnOpenTorrentFileRequested;
+        _viewModel.ToggleFullscreenRequested -= OnToggleFullscreenRequested;
+        _viewModel.StopPlayerRequested -= OnStopPlayerRequested;
+        _viewModel.TorrentSearchRequested -= OnTorrentSearchRequested;
+        _viewModel.TorrentQueueRequested -= OnTorrentQueueRequested;
+        _viewModel.SubtitleDelayChanged -= OnSubtitleDelayChanged;
+
+        LocationChanged -= (_, _) => PosicionarControles();
+        SizeChanged -= (_, _) => PosicionarControles();
+        StateChanged -= (_, _) => PosicionarControles();
+    }
     #endregion
 
     #region Shortcuts
@@ -521,7 +532,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
-        Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
+        // Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
         base.OnPreviewKeyDown(e);
 
         bool isOpenBracket  = e.Key == Key.OemOpenBrackets  || e.Key == Key.Oem5;
@@ -529,159 +540,124 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         bool isNotMod = Keyboard.Modifiers == ModifierKeys.None;
         bool isControlKey = Keyboard.Modifiers == ModifierKeys.Control;
         bool isShiftKey = Keyboard.Modifiers == ModifierKeys.Shift;
+        bool ExecuteDelay(bool advance, double value) 
+            { _viewModel.DelaySpuCommand.Execute((advance, value)); return true; }
 
-        if (e.Key == Key.Escape && _viewModel.IsFullscreen) ToggleFullscreen();
-
-        if (e.Key == Key.F11) ToggleFullscreen();
-
-        if (e.Key == Key.Space) _viewModel.TogglePlay();
-
-        if (e.Key == Key.Left) _viewModel.RetrocederTempo();
-
-        if (e.Key == Key.Right) _viewModel.AvancarTempo();
-
-        if (e.Key == Key.Down) _viewModel.ToggleVolume(false); ShowControls(); e.Handled = true;
-
-        if (e.Key == Key.Up) _viewModel.ToggleVolume(true); ShowControls(); e.Handled = true;
-
-        if (e.Key == Key.M) _viewModel.ToggleMute();
-
-        if (isOpenBracket && isNotMod)
+        bool Adjust(Action action, Func<string> osdMessage)
         {
-            _viewModel.DelaySpuCommand.Execute((false, 0.5));
-            e.Handled = true;
+            action();
+            ShowOsd(osdMessage());
+            return true;
         }
-        else if (isCloseBracket && isNotMod)
+        
+        switch (e.Key)
         {
-            _viewModel.DelaySpuCommand.Execute((true, 0.5));
-            e.Handled = true;
+            case Key.Escape when _viewModel.IsFullscreen:
+            case Key.F11:   ToggleFullscreen(); return;
+            case Key.Space: _viewModel.TogglePlay(); return;
+            case Key.Left:  _viewModel.RetrocederTempo(); return;
+            case Key.Right: _viewModel.AvancarTempo(); return;
+            case Key.M:     _viewModel.ToggleMute(); return;
+            case Key.Down:  _viewModel.ToggleVolume(false); ShowControls(); e.Handled = true; return;
+            case Key.Up:    _viewModel.ToggleVolume(true);  ShowControls(); e.Handled = true; return;
         }
-        else if (isOpenBracket && isControlKey)
+        
+        var handled = (e.Key, isNotMod, isControlKey, isShiftKey) switch
         {
-            _viewModel.DelaySpuCommand.Execute((false, 5.0));
-            e.Handled = true;
-        }
-        else if (isCloseBracket && isControlKey)
-        {
-            _viewModel.DelaySpuCommand.Execute((true, 5.0));
-            e.Handled = true;
-        }
+            // Delay de Legenda
+            _ when isOpenBracket  && isNotMod     => ExecuteDelay(false, 0.5),
+            _ when isCloseBracket && isNotMod     => ExecuteDelay(true, 0.5),
+            _ when isOpenBracket  && isControlKey => ExecuteDelay(false, 5.0),
+            _ when isCloseBracket && isControlKey => ExecuteDelay(true, 5.0),
+            
+            (Key.V, _, true, _) => ProcessPaste(e),
 
-        // Brilho
-        if (e.Key == Key.B && isControlKey)
-        {
-            _viewModel.DecrementBrightness();
-            ShowOsd($"Brilho: {_viewModel.Brightness:P0}");
-            e.Handled = true;
-        }
-        else if (e.Key == Key.B && isShiftKey)
-        {
-            _viewModel.IncrementBrightness();
-            ShowOsd($"Brilho: {_viewModel.Brightness:P0}");
-            e.Handled = true;
-        }
+            // Brilho
+            (Key.B, _, true, _) => Adjust(() 
+                => _viewModel.DecrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
+            (Key.B, _, _, true) => Adjust(() 
+                => _viewModel.IncrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
 
-        // Contraste
-        else if (e.Key == Key.C && isControlKey)
-        {
-            _viewModel.DecrementContrast();
-            ShowOsd($"Contraste: {_viewModel.Contrast:P0}");
-            e.Handled = true;
-        }
-        else if (e.Key == Key.C && isShiftKey)
-        {
-            _viewModel.IncrementContrast();
-            ShowOsd($"Contraste: {_viewModel.Contrast:P0}");
-            e.Handled = true;
-        }
+            // Contraste
+            (Key.C, _, true, _) => Adjust(() 
+                => _viewModel.DecrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
+            (Key.C, _, _, true) => Adjust(() 
+                => _viewModel.IncrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
 
-        // Matiz
-        else if (e.Key == Key.H && isControlKey)
-        {
-            _viewModel.DecrementHue();
-            ShowOsd($"Matiz: {_viewModel.Hue}");
-            e.Handled = true;
-        }
-        else if (e.Key == Key.H && isShiftKey)
-        {
-            _viewModel.IncrementHue();
-            ShowOsd($"Matiz: {_viewModel.Hue}");
-            e.Handled = true;
-        }
+            // Matiz
+            (Key.H, _, true, _) => Adjust(() 
+                => _viewModel.DecrementHue(), () => $"Matiz: {_viewModel.Hue}"),
+            (Key.H, _, _, true) => Adjust(() 
+                => _viewModel.IncrementHue(), () => $"Matiz: {_viewModel.Hue}"),
 
-        // Saturação
-        else if (e.Key == Key.S && isControlKey)
-        {
-            _viewModel.DecrementSaturation();
-            ShowOsd($"Saturação: {_viewModel.Saturation:P0}");
-            e.Handled = true;
-        }
-        else if (e.Key == Key.S && isShiftKey)
-        {
-            _viewModel.IncrementSaturation();
-            ShowOsd($"Saturação: {_viewModel.Saturation:P0}");
-            e.Handled = true;
-        }
+            // Saturação
+            (Key.S, _, true, _) => Adjust(() 
+                => _viewModel.DecrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
+            (Key.S, _, _, true) => Adjust(() 
+                => _viewModel.IncrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
 
-        // Gamma
-        else if (e.Key == Key.G && isControlKey)
-        {
-            _viewModel.DecrementGamma();
-            ShowOsd($"Gamma: {_viewModel.Gamma:F1}");
-            e.Handled = true;
-        }
-        else if (e.Key == Key.G && isShiftKey)
-        {
-            _viewModel.IncrementGamma();
-            ShowOsd($"Gamma: {_viewModel.Gamma:F1}");
-            e.Handled = true;
-        }
+            // Gamma
+            (Key.G, _, true, _) => Adjust(() 
+                => _viewModel.DecrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
+            (Key.G, _, _, true) => Adjust(() 
+                => _viewModel.IncrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
 
-        // Reset
-        else if (e.Key == Key.R && isShiftKey)
+            // Reset
+            (Key.R, _, _, true) => Adjust(() 
+                => _viewModel.ResetImageCommand.Execute(null), () => "Ajustes de imagem resetados"),
+
+            // Nenhuma combinação correspondida
+            _ => false
+        };
+
+        if (handled) e.Handled = true;
+    }
+
+    private bool ProcessPaste(KeyEventArgs e)
+    {
+        var dataObject = Clipboard.GetDataObject();
+        if (dataObject == null) return false;
+        
+        var files = dataObject.GetData(DataFormats.FileDrop) as string[];
+        var text = dataObject.GetData(DataFormats.Text) as string;
+        string filepath(string[] fp) => fp.Length > 0 ? 
+            Path.GetExtension(fp[0]).ToLowerInvariant() : string.Empty;
+        
+        var processado = (files, text) switch
         {
-            _viewModel.ResetImageCommand.Execute(null);
-            ShowOsd("Ajustes de imagem resetados");
-            e.Handled = true;
+            (string[] f, _) when f.Length > 0 && 
+                Utils.ExtensoesVideo.Contains(filepath(f)) => 
+                    IniciarCarregamentoMidia(f[0]),
+                
+            (string[] t, _) when t.Length > 0 && 
+                Utils.ExtensaoTorrent.Contains(filepath(t)) => 
+                    IniciarCarregamentoTorrent(t[0]),
+                
+            (_, string m) when m != null && 
+                (m.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) || 
+                m.StartsWith("http://itorrents.net", StringComparison.OrdinalIgnoreCase)) => 
+                    IniciarCarregamentoTorrent(m),
+                
+            (_, string yt) when !string.IsNullOrWhiteSpace(yt) => 
+                    IniciarCarregamentoMidia(yt),
+                
+            _ => false
+        };
+
+        if (processado) e.Handled = true;
+        return processado;
+        
+        bool IniciarCarregamentoMidia(string caminho)
+        {
+            _viewModel.LoadingMessage = "Carregando mídia...";
+            _ = CarregarMidiaAsync(caminho);
+            return true;
         }
 
-        if (e.Key == Key.V && isControlKey)
+        bool IniciarCarregamentoTorrent(string caminho)
         {
-            var dataObject = Clipboard.GetDataObject();
-            if (dataObject == null) return;
-
-            if (Utils.TryGetDataObject(dataObject, DataFormats.FileDrop, out string[] arquivos)
-                && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant())) // Arquivo das extensões de vídeo suportadas
-            {
-                e.Handled = true;
-                _viewModel.LoadingMessage = "Carregando mídia...";
-                _ = CarregarMidiaAsync(arquivos[0]);
-                return;
-            }
-
-            if (Utils.TryGetDataObject(dataObject, DataFormats.FileDrop, out string[] torrent)
-                && Utils.ExtensaoTorrent.Contains(Path.GetExtension(torrent[0]).ToLowerInvariant())) // Arquivo torrent
-            {
-                e.Handled = true;
-                _ = CarregarStreamTorrentAsync(torrent[0]);
-                return;
-            }
-
-            if (Utils.TryGetDataObject(dataObject, DataFormats.Text, out string magnet)
-                && magnet.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) || magnet.StartsWith("http://itorrents.net", StringComparison.OrdinalIgnoreCase)) // Magnet link ou Link direto
-            {
-                e.Handled = true;
-                _ = CarregarStreamTorrentAsync(magnet);
-                return;
-            }
-
-            if (Utils.TryGetDataObject(dataObject, DataFormats.Text, out string ytDlp))
-            {
-                e.Handled = true;
-                _viewModel.LoadingMessage = "Carregando mídia...";
-                _ = CarregarMidiaAsync(ytDlp);
-                return;
-            }
+            _ = CarregarStreamTorrentAsync(caminho);
+            return true;
         }
     }
     #endregion
