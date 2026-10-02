@@ -12,6 +12,8 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Application.Medias.Enums;
+using TorrentIsland.Application.Medias.Events;
 using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.Subtitles;
@@ -23,9 +25,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 {
     #region Fields
     private readonly MediaPlayer _mediaPlayer;
+    private Media? _media;    
     private readonly IFormattingHelper _fb;
     private readonly DispatcherTimer _loadingDebounce;
-    private Media? _media;
     private bool _disposed;
     private int _cliquesAvancar = 0;
     private int _cliquesRetroceder = 0;
@@ -43,7 +45,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private float _saturation = SaturationDefault;
     private float _gamma = GammaDefault;
 
-    private ICommand? _openMediaCommand;
+    private ICommand? _openVideoCommand;
+    private ICommand? _openAudioExternalCommand;
     private ICommand? _openSubtitleExternalCommand;
     private ICommand? _openTorrentFileCommand;
     private ICommand? _selectSubtitleCommand;
@@ -109,21 +112,24 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public ObservableCollection<TorrentDownloadDto> TorrentDownloads { get; } = [];
 
     #region Commands
-    public ICommand OpenMediaCommand =>
-        _openMediaCommand ??= new RelayCommand(
-            () => OpenMediaRequested?.Invoke(this, EventArgs.Empty));
+    public ICommand OpenVideoCommand =>
+        _openVideoCommand ??= new RelayCommand(
+            () => OpenFileExternalRequested?.Invoke(this, new ExternalMediaEventArgs(FileType.Video)));
+    public ICommand OpenAudioExternalCommand =>
+        _openAudioExternalCommand ??= new RelayCommand(
+            () => OpenFileExternalRequested?.Invoke(this, new ExternalMediaEventArgs(FileType.Audio)));
     public ICommand OpenSubtitleExternalCommand =>
         _openSubtitleExternalCommand ??= new RelayCommand(
-            () => OpenSubtitleExternalRequested?.Invoke(this, EventArgs.Empty));
+            () => OpenFileExternalRequested?.Invoke(this, new ExternalMediaEventArgs(FileType.Subtitle)));    
     public ICommand OpenTorrentFileCommand =>
         _openTorrentFileCommand ??= new RelayCommand(
-            () => OpenTorrentFileRequested?.Invoke(this, EventArgs.Empty));    
+            () => OpenFileExternalRequested?.Invoke(this, new ExternalMediaEventArgs(FileType.Torrent)));    
     public ICommand ToggleFullscreenCommand =>
         _toggleFullScreenCommand ??= new RelayCommand(
-            () => ToggleFullscreenRequested?.Invoke(this, EventArgs.Empty));
+            () => PlaybackActionRequested?.Invoke(this, new PlaybackEventArgs(PlaybackType.Fullscreen)));
     public ICommand StopPlayerCommand =>
         _stopPlayerCommand ??= new RelayCommand(
-            () => StopPlayerRequested?.Invoke(this, EventArgs.Empty));
+            () => PlaybackActionRequested?.Invoke(this, new PlaybackEventArgs(PlaybackType.Stop)));
     public ICommand TorrentSearchCommand =>
         _torrentSearchCommand ??= new RelayCommand(
             () => TorrentSearchRequested?.Invoke(this, EventArgs.Empty));
@@ -681,12 +687,38 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         //await ProcessarLegendasUndAsync().ConfigureAwait(false);
     }
 
+    public void LoadExternalAudio(string filePath)
+    {
+        if (filePath is not string path || !File.Exists(path)) return;
+        ParseFileNameInfo(
+            path,
+            out _,
+            out int audioId,
+            out string uri,
+            out string fileName);
+        AudioTracks.Add(new TrackItem(audioId, fileName));
+        _mediaPlayer.AddSlave(MediaSlaveType.Audio, uri, select: true);
+    }
+
     public void LoadExternalSubtitle(object? filePath)
     {
         if (filePath is not string path || !File.Exists(path)) return;
-        var subs = SubtitleTracks.Count + 90;
-        var uri = new Uri(path).AbsoluteUri;
-        var fileName = Path.GetFileNameWithoutExtension(path);
+        ParseFileNameInfo(
+            path,
+            out int subId,
+            out _,
+            out string uri,
+            out string fileName);
+        SubtitleTracks.Add(new TrackItem(subId, fileName));
+        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, select: true);
+    }
+
+    private void ParseFileNameInfo(string path, out int subId, out int audioId, out string uri, out string fileName)
+    {
+        subId = SubtitleTracks.Count + 90;
+        audioId = AudioTracks.Count + 90;
+        uri = new Uri(path).AbsoluteUri;
+        fileName = Path.GetFileNameWithoutExtension(path);
         var match = SeasonEpisode().Match(fileName);
 
         if (match.Success)
@@ -697,9 +729,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             fileName = string.Concat(fileName.AsSpan(0, 20), "...");
         }
-
-        SubtitleTracks.Add(new TrackItem(subs, fileName));
-        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, select: true);
     }
     #endregion
 
@@ -934,16 +963,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public event PropertyChangedEventHandler? PropertyChanged;
     /// <summary> Disparado toda vez que um novo valor é setado em FilePath </summary>
     public static event Action? FilePathChanged;
-    /// <summary>Disparado quando o usuário pede para abrir uma mídia pelo menu de contexto.</summary>
-    public event EventHandler? OpenMediaRequested;
-    /// <summary>Disparado quando o usuário pede para abrir uma legenda externa.</summary>
-    public event EventHandler? OpenSubtitleExternalRequested;
-    /// <summary>Disparado quando o usuário pede para abrir um arquivo torrent.</summary>
-    public event EventHandler? OpenTorrentFileRequested;
-    /// <summary>Disparado quando o usuário aciona o atalho de full screen.</summary>
-    public event EventHandler? ToggleFullscreenRequested;
-    /// <summary>Disparado quando o usuário aciona o botão de stop.</summary>
-    public event EventHandler? StopPlayerRequested;
+    /// <summary>Disparado quando o usuário pede para abrir um arquivo externo.</summary>
+    public event EventHandler<ExternalMediaEventArgs>? OpenFileExternalRequested;
+    /// <summary>Disparado quando o usuário aciona uma tecla de controle.</summary>
+    public event EventHandler<PlaybackEventArgs>? PlaybackActionRequested;
     /// <summary>Disparado quando o usuário aciona o atalho da janela de torrents.</summary>
     public event EventHandler? TorrentSearchRequested;
     /// <summary>Disparado quando o usuário aciona o atalho da janela de torrents.</summary>

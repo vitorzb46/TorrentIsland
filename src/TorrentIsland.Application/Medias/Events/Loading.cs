@@ -1,4 +1,4 @@
-namespace TorrentIsland.Infrastructure.Events;
+namespace TorrentIsland.Application.Medias.Events;
 
 public class Loading
 {

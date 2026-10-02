@@ -8,6 +8,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
+using TorrentIsland.Application.Medias.Enums;
+using TorrentIsland.Application.Medias.Events;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
@@ -377,7 +379,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private void ThumbPlayPause_Click(object sender, EventArgs e) => _viewModel.TogglePlay();
+    private void ThumbPlayPause_Click(object? sender, EventArgs e) => _viewModel.TogglePlay();
 
     private void ThumbStop_Click(object? sender, EventArgs e)
     {
@@ -394,7 +396,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.TempoTotalFormatado = "00:00:00";
     }
 
-    private void ThumbFullscreen_Click(object sender, EventArgs e)
+    private void ThumbFullscreen_Click(object? sender, EventArgs e)
     {
         ToggleFullscreen();
         AtivarJanela();
@@ -462,11 +464,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         PlayerViewModel.FilePathChanged += OnFilePathChanged;
 
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        _viewModel.OpenMediaRequested += OnOpenMediaRequested;
-        _viewModel.OpenSubtitleExternalRequested += OnOpenSubtitleExternalRequested;
-        _viewModel.OpenTorrentFileRequested += OnOpenTorrentFileRequested;
-        _viewModel.ToggleFullscreenRequested += OnToggleFullscreenRequested;
-        _viewModel.StopPlayerRequested += OnStopPlayerRequested;
+        _viewModel.OpenFileExternalRequested += OnOpenFileExternalRequested;
+        _viewModel.PlaybackActionRequested += OnPlaybackActionRequested;
         _viewModel.TorrentSearchRequested += OnTorrentSearchRequested;
         _viewModel.TorrentQueueRequested += OnTorrentQueueRequested;
         _viewModel.SubtitleDelayChanged += OnSubtitleDelayChanged;
@@ -507,11 +506,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         OverlayGrid.ContextMenuOpening -= OverlayGrid_ContextMenuOpening;
         PlayerViewModel.FilePathChanged -= OnFilePathChanged;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        _viewModel.OpenMediaRequested -= OnOpenMediaRequested;
-        _viewModel.OpenSubtitleExternalRequested -= OnOpenSubtitleExternalRequested;
-        _viewModel.OpenTorrentFileRequested -= OnOpenTorrentFileRequested;
-        _viewModel.ToggleFullscreenRequested -= OnToggleFullscreenRequested;
-        _viewModel.StopPlayerRequested -= OnStopPlayerRequested;
+        _viewModel.OpenFileExternalRequested -= OnOpenFileExternalRequested;
+        _viewModel.PlaybackActionRequested -= OnPlaybackActionRequested;
         _viewModel.TorrentSearchRequested -= OnTorrentSearchRequested;
         _viewModel.TorrentQueueRequested -= OnTorrentQueueRequested;
         _viewModel.SubtitleDelayChanged -= OnSubtitleDelayChanged;
@@ -687,22 +683,43 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             BtnPlayPause.Description = _viewModel.IsPlaying ? "Pausar" : "Reproduzir";
         });
     }
-
-    private async void OnOpenMediaRequested(object? sender, EventArgs e) =>
-        await _controls.ProcessarMidiaAsync();
-
-    private async void OnOpenSubtitleExternalRequested(object? sender, EventArgs e) =>
-        await _controls.ProcessarLegendaExternaAsync();
-
-    private async void OnOpenTorrentFileRequested(object? sender, EventArgs e) =>
-        await _controls.ProcessarTorrentAsync();
-
-    private void OnToggleFullscreenRequested(object? sender, EventArgs e) =>
-        ToggleFullscreen();
     
-    private void OnStopPlayerRequested(object? sender, EventArgs e) =>
-        ThumbStop_Click(sender, e);
-    
+    private async void OnOpenFileExternalRequested(object? sender, ExternalMediaEventArgs e)
+    {
+        try
+        {
+            switch (e.Type)
+            {
+                case FileType.Audio: await _controls.ProcessarAudioExternoAsync(); return;
+                case FileType.Subtitle: await _controls.ProcessarLegendaExternaAsync(); return;
+                case FileType.Video: await _controls.ProcessarMidiaAsync(); return;
+                case FileType.Torrent: await _controls.ProcessarTorrentAsync(); return;
+                default: Log.Salvar($"[OpenFile] FileType não tratado: {e.Type}"); return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro ao processar arquivo externo: {ex.Message} {ex.StackTrace} {ex.InnerException}");
+        }
+    }
+
+    private void OnPlaybackActionRequested(object? sender, PlaybackEventArgs e)
+    {
+        try
+        {
+            switch (e.Type)
+            {           
+                case PlaybackType.Stop: ThumbStop_Click(sender, e); return;
+                case PlaybackType.Fullscreen: ThumbFullscreen_Click(sender, e); return;
+                default: Log.Salvar($"[Playback] PlaybackType não tratado: {e.Type}"); return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro ao processar ação de reprodução: {ex.Message} {ex.StackTrace} {ex.InnerException}");
+        }
+    }
+
     private void OnTorrentSearchRequested(object? sender, EventArgs e) =>
         _controls.BuscarTorrentMenuItem_Click(sender, e);
 

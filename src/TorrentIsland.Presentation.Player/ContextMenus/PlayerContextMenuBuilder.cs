@@ -66,7 +66,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     [
         BuildItem("Reproduzir", _viewModel.TogglePlayCommand, customKey: "Espaço"),
         BuildItem("Pausar", _viewModel.TogglePlayCommand, customKey: "Espaço"),
-        BuildItem("Parar", _viewModel.StopPlayerCommand),
+        BuildItem("Parar", _viewModel.StopPlayerCommand, customKey: "S"),
     ];
 
     private object[] ScreenOptions() =>
@@ -81,14 +81,14 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     private object[] MenuToOpen() =>
     [
         // TODO all shortcuts
-        BuildItem("Abrir mídia...", _viewModel.OpenMediaCommand, null, Key.O, ModifierKeys.Control),
+        BuildItem("Abrir mídia...", _viewModel.OpenVideoCommand, null, Key.O, ModifierKeys.Control),
         BuildItem("Abrir arquivo torrent...", _viewModel.OpenTorrentFileCommand, null, Key.Y, ModifierKeys.Control),
         BuildItem("Abrir URL Mídia Streaming", null, null, Key.P, ModifierKeys.Control), // TODO
         BuildItem("Abrir URL Youtube", null, null, Key.L, ModifierKeys.Control), // TODO
         BuildItem("Abrir Pasta...", null, null, Key.Y, ModifierKeys.Control), // TODO
         new Separator(),
         BuildItem("Carregar legenda externa...", _viewModel.OpenSubtitleExternalCommand, null, Key.U, ModifierKeys.Control),
-        BuildItem("Carregar áudio externo...", null, null, Key.I, ModifierKeys.Control), // TODO
+        BuildItem("Carregar áudio externo...", _viewModel.OpenAudioExternalCommand, null, Key.I, ModifierKeys.Control),
     ];
 
     private object[] ImageOptions()

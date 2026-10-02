@@ -260,9 +260,10 @@ public partial class ControlsWindow : Window, IDisposable
 
     public async Task ProcessarMidiaAsync()
     {
+        var padroes = string.Join(";", Utils.ExtensoesVideo.Select(e => "*" + e));
         var dialog = new OpenFileDialog
         {
-            Filter = "Vídeos (*.mp4;*.mkv;*.webm;*.avi)|*.mp4;*.mkv;*.webm;*.avi|" +
+            Filter = "Vídeos (" + padroes + ")|" + padroes + "|" +
                  "Todos os arquivos (*.*)|*.*",
             Title = "Carregar mídia externa"
         };
@@ -279,11 +280,32 @@ public partial class ControlsWindow : Window, IDisposable
         }
     }
 
-    public async Task ProcessarLegendaExternaAsync()
+    public async Task ProcessarAudioExternoAsync()
     {
+        var padroes = string.Join(";", Utils.ExtensoesAudio.Select(e => "*" + e));
         var dialog = new OpenFileDialog
         {
-            Filter = "Legendas (*.srt;*.vtt;*.ssa;*.ass)|*.srt;*.vtt;*.ssa;*.ass|" +
+            Filter = "Áudios (" + padroes + ")|" + padroes + "|" +
+                 "Todos os arquivos (*.*)|*.*",
+            Title = "Carregar áudio externo"
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            string extensao = Path.GetExtension(dialog.FileName).ToLowerInvariant();
+            if (Utils.ExtensoesAudio.Contains(extensao))
+            {
+                _viewModel.LoadExternalAudio(dialog.FileName);
+            }
+        }
+    }
+
+    public async Task ProcessarLegendaExternaAsync()
+    {
+        var padroes = string.Join(";", Utils.ExtensoesSubs.Select(e => "*" + e));
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Legendas (" + padroes + ")|" + padroes + "|" +
                  "Todos os arquivos (*.*)|*.*",
             Title = "Carregar legenda externa"
         };
