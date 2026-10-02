@@ -27,12 +27,26 @@ public class Utils
 
     public static readonly string[] ExtensoesVideo = [
         ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
-        ".m4v", ".ts", ".m2ts", ".vob", ".mpg", ".mpeg", ".3gp", ".ogv"
+        ".ts", ".m2ts", ".mts", ".m2t", ".mpg", ".mpeg", ".mpe", ".vob", ".ifo",
+        ".3gp", ".3g2", ".m4v", ".ogv", ".rm", ".rmvb", ".asf", ".divx",
+        ".mxf", ".nut", ".nsv", ".dv", ".f4v", ".mxf", ".ogm"
     ];
     public static readonly string[] ExtensaoTorrent = [".torrent"];
     public static readonly string[] ExtensoesSubs = [
-        ".srt", ".vtt", ".ssa", ".ass",
+        ".srt", ".vtt", ".ass", ".ssa", ".sub", ".smi", ".sami", ".txt",
+        ".aqt", ".jss", ".psb", ".rt", ".ttml", ".tt", ".usf",
+        ".mpl2", ".mpsub", ".pjs", ".jacosub", ".dks", ".sbv",
+        ".scc", ".stl", ".vplayer", ".subviewer", ".microdvd",
+        ".idx", ".cdg"
     ];
+    public static readonly string[] ExtensoesAudio = [
+        ".mp3", ".m4a", ".aac", ".flac", ".wav", ".wma", ".ogg", ".oga",
+        ".alac", ".ape", ".wv", ".tta", ".tak", ".dsf", ".dff",
+        ".amr", ".awb", ".gsm", ".spx", ".opus",
+        ".ac3", ".a52", ".eac3", ".dts", ".mlp", ".thd", 
+        ".mka", ".aif", ".aiff", ".au", ".snd", ".voc", ".mid", ".midi"
+    ];
+
 
 
     /// <summary>
