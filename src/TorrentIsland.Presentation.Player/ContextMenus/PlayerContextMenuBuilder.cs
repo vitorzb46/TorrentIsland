@@ -85,7 +85,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildItem("Abrir arquivo torrent...", _viewModel.OpenTorrentFileCommand, null, Key.Y, ModifierKeys.Control),
         BuildItem("Abrir URL Mídia Streaming", null, null, Key.P, ModifierKeys.Control), // TODO
         BuildItem("Abrir URL Youtube", null, null, Key.L, ModifierKeys.Control), // TODO
-        BuildItem("Abrir Pasta...", null, null, Key.Y, ModifierKeys.Control), // TODO
+        BuildItem("Abrir Pasta...", _viewModel.OpenFolderCommand, null, Key.Y, ModifierKeys.Shift), // TODO
         new Separator(),
         BuildItem("Carregar legenda externa...", _viewModel.OpenSubtitleExternalCommand, null, Key.U, ModifierKeys.Control),
         BuildItem("Carregar áudio externo...", _viewModel.OpenAudioExternalCommand, null, Key.I, ModifierKeys.Control),

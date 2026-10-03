@@ -66,6 +66,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private ICommand? _setSaturationCommand;
     private ICommand? _setGammaCommand;
     private ICommand? _resetImageCommand;
+    private ICommand? _openFolderCommand;
 
     [GeneratedRegex(@".*?(?:s\d+e\d+|\d+x\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SeasonEpisode();
@@ -124,6 +125,9 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public ICommand OpenTorrentFileCommand =>
         _openTorrentFileCommand ??= new RelayCommand(
             () => OpenFileExternalRequested?.Invoke(this, new ExternalMediaEventArgs(FileType.Torrent)));    
+    public ICommand OpenFolderCommand =>
+        _openFolderCommand ??= new RelayCommand(
+            () => OpenFileExternalRequested?.Invoke(this, new ExternalMediaEventArgs(FileType.Folder)));
     public ICommand ToggleFullscreenCommand =>
         _toggleFullScreenCommand ??= new RelayCommand(
             () => PlaybackActionRequested?.Invoke(this, new PlaybackEventArgs(PlaybackType.Fullscreen)));

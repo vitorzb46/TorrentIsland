@@ -118,6 +118,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _inactivityTimer.Interval = TimeSpan.FromSeconds(time);
         _inactivityTimer.Start();
     }
+    public async Task CarregarPastaAsync(List<string>? arquivos)
+    {
+        // TODO
+    }
     public async Task CarregarMidiaAsync(string caminhoOuUrl)
     {
         try
@@ -694,6 +698,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 case FileType.Subtitle: await _controls.ProcessarLegendaExternaAsync(); return;
                 case FileType.Video: await _controls.ProcessarMidiaAsync(); return;
                 case FileType.Torrent: await _controls.ProcessarTorrentAsync(); return;
+                case FileType.Folder: await _controls.AbrirPastaAsync(); return;
                 default: Log.Salvar($"[OpenFile] FileType não tratado: {e.Type}"); return;
             }
         }

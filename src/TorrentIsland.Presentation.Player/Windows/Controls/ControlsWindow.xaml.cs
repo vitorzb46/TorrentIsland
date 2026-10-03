@@ -258,6 +258,26 @@ public partial class ControlsWindow : Window, IDisposable
         LoadMediaButton.ToolTip = Utils.ToolTipDesign("Carregar legenda ou vídeo", LoadMediaButton, horiOffset: -75);
     }
 
+    public async Task AbrirPastaAsync()
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Abrir pasta de mídia",
+            InitialDirectory = Directory.GetCurrentDirectory()
+        };
+
+        if (dialog.ShowDialog(this) == true) // Todo
+        {
+            var arquivos = Directory.GetFiles(dialog.FolderName, "*.*")
+                .Where(file => Utils.ExtensoesVideo.Contains(Path.GetExtension(file).ToLowerInvariant()))
+                .ToList();
+            if (arquivos.Count != 0)
+            {
+                await _playerWindow.CarregarPastaAsync(arquivos);
+            }
+        }
+    }
+
     public async Task ProcessarMidiaAsync()
     {
         var padroes = string.Join(";", Utils.ExtensoesVideo.Select(e => "*" + e));
