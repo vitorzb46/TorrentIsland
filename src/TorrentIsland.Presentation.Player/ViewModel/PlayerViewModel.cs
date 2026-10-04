@@ -466,18 +466,41 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Public Methods
-    public void AddMedia(Media media)
+    public async Task LoadingStateAsync(string message, Func<Task> func)
     {
-        _playlist.Enqueue(media);
-        Task.Run(async () => await ProcessarLegendasUndAsync(media));
-    }
+        await Utils.AtualizarUIAsync(async () =>
+        {
+            IsVideoVisible = false;
+            IsOpening = true;
+            IsLoading = true;
+            LoadingMessage = message;
+        });       
 
-    public void PlayNextMedia()
+        try
+        {
+            await func();
+        }
+        finally
+        {
+            await Utils.AtualizarUIAsync(async () =>
+            {
+                IsOpening = false;
+                IsLoading = false;
+                LoadingMessage = string.Empty;
+                IsVideoVisible = true;
+            });
+        }
+    }
+    public void AddMedia(Media media) => _playlist.Enqueue(media);
+
+    public async Task PlayNextMedia()
     {
         if (_playlist.Count == 0) return;
         var nextMedia = _playlist.Dequeue();
         StartPlayback(nextMedia);
+        await LoadMediaTracksAsync();
     }
+    
     public void IncrementBrightness(float step = 0.05f) => Brightness = _brightness + step;
 
     public void DecrementBrightness(float step = 0.05f) => Brightness = _brightness - step;
@@ -699,11 +722,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         {
             await TimeLogging.Time(async () =>
             {
-                await ProcessarLegendasUndAsync(_media).ConfigureAwait(false);
-            }, "ProcessarLegendasUndAsync");
+                await ProcessarLegendasUndAsync().ConfigureAwait(false);
+            }, "ProcessarLegendasUndAsync").ConfigureAwait(false);
         }, ct);
 
-        //await ProcessarLegendasUndAsync().ConfigureAwait(false);
+        // await ProcessarLegendasUndAsync();
     }
 
     public void LoadExternalAudio(string filePath)
@@ -751,13 +774,23 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     }
     #endregion
 
-    #region Private Methods  
+    #region Private Methods      
+    private async Task LoadMediaTracksAsync()
+    {
+        Utils.VideoView_Background_Black();
+        await LoadingStateAsync("Carregando faixas...", async () =>
+        {
+            SetPause(true);
+            await PopulateTracksAsync();
+            SetPause(false);
+        });
+    }
+
     private void StartPlayback(Media media)
     {
         _media = media;
         _mediaPlayer.Media = media;
         _mediaPlayer.Play(_media);
-        IsVideoVisible = true;
     }  
     private void SetAspectRatio(string? ratio)
     {
@@ -804,7 +837,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         return tempo.ToString(@"mm\:ss");
     }
 
-    private async Task ProcessarLegendasUndAsync(Media? media)
+    private async Task ProcessarLegendasUndAsync()
     {
         try
         {
@@ -814,9 +847,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 return;
             }
             
-            // media = _mediaPlayer.Media;
-
-            if (media == null) return;
+            if (_media == null) return;
             TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
             TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
 
@@ -824,15 +855,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
             if (spuTracks is not { Length: > 0 }) return;
 
             string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-            string caminhoTempBase = Path.Combine(Path.GetTempPath(), ".SubExtract");
-
+            
             ConcurrentBag<TrackItem> novosTracks = [];
             Dictionary<int, (string? Language, string? Description, uint Codec)>? metadadosLegendas;
             Dictionary<int, ulong> tracksParaDetectar = [];
             List<TrackDescription> undTracks = [];
             List<int> vlcIdsPorPosicao = [];
 
-            metadadosLegendas = media.Tracks
+            metadadosLegendas = _media.Tracks
                 .Where(m => m.TrackType == TrackType.Text)
                 .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
 
@@ -841,25 +871,21 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                                                                   .OrderBy(t => t.Id)];
 
             if (undTracks.Count == 0) return;
-
-            LoadingMessage = "Processando legendas...";
-
-            // Limpa o diretório temporário se houver resquícios não tratados.
-            if (Directory.Exists(caminhoTempBase))
-                Directory.Delete(caminhoTempBase, true);
-
-            Directory.CreateDirectory(caminhoTempBase);
-
-            AudioTracks.Clear();
-            AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
-            foreach (var t in audioTracks.Where(t => t.Id >= 0))
+            
+            await Utils.AtualizarUIAsync(async () =>
             {
-                AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
-            }
+                LoadingMessage = "Processando legendas...";
+                AudioTracks.Clear();
+                AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
+                foreach (var t in audioTracks.Where(t => t.Id >= 0))
+                {
+                    AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
+                }
 
-            SubtitleTracks.Clear();
-            SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
-
+                SubtitleTracks.Clear();
+                SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
+            });
+            
             var mkvMetaOrdenada = Subtitle.GetMetadata(FilePath);
             if (undTracks.Count != mkvMetaOrdenada.Count)
             {
@@ -1013,16 +1039,16 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         IsPlaying = false;
         IsLoading = false;
     }
-    private void OnEndReached(object? sender, EventArgs e)
+    private async void OnEndReached(object? sender, EventArgs e)
     {
         IsPlaying = false;
         IsLoading = false;        
         try
         {
-            ThreadPool.QueueUserWorkItem(_ =>
+            await Task.Run(async () =>
             {
                 MediaDispose();
-                PlayNextMedia();
+                await PlayNextMedia();
             });
         }
         catch (Exception ex)

@@ -126,36 +126,33 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             if (!await TryAddMediaAsync(file))
                 continue;
         }
-        _viewModel.PlayNextMedia();
+        await _viewModel.PlayNextMedia();
     }
     
     public async Task CarregarMidiaAsync(string caminhoOuUrl)
     {
         try
         {
-            await MediaTimestamp.Load();
-            _viewModel.IsVideoVisible = false;
-            _viewModel.IsOpening = true;
-            _viewModel.IsLoading = true;
-            _viewModel.LoadingMessage = "Carregando mídia...";            
-
-            var media = await EscolherMidiaAsync(caminhoOuUrl);
-            if (media == null) return;
-
-            KeyGenerator.Hash(PlayerViewModel.FilePath);
-            var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
-            _viewModel.SetMedia(media, timeCached.Time);
-
-            await Utils.AtualizarUIAsync(async () =>
+            await _viewModel.LoadingStateAsync("Carregando mídia...", async () =>
             {
-                await _viewModel.PopulateTracksAsync();
-                _viewModel.SetPause(false);
-                ShowControls();
-                VideoView.InvalidateVisual();
-                Utils.VideoView_Background_Black();
-                await Task.Delay(300); //Tempo de espera para evitar artefato visual
-                _viewModel.IsVideoVisible = true;
-                _viewModel.IsPlaying = true;
+                await PrepareForNewMediaAsync();
+                await MediaTimestamp.Load();
+                var media = await MediaSetupAsync(caminhoOuUrl);
+                if (media == null) return;
+
+                KeyGenerator.Hash(PlayerViewModel.FilePath);
+                var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
+                _viewModel.SetMedia(media, timeCached.Time);
+
+                await Utils.AtualizarUIAsync(async () =>
+                {
+                    await _viewModel.PopulateTracksAsync();
+                    _viewModel.SetPause(false);
+                    ShowControls();
+                    VideoView.InvalidateVisual();
+                    Utils.VideoView_Background_Black();
+                    await Task.Delay(300); //Tempo de espera para evitar artefato visual
+                });
             });
         }
         catch (Exception ex)
@@ -164,37 +161,21 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             MessageBox.Show($"Não foi possível carregar a mídia: {caminhoOuUrl}", "Player",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally
-        {
-            _viewModel.IsOpening = false;
-            _viewModel.IsLoading = false;
-            _viewModel.LoadingMessage = "Carregando...";
-        }
     }
-
-    private async Task PrepareForNewMediaAsync()
-    {
-        var media = _viewModel.GetMedia();
-        if (media is null) return;
-        await _viewModel.SaveCacheAsync();
-        _viewModel.MediaDispose();
-    }
-
+    
     public async Task CarregarStreamTorrentAsync(string caminhoOuUrl)
     {
         try
         {
-            _viewModel.IsVideoVisible = false;
-            _viewModel.IsOpening = true;
-            _viewModel.IsLoading = true;
-            _viewModel.LoadingMessage = "Iniciando streaming...";
-
-            string streamUrl = await Task.Run(async () =>
+            await _viewModel.LoadingStateAsync("Iniciando streaming...", async () =>
             {
-                return await StreamService.ToPlayerAsync(caminhoOuUrl);
+                string streamUrl = await Task.Run(async () =>
+                {
+                    return await StreamService.ToPlayerAsync(caminhoOuUrl);
+                });
+                AppSettings.OneStream = true;
+                await CarregarMidiaAsync(streamUrl);
             });
-            AppSettings.OneStream = true;
-            await CarregarMidiaAsync(streamUrl);
         }
         catch (Exception ex)
         {
@@ -205,26 +186,28 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             if (_viewModel.GetMediaPlayer != null)
                 _viewModel.IsVideoVisible = true;
         }
-        finally
-        {
-            _viewModel.IsLoading = false;
-        }
     }
     #endregion
 
     #region Private Methods
+    private async Task PrepareForNewMediaAsync()
+    {
+        var media = _viewModel.GetMedia();
+        if (media is null) return;
+        await _viewModel.SaveCacheAsync();
+        _viewModel.MediaDispose();
+    }
+    
     private async Task<bool> TryAddMediaAsync(string file)
     {
-        Media? media = await EscolherMidiaAsync(file);
+        Media? media = await MediaSetupAsync(file);
         if (media == null) return false;
         _viewModel.AddMedia(media);
         return true;
     }
 
-    private async Task<Media?> EscolherMidiaAsync(string caminhoOuUrl)
+    private async Task<Media?> MediaSetupAsync(string caminhoOuUrl)
     {
-        await PrepareForNewMediaAsync();
-
         Media? media;
         if (File.Exists(caminhoOuUrl))
         {
