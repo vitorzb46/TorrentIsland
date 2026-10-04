@@ -161,7 +161,7 @@
                         FontSize="26"
                         FontWeight="Bold"
                         Foreground="#FFFFE000"
-                        Text="{Binding SubtitleMessage}" />
+                        Text="{Binding OsdMessage}" />
                 </Border>
 
                 <Grid
