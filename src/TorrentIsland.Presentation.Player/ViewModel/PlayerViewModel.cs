@@ -25,7 +25,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 {
     #region Fields
     private readonly MediaPlayer _mediaPlayer;
-    private Media? _media;    
+    private Media? _media;
+    private readonly Queue<Media> _playlist = new();
     private readonly IFormattingHelper _fb;
     private readonly DispatcherTimer _loadingDebounce;
     private bool _disposed;
@@ -465,6 +466,18 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     #endregion
 
     #region Public Methods
+    public void AddMedia(Media media)
+    {
+        _playlist.Enqueue(media);
+        Task.Run(async () => await ProcessarLegendasUndAsync(media));
+    }
+
+    public void PlayNextMedia()
+    {
+        if (_playlist.Count == 0) return;
+        var nextMedia = _playlist.Dequeue();
+        StartPlayback(nextMedia);
+    }
     public void IncrementBrightness(float step = 0.05f) => Brightness = _brightness + step;
 
     public void DecrementBrightness(float step = 0.05f) => Brightness = _brightness - step;
@@ -532,15 +545,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public void SetMedia(Media media, long time)
     {
         MediaDispose();
-        _media = media;
-        _mediaPlayer.Media = media;
-        _mediaPlayer.Play(_media);
+        StartPlayback(media);
         _mediaPlayer.SetPause(true);
         if (time > 5000)
         {
             SeekTo(TimeSpan.FromMilliseconds(time - 5000));
         }
     }
+    
     public void SeekTo(TimeSpan timeSpan)
     {
         if (DuracaoTotalEmMilissegundos > 0)
@@ -685,7 +697,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 
         await Task.Run(async () =>
         {
-            await TimeLogging.Time(ProcessarLegendasUndAsync);
+            await TimeLogging.Time(async () =>
+            {
+                await ProcessarLegendasUndAsync(_media).ConfigureAwait(false);
+            }, "ProcessarLegendasUndAsync");
         }, ct);
 
         //await ProcessarLegendasUndAsync().ConfigureAwait(false);
@@ -736,7 +751,14 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     }
     #endregion
 
-    #region Private Methods    
+    #region Private Methods  
+    private void StartPlayback(Media media)
+    {
+        _media = media;
+        _mediaPlayer.Media = media;
+        _mediaPlayer.Play(_media);
+        IsVideoVisible = true;
+    }  
     private void SetAspectRatio(string? ratio)
     {
         CurrentAspectRatio = ratio;
@@ -782,7 +804,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         return tempo.ToString(@"mm\:ss");
     }
 
-    private async Task ProcessarLegendasUndAsync()
+    private async Task ProcessarLegendasUndAsync(Media? media)
     {
         try
         {
@@ -791,11 +813,10 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
                 return;
             }
-
-            Media? media = _mediaPlayer.Media;
+            
+            // media = _mediaPlayer.Media;
 
             if (media == null) return;
-
             TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
             TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
 
@@ -995,7 +1016,19 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private void OnEndReached(object? sender, EventArgs e)
     {
         IsPlaying = false;
-        IsLoading = false;
+        IsLoading = false;        
+        try
+        {
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                MediaDispose();
+                PlayNextMedia();
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"Erro ao tentar reproduzir próximo item da playlist: {ex.Message} {ex.StackTrace}");
+        }
     }
     private void OnPlaying(object? sender, EventArgs e)
     {
@@ -1051,8 +1084,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     private void OnMediaChanged(object? sender, MediaPlayerMediaChangedEventArgs e)
     {
         // IsLoading = true;
-        AudioTracks.Clear();
-        SubtitleTracks.Clear();
+        Utils.AtualizarUI(() =>
+        {
+            AudioTracks.Clear();
+            SubtitleTracks.Clear();
+        });        
         VlcHwnd = _mediaPlayer.Hwnd;
     }
     private void OnEncounteredError(object? sender, EventArgs e)

@@ -262,7 +262,7 @@ public partial class ControlsWindow : Window, IDisposable
     {
         var dialog = new OpenFolderDialog
         {
-            Title = "Abrir pasta de mídia",
+            Title = "Abrir pasta de mídia(s)",
             InitialDirectory = Directory.GetCurrentDirectory()
         };
 

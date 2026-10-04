@@ -118,10 +118,17 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _inactivityTimer.Interval = TimeSpan.FromSeconds(time);
         _inactivityTimer.Start();
     }
-    public async Task CarregarPastaAsync(List<string>? arquivos)
+    public async Task CarregarPastaAsync(List<string>? folder)
     {
         // TODO
+        foreach (var file in folder!)
+        {
+            if (!await TryAddMediaAsync(file))
+                continue;
+        }
+        _viewModel.PlayNextMedia();
     }
+    
     public async Task CarregarMidiaAsync(string caminhoOuUrl)
     {
         try
@@ -130,7 +137,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _viewModel.IsVideoVisible = false;
             _viewModel.IsOpening = true;
             _viewModel.IsLoading = true;
-            _viewModel.LoadingMessage = "Carregando mídia...";
+            _viewModel.LoadingMessage = "Carregando mídia...";            
 
             var media = await EscolherMidiaAsync(caminhoOuUrl);
             if (media == null) return;
@@ -163,6 +170,14 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _viewModel.IsLoading = false;
             _viewModel.LoadingMessage = "Carregando...";
         }
+    }
+
+    private async Task PrepareForNewMediaAsync()
+    {
+        var media = _viewModel.GetMedia();
+        if (media is null) return;
+        await _viewModel.SaveCacheAsync();
+        _viewModel.MediaDispose();
     }
 
     public async Task CarregarStreamTorrentAsync(string caminhoOuUrl)
@@ -198,13 +213,17 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     #endregion
 
     #region Private Methods
+    private async Task<bool> TryAddMediaAsync(string file)
+    {
+        Media? media = await EscolherMidiaAsync(file);
+        if (media == null) return false;
+        _viewModel.AddMedia(media);
+        return true;
+    }
+
     private async Task<Media?> EscolherMidiaAsync(string caminhoOuUrl)
     {
-        if (_viewModel.GetMedia != null)
-        {
-            await _viewModel.SaveCacheAsync();
-            _viewModel.MediaDispose();
-        }
+        await PrepareForNewMediaAsync();
 
         Media? media;
         if (File.Exists(caminhoOuUrl))
