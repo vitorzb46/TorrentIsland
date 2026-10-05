@@ -42,6 +42,13 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
             if (SnapShot is null) return;
             ListBoxTorrents.ItemsSource = SnapShot;
         };
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible) _playerWindow.AbrirMenu();
+            else _playerWindow.FecharMenu();
+
+            _playerWindow.ReiniciarTimerInatividade();
+        };
     }
 
     #region Mouse Click

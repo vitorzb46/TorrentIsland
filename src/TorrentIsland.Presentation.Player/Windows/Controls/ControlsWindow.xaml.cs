@@ -72,7 +72,7 @@ public partial class ControlsWindow : Window, IDisposable
             .FromProperty(Flyout.IsOpenProperty, typeof(Flyout))
             .AddValueChanged(TorrentStatusFlyout, OnFlyoutIsOpenChanged);
 
-        ConfigMenu.Closed += OnConfigMenuClosed;        
+        ConfigMenu.Closed += OnConfigMenuClosed;
     }
 
     #region Timeline Slider
@@ -150,7 +150,7 @@ public partial class ControlsWindow : Window, IDisposable
     {
         if (sender is not Button btn) return;
 
-        _playerWindow.MenuAberto = true;
+        _playerWindow.AbrirMenu();
         _playerWindow.ReiniciarTimerInatividade();
 
         ConfigMenu.DataContext = DataContext;
@@ -158,11 +158,11 @@ public partial class ControlsWindow : Window, IDisposable
         ConfigMenu.Placement = PlacementMode.Top;
         ConfigMenu.HorizontalOffset = -120;
         ConfigMenu.VerticalOffset = -25;
-        ConfigMenu.IsOpen = true;        
+        ConfigMenu.IsOpen = true;
     }
 
     private void OnConfigMenuClosed(object? sender, EventArgs e) =>
-        _playerWindow.MenuAberto = false;
+        _playerWindow.FecharMenu();
 
     private void FullscreenButton_Click(object sender, RoutedEventArgs e) =>
         FullscreenRequested?.Invoke(this, EventArgs.Empty);
@@ -398,9 +398,15 @@ public partial class ControlsWindow : Window, IDisposable
     private void OnFlyoutIsOpenChanged(object? sender, EventArgs e)
     {
         if (TorrentStatusFlyout.IsOpen)
+        {
+            _playerWindow.AbrirMenu();
             _torrentStatus.Start();
+        }
         else
+        {
+            _playerWindow.FecharMenu();
             _torrentStatus.Stop();
+        }
     }
 
     protected override void OnClosed(EventArgs e)

@@ -27,11 +27,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 {
     #region Fields + Constructor
     private readonly PlayerViewModel _viewModel;
-    private readonly ControlsWindow _controls;    
+    private readonly ControlsWindow _controls;
     private readonly IDLService _ytDlService;
     private readonly TorrentSearchWindow _torrentSearch;
     private readonly DispatcherTimer _inactivityTimer;
-    private readonly DispatcherTimer _osdTimer;    
+    private readonly DispatcherTimer _osdTimer;
+    private int _menusAbertos;
 
     public PlayerWindow(IStreamService streamService,
                         IManagers managers,
@@ -95,7 +96,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
             Environment.Exit(0);
         };
-        
+
         StreamService = streamService;
         _ytDlService = ytDlService;
         _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
@@ -103,13 +104,21 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     #endregion
 
     #region Properties
-    public bool MenuAberto { get; set; }
+    public bool MenuAberto => _menusAbertos > 0;
     public string MediaUrl { get; set; } = "";
     private IStreamService StreamService { get; }
     private IManagers Managers { get; }
     #endregion
 
-    #region Public Methods
+    #region Public Methods    
+    public void AbrirMenu() => _menusAbertos++;
+
+    public void FecharMenu()
+    {
+        if (_menusAbertos == 0) return;
+
+        _menusAbertos--;
+    }
     public void ReiniciarTimerInatividade(double time = 5)
     {
         if (!_viewModel.IsFullscreen ||
@@ -128,7 +137,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
         await _viewModel.PlayNextMedia();
     }
-    
+
     public async Task CarregarMidiaAsync(string caminhoOuUrl)
     {
         try
@@ -162,7 +171,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
-    
+
     public async Task CarregarStreamTorrentAsync(string caminhoOuUrl)
     {
         try
@@ -197,7 +206,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         await _viewModel.SaveCacheAsync();
         _viewModel.MediaDispose();
     }
-    
+
     private async Task<bool> TryAddMediaAsync(string file)
     {
         Media? media = await MediaSetupAsync(file);
@@ -390,7 +399,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private void ThumbStop_Click(object? sender, EventArgs e)
     {
         _viewModel.Stop();
-        
+
         if (_viewModel.IsPlaying)
         {
             _viewModel.IsPlaying = false;
@@ -430,7 +439,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private void OverlayGrid_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         e.Handled = true;
-        MenuAberto = true;
+        AbrirMenu();
         ReiniciarTimerInatividade();
         ReforcarTopmostControles();
 
@@ -440,7 +449,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
         menu.Closed += (_, _) =>
         {
-            MenuAberto = false;
+            FecharMenu();
             ReiniciarTimerInatividade();
             ReforcarTopmostControles();
         };
@@ -491,13 +500,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.ContextIdle);
         };
 
-        
+
         _inactivityTimer.Tick += (_, _) =>
         {
             if (!_viewModel.IsFullscreen || MenuAberto) return;
             HideControls();
         };
-        
+
         _osdTimer.Tick += (s, e) =>
         {
             OsdNotification.Visibility = Visibility.Collapsed;
@@ -537,13 +546,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         // Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
         base.OnPreviewKeyDown(e);
 
-        bool isOpenBracket  = e.Key == Key.OemOpenBrackets  || e.Key == Key.Oem5;
+        bool isOpenBracket = e.Key == Key.OemOpenBrackets || e.Key == Key.Oem5;
         bool isCloseBracket = e.Key == Key.OemCloseBrackets || e.Key == Key.Oem6;
         bool isNotMod = Keyboard.Modifiers == ModifierKeys.None;
         bool isControlKey = Keyboard.Modifiers == ModifierKeys.Control;
         bool isShiftKey = Keyboard.Modifiers == ModifierKeys.Shift;
-        bool ExecuteDelay(bool advance, double value) 
-            { _viewModel.DelaySpuCommand.Execute((advance, value)); return true; }
+        bool ExecuteDelay(bool advance, double value)
+        { _viewModel.DelaySpuCommand.Execute((advance, value)); return true; }
 
         bool Adjust(Action action, Func<string> osdMessage)
         {
@@ -551,61 +560,61 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             ShowOsd(osdMessage());
             return true;
         }
-        
+
         switch (e.Key)
         {
             case Key.Escape when _viewModel.IsFullscreen:
-            case Key.F11:   ToggleFullscreen(); return;
+            case Key.F11: ToggleFullscreen(); return;
             case Key.Space: _viewModel.TogglePlay(); return;
-            case Key.Left:  _viewModel.RetrocederTempo(); return;
+            case Key.Left: _viewModel.RetrocederTempo(); return;
             case Key.Right: _viewModel.AvancarTempo(); return;
-            case Key.M:     _viewModel.ToggleMute(); return;
-            case Key.Down:  _viewModel.ToggleVolume(false); ShowControls(); e.Handled = true; return;
-            case Key.Up:    _viewModel.ToggleVolume(true);  ShowControls(); e.Handled = true; return;
+            case Key.M: _viewModel.ToggleMute(); return;
+            case Key.Down: _viewModel.ToggleVolume(false); ShowControls(); e.Handled = true; return;
+            case Key.Up: _viewModel.ToggleVolume(true); ShowControls(); e.Handled = true; return;
         }
-        
+
         var handled = (e.Key, isNotMod, isControlKey, isShiftKey) switch
         {
             // Delay de Legenda
-            _ when isOpenBracket  && isNotMod     => ExecuteDelay(false, 0.5),
-            _ when isCloseBracket && isNotMod     => ExecuteDelay(true, 0.5),
-            _ when isOpenBracket  && isControlKey => ExecuteDelay(false, 5.0),
+            _ when isOpenBracket && isNotMod => ExecuteDelay(false, 0.5),
+            _ when isCloseBracket && isNotMod => ExecuteDelay(true, 0.5),
+            _ when isOpenBracket && isControlKey => ExecuteDelay(false, 5.0),
             _ when isCloseBracket && isControlKey => ExecuteDelay(true, 5.0),
-            
+
             (Key.V, _, true, _) => ProcessPaste(e),
 
             // Brilho
-            (Key.B, _, true, _) => Adjust(() 
+            (Key.B, _, true, _) => Adjust(()
                 => _viewModel.DecrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
-            (Key.B, _, _, true) => Adjust(() 
+            (Key.B, _, _, true) => Adjust(()
                 => _viewModel.IncrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
 
             // Contraste
-            (Key.C, _, true, _) => Adjust(() 
+            (Key.C, _, true, _) => Adjust(()
                 => _viewModel.DecrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
-            (Key.C, _, _, true) => Adjust(() 
+            (Key.C, _, _, true) => Adjust(()
                 => _viewModel.IncrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
 
             // Matiz
-            (Key.H, _, true, _) => Adjust(() 
+            (Key.H, _, true, _) => Adjust(()
                 => _viewModel.DecrementHue(), () => $"Matiz: {_viewModel.Hue}"),
-            (Key.H, _, _, true) => Adjust(() 
+            (Key.H, _, _, true) => Adjust(()
                 => _viewModel.IncrementHue(), () => $"Matiz: {_viewModel.Hue}"),
 
             // Saturação
-            (Key.S, _, true, _) => Adjust(() 
+            (Key.S, _, true, _) => Adjust(()
                 => _viewModel.DecrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
-            (Key.S, _, _, true) => Adjust(() 
+            (Key.S, _, _, true) => Adjust(()
                 => _viewModel.IncrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
 
             // Gamma
-            (Key.G, _, true, _) => Adjust(() 
+            (Key.G, _, true, _) => Adjust(()
                 => _viewModel.DecrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
-            (Key.G, _, _, true) => Adjust(() 
+            (Key.G, _, _, true) => Adjust(()
                 => _viewModel.IncrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
 
             // Reset
-            (Key.R, _, _, true) => Adjust(() 
+            (Key.R, _, _, true) => Adjust(()
                 => _viewModel.ResetImageCommand.Execute(null), () => "Ajustes de imagem resetados"),
 
             // Nenhuma combinação correspondida
@@ -619,36 +628,36 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         var dataObject = Clipboard.GetDataObject();
         if (dataObject == null) return false;
-        
+
         var files = dataObject.GetData(DataFormats.FileDrop) as string[];
         var text = dataObject.GetData(DataFormats.Text) as string;
-        string filepath(string[] fp) => fp.Length > 0 ? 
+        string filepath(string[] fp) => fp.Length > 0 ?
             Path.GetExtension(fp[0]).ToLowerInvariant() : string.Empty;
-        
+
         var processado = (files, text) switch
         {
-            (string[] f, _) when f.Length > 0 && 
-                Utils.ExtensoesVideo.Contains(filepath(f)) => 
+            (string[] f, _) when f.Length > 0 &&
+                Utils.ExtensoesVideo.Contains(filepath(f)) =>
                     IniciarCarregamentoMidia(f[0]),
-                
-            (string[] t, _) when t.Length > 0 && 
-                Utils.ExtensaoTorrent.Contains(filepath(t)) => 
+
+            (string[] t, _) when t.Length > 0 &&
+                Utils.ExtensaoTorrent.Contains(filepath(t)) =>
                     IniciarCarregamentoTorrent(t[0]),
-                
-            (_, string m) when m != null && 
-                (m.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) || 
-                m.StartsWith("http://itorrents.net", StringComparison.OrdinalIgnoreCase)) => 
+
+            (_, string m) when m != null &&
+                (m.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) ||
+                m.StartsWith("http://itorrents.net", StringComparison.OrdinalIgnoreCase)) =>
                     IniciarCarregamentoTorrent(m),
-                
-            (_, string yt) when !string.IsNullOrWhiteSpace(yt) => 
+
+            (_, string yt) when !string.IsNullOrWhiteSpace(yt) =>
                     IniciarCarregamentoMidia(yt),
-                
+
             _ => false
         };
 
         if (processado) e.Handled = true;
         return processado;
-        
+
         bool IniciarCarregamentoMidia(string caminho)
         {
             _viewModel.LoadingMessage = "Carregando mídia...";
@@ -689,7 +698,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             BtnPlayPause.Description = _viewModel.IsPlaying ? "Pausar" : "Reproduzir";
         });
     }
-    
+
     private async void OnOpenFileExternalRequested(object? sender, ExternalMediaEventArgs e)
     {
         try
@@ -715,7 +724,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         try
         {
             switch (e.Type)
-            {           
+            {
                 case PlaybackType.Stop: ThumbStop_Click(sender, e); return;
                 case PlaybackType.Fullscreen: ThumbFullscreen_Click(sender, e); return;
                 default: Log.Salvar($"[Playback] PlaybackType não tratado: {e.Type}"); return;
