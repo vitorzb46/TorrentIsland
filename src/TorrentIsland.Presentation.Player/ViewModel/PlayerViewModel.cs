@@ -23,6 +23,20 @@ namespace TorrentIsland.Presentation.Player.ViewModel;
 
 public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposable
 {
+    #region Subtitle Processing Records
+    private readonly record struct PendingTrack(ulong MkvNumber, int VlcId);
+
+    private sealed record AudioSubtitleMetadata(
+        TrackDescription[] AudioTracks,
+        List<TrackDescription> UndTracks,
+        Dictionary<int, (string? Language, string? Description, uint Codec)> SubtitleMetadata,
+        string UserLanguage);
+
+    private sealed record TrackMapping(
+        ConcurrentBag<TrackItem> CachedTracks,
+        List<PendingTrack> PendingTracks);
+    #endregion
+
     #region Fields
     private readonly MediaPlayer _mediaPlayer;
     private Media? _media;
@@ -623,10 +637,6 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         }
     }
 
-    private void ZeroingDelaySpu(bool delay) => ToggleDelaySpu(delay, 0);
-
-    private void DelaySpu5s(bool delay) => ToggleDelaySpu(delay, 5);
-
     public void ToggleDelaySpu(bool delay, double timeDelay = 0.5)
     {
         if (delay)
@@ -846,121 +856,178 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
                 Log.Salvar("Caminho do vídeo inválido ou arquivo não encontrado.");
                 return;
             }
-            
-            if (_media == null) return;
-            TrackDescription[]? audioTracks = _mediaPlayer.AudioTrackDescription;
-            TrackDescription[]? spuTracks = _mediaPlayer.SpuDescription;
 
-            if (audioTracks is not { Length: > 0 }) return;
-            if (spuTracks is not { Length: > 0 }) return;
+            var meta = ResolveAudioSubtitleMetadata();
+            if (meta is null) return;
 
-            string idiomaUsuario = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
-            
-            ConcurrentBag<TrackItem> novosTracks = [];
-            Dictionary<int, (string? Language, string? Description, uint Codec)>? metadadosLegendas;
-            Dictionary<int, ulong> tracksParaDetectar = [];
-            List<TrackDescription> undTracks = [];
-            List<int> vlcIdsPorPosicao = [];
+            await PrepareTrackUiAsync(meta);
 
-            metadadosLegendas = _media.Tracks
-                .Where(m => m.TrackType == TrackType.Text)
-                .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
+            var mapping = await BuildTrackMappingAsync(meta);
 
-            undTracks = [.. spuTracks.Where(t => metadadosLegendas.ContainsKey(t.Id) &&
-                                                 metadadosLegendas[t.Id].Language == "und")
-                                                                  .OrderBy(t => t.Id)];
+            await ExtractAndDetectAsync(mapping);
 
-            if (undTracks.Count == 0) return;
-            
-            await Utils.AtualizarUIAsync(async () =>
-            {
-                LoadingMessage = "Processando legendas...";
-                AudioTracks.Clear();
-                AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
-                foreach (var t in audioTracks.Where(t => t.Id >= 0))
-                {
-                    AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
-                }
-
-                SubtitleTracks.Clear();
-                SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
-            });
-            
-            var mkvMetaOrdenada = Subtitle.GetMetadata(FilePath);
-            if (undTracks.Count != mkvMetaOrdenada.Count)
-            {
-                Log.Salvar($"[Aviso] undTracks={undTracks.Count} " +
-                        $"mkvTracks={mkvMetaOrdenada.Count} — mapeamento pode estar errado");
-            }
-
-            var n = Math.Min(undTracks.Count, mkvMetaOrdenada.Count);
-            var semCacheMkv = new HashSet<ulong>();
-            var mkvParaVlc = new Dictionary<ulong, int>();
-
-            for (int i = 0; i < n; i++)
-            {
-                var vlcId = undTracks[i].Id;
-                var mkvNum = mkvMetaOrdenada[i].TrackNumber;
-                var cacheEntry = await Subtitle.TryGetAsync(FilePath, vlcId);
-
-                if (cacheEntry != null)
-                {
-                    novosTracks.Add(new TrackItem(vlcId, cacheEntry.Language));
-                    continue;
-                }
-
-                semCacheMkv.Add(mkvNum);
-                mkvParaVlc[mkvNum] = vlcId;
-                Log.Salvar($"Track sem cache: {mkvNum}");
-            }
-
-            if (semCacheMkv.Count > 0)
-            {
-                const int maxChars = 2000;
-
-                var lista = Subtitle.Extraction(FilePath, semCacheMkv);
-
-                // Correlaciona VLC Id ↔ SubtitleTrack por índice
-                var trackTexts = new Dictionary<int, string>(mkvParaVlc.Count);
-
-                foreach (var track in lista)
-                {
-                    if (!mkvParaVlc.TryGetValue(track.TrackNumber, out var vlcId))
-                        continue;
-
-                    var text = string.Join("\n", track.Cues
-                        .Where(c => !string.IsNullOrEmpty(c.Text))
-                        .Select(c => c.Text));
-
-                    if (text.Length > maxChars)
-                        text = text[..maxChars];
-
-                    trackTexts[vlcId] = text;
-                }
-
-                await Subtitle.Detection(novosTracks, trackTexts, FilePath).ConfigureAwait(false);
-            }
-
-            /// Atualiza a coleção na UI
-            await Utils.AtualizarUIAsync(async () =>
-            {
-                SubtitleTracks.Clear();
-                SubtitleTracks.Add(new TrackItem(-1, "Desativar legenda"));
-                var allSubs = novosTracks.ToDictionary(kvp => kvp.Id, kvp => kvp.Name)
-                                         .OrderBy(i => !i.Value.Contains(idiomaUsuario, StringComparison.CurrentCultureIgnoreCase))
-                                         .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
-                                         .ToList();
-
-                foreach (var item in allSubs)
-                {
-                    SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value)));
-                }
-            });
+            await PopulateSubtitleTracksAsync(meta.UserLanguage, mapping.CachedTracks);
         }
         catch (Exception ex)
         {
             Log.Salvar($"Erro em ProcessarLegendasUndAsync: {ex.Message} {ex.StackTrace}");
         }
+    }
+
+    /// <summary>
+    /// Lê tracks de áudio e legenda do MediaPlayer e do Media. Retorna null quando
+    /// não há dados suficientes para prosseguir.
+    /// </summary>
+    private AudioSubtitleMetadata? ResolveAudioSubtitleMetadata()
+    {
+        if (_media == null) return null;
+
+        var audioTracks = _mediaPlayer.AudioTrackDescription;
+        var spuTracks = _mediaPlayer.SpuDescription;
+
+        if (audioTracks is not { Length: > 0 }) return null;
+        if (spuTracks is not { Length: > 0 }) return null;
+
+        var subtitleMetadata = _media.Tracks
+            .Where(m => m.TrackType == TrackType.Text)
+            .ToDictionary(t => t.Id, t => (t.Language, t.Description, t.Codec));
+
+        var undTracks = spuTracks
+            .Where(t => subtitleMetadata.ContainsKey(t.Id) &&
+                        subtitleMetadata[t.Id].Language == "und")
+            .OrderBy(t => t.Id)
+            .ToList();
+
+        if (undTracks.Count == 0) return null;
+
+        var userLanguage = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+
+        return new AudioSubtitleMetadata(
+            audioTracks,
+            undTracks,
+            subtitleMetadata,
+            userLanguage);
+    }
+
+    /// <summary>
+    /// Popula AudioTracks e o placeholder de SubtitleTracks antes da extração.
+    /// </summary>
+    private async Task PrepareTrackUiAsync(AudioSubtitleMetadata meta)
+    {
+        await Utils.AtualizarUIAsync(async () =>
+        {
+            LoadingMessage = "Processando legendas...";
+
+            AudioTracks.Clear();
+            AudioTracks.Add(new TrackItem(-1, "Desativar áudio"));
+            foreach (var t in meta.AudioTracks.Where(t => t.Id >= 0))
+            {
+                AudioTracks.Add(new TrackItem(t.Id, NomeDaFaixa(t.Name, "Áudio", t.Id)));
+            }
+
+            SubtitleTracks.Clear();
+            SubtitleTracks.Add(new TrackItem(-99, "Aguardando legendas..."));
+        });
+    }
+
+    /// <summary>
+    /// Pareia undTracks (VLC) com os TrackNumbers do MKV e separa as faixas
+    /// que já têm cache das que precisam de extração.
+    /// </summary>
+    private async Task<TrackMapping> BuildTrackMappingAsync(AudioSubtitleMetadata meta)
+    {
+        var cachedTracks = new ConcurrentBag<TrackItem>();
+        var pendingTracks = new List<PendingTrack>();
+
+        var mkvOrdered = Subtitle.GetMetadata(FilePath);
+
+        if (meta.UndTracks.Count != mkvOrdered.Count)
+        {
+            Log.Salvar($"[Aviso] undTracks={meta.UndTracks.Count} " +
+                    $"mkvTracks={mkvOrdered.Count} — mapeamento pode estar errado");
+        }
+
+        var n = Math.Min(meta.UndTracks.Count, mkvOrdered.Count);
+
+        for (int i = 0; i < n; i++)
+        {
+            int vlcId = meta.UndTracks[i].Id;
+            ulong mkvNum = mkvOrdered[i].TrackNumber;
+
+            CacheEntry? cacheEntry = await Subtitle.TryGetAsync(FilePath, vlcId);
+            if (cacheEntry != null)
+            {
+                cachedTracks.Add(new TrackItem(vlcId, cacheEntry.Language));
+                continue;
+            }
+
+            pendingTracks.Add(new PendingTrack(mkvNum, vlcId));
+            Log.Salvar($"Track sem cache: {mkvNum}");
+        }
+
+        return new TrackMapping(cachedTracks, pendingTracks);
+    }
+
+    /// <summary>
+    /// Extrai cues das faixas sem cache e roda a detecção de idioma,
+    /// acumulando o resultado no bag existente do mapping.
+    /// </summary>
+    private async Task ExtractAndDetectAsync(TrackMapping mapping)
+    {
+        if (mapping.PendingTracks.Count == 0) return;
+
+        const int maxChars = 2000;
+
+        HashSet<ulong> mkvNumbers = mapping.PendingTracks.Select(p => p.MkvNumber).ToHashSet();
+
+        var lista = Subtitle.Extraction(FilePath, mkvNumbers);
+
+        Dictionary<ulong, int>? mkvToVlc = mapping.PendingTracks.ToDictionary(p => p.MkvNumber, p => p.VlcId);
+
+        var trackTexts = new Dictionary<int, string>(mkvToVlc.Count);
+
+        foreach (var track in lista)
+        {
+            if (!mkvToVlc.TryGetValue(track.TrackNumber, out var vlcId))
+                continue;
+
+            var text = string.Join("\n", track.Cues
+                .Where(c => !string.IsNullOrEmpty(c.Text))
+                .Select(c => c.Text));
+
+            if (text.Length > maxChars)
+                text = text[..maxChars];
+
+            trackTexts[vlcId] = text;
+        }
+        
+        await Subtitle.Detection(mapping.CachedTracks, trackTexts, FilePath).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Ordena as faixas detectadas (idioma do usuário primeiro, depois alfabético)
+    /// e popula SubtitleTracks na UI.
+    /// </summary>
+    private async Task PopulateSubtitleTracksAsync(
+        string userLanguage,
+        ConcurrentBag<TrackItem> allTracks)
+    {
+        await Utils.AtualizarUIAsync(async () =>
+        {
+            SubtitleTracks.Clear();
+            SubtitleTracks.Add(new TrackItem(-1, "Desativar legenda"));
+
+            var allSubs = allTracks
+                    .ToDictionary(kvp => kvp.Id, kvp => kvp.Name)
+                    .OrderBy(i => !i.Value.Contains(userLanguage, StringComparison.CurrentCultureIgnoreCase))
+                    .ThenBy(i => i.Value, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))
+                    .ToList();
+
+            foreach (var item in allSubs)
+            {
+                SubtitleTracks.Add(new TrackItem(item.Key, NomeDaFaixa(null, "Legenda", item.Key, item.Value)));
+            }    
+        });
     }
 
     /// <summary>
