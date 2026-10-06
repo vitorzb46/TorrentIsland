@@ -32,7 +32,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly TorrentSearchWindow _torrentSearch;
     private readonly DispatcherTimer _inactivityTimer;
     private readonly DispatcherTimer _osdTimer;
+    private readonly System.Timers.Timer _autosaveTimer;
     private int _menusAbertos;
+    private int _saving;
 
     public PlayerWindow(IStreamService streamService,
                         IManagers managers,
@@ -62,6 +64,24 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Interval = TimeSpan.FromSeconds(2)
         };
 
+        _autosaveTimer = new System.Timers.Timer
+        {
+            Interval = TimeSpan.FromSeconds(30).TotalMilliseconds
+        };
+
+        _autosaveTimer.Elapsed += async (_, _) =>
+        {
+            if (Interlocked.CompareExchange(ref _saving, 1, 0) != 0) return;
+            try
+            {
+                if (!Managers.GetEngine()) return;
+                await Managers.SaveEngine().ConfigureAwait(false);
+            }
+            catch (Exception ex) { Log.Salvar($"[Autosave] {ex.Message}"); }
+            finally { Interlocked.Exchange(ref _saving, 0); }
+        };
+        _autosaveTimer.Start();
+
         SubscribeEvents();
 
         Loaded += (_, _) =>
@@ -86,14 +106,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
             _controls?.Close();
 
-            //Task.Run(async () =>
-            //{
-            //    await Managers.SaveEngine().ConfigureAwait(false);
-            //});
-
             _viewModel?.Dispose();
             vlc?.Dispose();
-
+            Log.Salvar("[Shutdown] PlayerWindow fechada.");
             Environment.Exit(0);
         };
 
@@ -748,5 +763,24 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         OsdNotification.Visibility = Visibility.Visible;
         ReiniciarTimerOsd();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _autosaveTimer.Stop();
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                if (!Managers.GetEngine()) return;
+                await Managers.SaveEngine();
+            }
+            catch (Exception ex) { Log.Salvar($"[Shutdown] {ex.Message}"); }
+
+            _autosaveTimer?.Dispose();
+        });
+
+        base.OnClosed(e);
     }
 }

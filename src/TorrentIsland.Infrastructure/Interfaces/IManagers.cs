@@ -9,7 +9,8 @@ namespace TorrentIsland.Infrastructure.Interfaces
 {
     public interface IManagers
     {
-        ConcurrentDictionary<Guid, TorrentManager> All { get; set; }
+        ConcurrentDictionary<Guid, TorrentManager> TorrentCollection { get; set; }
+        bool GetEngine();
         Task PauseAsync(Guid id);
         Task PauseAllExceptAsync(Guid id);
         bool HasTorrentActive(Guid streamingId);

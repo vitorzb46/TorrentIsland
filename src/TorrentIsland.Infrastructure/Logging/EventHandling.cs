@@ -19,7 +19,7 @@ public class EventHandling(ClientEngine engine, IManagers managers, ILogger<Torr
     {
         Console.WriteLine("Iniciando eventos.");
 
-        if (!Managers.All.TryGetValue(id, out var manager))
+        if (!Managers.TorrentCollection.TryGetValue(id, out var manager))
         {
             Logger.LogWarning("Torrent ({TorrentId}) não encontrado.", id);
             return;

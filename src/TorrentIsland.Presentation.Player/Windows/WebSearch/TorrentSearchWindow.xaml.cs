@@ -32,11 +32,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         _playerWindow = playerWindow;
         _torrent = torrent;
         _statusEvent = statusEvent;
-        Closed += (_, _) =>
-        {
-            _statusEvent.Stop();
-            SnapShot = ListBoxTorrents.ItemsSource;
-        };
+        Closed += (_, _) => SnapShot = ListBoxTorrents.ItemsSource;
         Loaded += (_, _) =>
         {
             if (SnapShot is null) return;
@@ -88,7 +84,6 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (PainelBusca.Visibility == Visibility.Visible)
         {
-            _statusEvent.Start();
             PainelBusca.Visibility = Visibility.Collapsed;
             PainelProgresso.Visibility = Visibility.Visible;
 
@@ -96,7 +91,6 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
         }
         else
         {
-            _statusEvent.Stop();
             PainelBusca.Visibility = Visibility.Visible;
             PainelProgresso.Visibility = Visibility.Collapsed;
 

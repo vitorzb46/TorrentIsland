@@ -169,7 +169,7 @@ public class TorrentRepository : ITorrentRepository
             foreach (var tracker in trackers)
             {
                 if (Uri.TryCreate(tracker, UriKind.Absolute, out Uri? trackerUri))
-                    await Managers.All[id].TrackerManager.AddTrackerAsync(trackerUri).ConfigureAwait(false);
+                    await Managers.TorrentCollection[id].TrackerManager.AddTrackerAsync(trackerUri).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -214,11 +214,11 @@ public class TorrentRepository : ITorrentRepository
 
     public async Task<TorrentEntity?> ObterAsync(Guid id)
     {
-        if (!Managers.All.ContainsKey(id))
+        if (!Managers.TorrentCollection.ContainsKey(id))
         {
             throw new InvalidManagerException();
         }
-        Managers.All.TryGetValue(id, out var manager);
+        Managers.TorrentCollection.TryGetValue(id, out var manager);
         var dadosBrutos = Managers.CriarDadosBrutos(id, manager!);
         return Map.ToEntity(dadosBrutos);
     }
@@ -241,7 +241,7 @@ public class TorrentRepository : ITorrentRepository
 
     public IReadOnlyList<(Guid Id, string Nome, TorrentEstado Estado, int Seeds, int Peers)> StreamTorrentEstado()
     {
-        return [.. Managers.All.Select(p => (
+        return [.. Managers.TorrentCollection.Select(p => (
         p.Key,
         p.Value.Torrent?.Name ?? p.Value.Name ?? "?",
         p.Value.Estado(),

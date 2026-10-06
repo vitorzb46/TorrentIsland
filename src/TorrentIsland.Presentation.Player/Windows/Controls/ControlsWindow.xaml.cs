@@ -73,6 +73,12 @@ public partial class ControlsWindow : Window, IDisposable
             .AddValueChanged(TorrentStatusFlyout, OnFlyoutIsOpenChanged);
 
         ConfigMenu.Closed += OnConfigMenuClosed;
+
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible) _torrentStatus.Start();
+            else _torrentStatus.Stop();
+        };
     }
 
     #region Timeline Slider
@@ -397,27 +403,20 @@ public partial class ControlsWindow : Window, IDisposable
 
     private void OnFlyoutIsOpenChanged(object? sender, EventArgs e)
     {
-        if (TorrentStatusFlyout.IsOpen)
-        {
-            _playerWindow.AbrirMenu();
-            _torrentStatus.Start();
-        }
-        else
-        {
-            _playerWindow.FecharMenu();
-            _torrentStatus.Stop();
-        }
+        if (TorrentStatusFlyout.IsOpen) _playerWindow.AbrirMenu();
+        else _playerWindow.FecharMenu();
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        base.OnClosed(e);
         Dispose();
+        base.OnClosed(e);
     }
 
     public void Dispose()
     {
         if (_isDisposed) return;
+        _isDisposed = true;
 
         ConfigMenu.Closed -= OnConfigMenuClosed;
 
@@ -429,8 +428,6 @@ public partial class ControlsWindow : Window, IDisposable
         {
             _torrentStatus.Dispose();
         }
-
-        _isDisposed = true;
 
         GC.SuppressFinalize(this);
     }

@@ -46,11 +46,13 @@ public static class ServiceCollectionExtensions
             try
             {
                 if (File.Exists(engineState))
-                {
-                    return ClientEngine.RestoreStateAsync(engineState).GetAwaiter().GetResult();
-                }
+                    return Task.Run(async () => await ClientEngine.RestoreStateAsync(engineState)).GetAwaiter().GetResult();
             }
-            catch (Exception) { }
+            catch (Exception ex)
+            {
+                Log.Salvar($"[Engine] Falha ao restaurar de {engineState}: {ex.Message}. " +
+                       $"Criando engine vazia.");
+            }
 
             var settingBuilder = GetSettingBuilder();
             EngineSettings settings = settingBuilder.ToSettings();
@@ -73,7 +75,7 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<TorrentLoopRenderer>();
         services.AddSingleton<IPlayerMonitorRenderer, PlayerMonitorRenderer>();
         services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
-        
+
         var binaries = services.BuildServiceProvider().GetRequiredService<IDLService>();
         Task.Run(async () => await binaries.CheckBinariesAsync());
 

@@ -20,11 +20,9 @@ public class Managers : IManagers
     private readonly ClientEngine _engine;
     private readonly IEntityMapping _map;
 
-    public ConcurrentDictionary<Guid, TorrentManager> All { get; set; } = [];
+    public ConcurrentDictionary<Guid, TorrentManager> TorrentCollection { get; set; } = [];
     internal TorrentSettings Settings { get; private set; }
     internal TorrentManager? StreamingManager { get; set; }
-
-
 
     public Managers(ClientEngine Engine, AppSettings app, IEntityMapping map)
     {
@@ -41,6 +39,45 @@ public class Managers : IManagers
             MaximumDownloadRate = app.TorrentLimiteDownload,
             MaximumUploadRate = app.TorrentLimiteUpload
         }.ToSettings();
+        RestoreTorrentsFromEngine();
+        ResumeTorrentsQueue();
+    }
+
+    private void RestoreTorrentsFromEngine()
+    {
+        if (!GetEngine()) return;
+
+        foreach (var torrent in _engine.Torrents)
+        {
+            var id = Guid.NewGuid();
+            TorrentCollection[id] = torrent;
+        }
+    }
+
+    private void ResumeTorrentsQueue()
+    {
+        Guid torrent = TorrentCollection.Keys.FirstOrDefault();
+        if (torrent != Guid.Empty)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await StartAsync(torrent).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Log.Salvar($"[ResumeTorrentsQueue] Erro ao iniciar torrent: {ex.Message}");
+                }
+
+            });
+        }
+    }
+
+    public bool GetEngine()
+    {
+        if (_engine is null) return false;
+        else return true;
     }
 
     public async Task StartAsync(Guid id)
@@ -62,7 +99,7 @@ public class Managers : IManagers
             var manager = await ObterManagerPorIdAsync(id) ?? throw new CustomException("Torrent Inválido!");
             await manager.StopAsync().ConfigureAwait(false);
             await _engine.RemoveAsync(manager).ConfigureAwait(false);
-            All.TryRemove(id, out var _);
+            TorrentCollection.TryRemove(id, out var _);
         }
         catch (Exception ex)
         {
@@ -112,10 +149,11 @@ public class Managers : IManagers
     public async Task SaveEngine()
     {
         await _engine.SaveStateAsync(ArquivoEngineState).ConfigureAwait(false);
+        Log.Salvar($"Engine salva em: {ArquivoEngineState}");
     }
     public IEnumerable<string> GetTrackers(Guid id)
     {
-        return All[id].TrackerManager.Tiers
+        return TorrentCollection[id].TrackerManager.Tiers
             .SelectMany(t => t.Trackers)
             .Select(tracker => tracker.Uri.ToString());
     }
@@ -152,7 +190,7 @@ public class Managers : IManagers
 
     public MagnetLink Parse(string magnet) => MagnetLink.Parse(magnet);
 
-    public async Task<List<TorrentManager>> ObterManagersAsync() => [.. All.Values];
+    public async Task<List<TorrentManager>> ObterManagersAsync() => [.. TorrentCollection.Values];
 
     public async Task<TorrentManager?> ObterManagerPorIdAsync(Guid id) => GetManager(id);
 
@@ -160,7 +198,7 @@ public class Managers : IManagers
     {
         var dtoDict = new Dictionary<Guid, TorrentDto>();
 
-        foreach (var item in All)
+        foreach (var item in TorrentCollection)
         {
             var id = item.Key;
             var manager = item.Value;
@@ -177,7 +215,7 @@ public class Managers : IManagers
 
     public void RegistroId(Guid id, TorrentManager manager)
     {
-        All[id] = manager;
+        TorrentCollection[id] = manager;
         var dadosBrutos = CriarDadosBrutos(id, manager);
         _map.ToEntity(dadosBrutos);
     }
@@ -299,7 +337,7 @@ public class Managers : IManagers
     TorrentManager ObterManagerPorId(Guid id) => GetManager(id);
 
     TorrentManager GetManager(Guid id) =>
-        All.TryGetValue(id, out var manager) ? manager : null!;
+        TorrentCollection.TryGetValue(id, out var manager) ? manager : null!;
 
     async Task<TorrentManager> AddAsync(Torrent torrent, string savePath, TorrentSettings settings)
     {
