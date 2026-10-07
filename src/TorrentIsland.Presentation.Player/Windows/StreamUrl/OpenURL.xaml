@@ -1,0 +1,76 @@
+<ui:FluentWindow
+    x:Class="TorrentIsland.Presentation.Player.Windows.StreamUrl.OpenURL"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:player="clr-namespace:TorrentIsland.Presentation.Player"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Width="700"
+    MinWidth="700"
+    MinHeight="110"
+    MaxWidth="700"
+    MaxHeight="110"
+    HorizontalAlignment="Center"
+    VerticalAlignment="Center"
+    ExtendsContentIntoTitleBar="True"
+    FocusManager.FocusedElement="{Binding ElementName=OpenURLSearch}"
+    PreviewKeyDown="OpenURL_PreviewKeyDown"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    WindowBackdropType="Mica"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None">
+
+    <Grid Margin="10,5,0,15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  BARRA DE TITULO  -->
+        <ui:TitleBar
+            Title="Start Url Streaming"
+            Grid.Row="0"
+            ButtonsForeground="#AAAAAA"
+            Foreground="White"
+            ShowMinimize="False"
+            ShowMaximize="False"
+            Style="{StaticResource TituloGlobalStyle}">
+
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon
+                    Filled="True"
+                    Foreground="#2D323F"
+                    Symbol="Glance24" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <!--  BARRA DE PESQUISA  -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ui:TextBox
+                x:Name="OpenURLSearch"
+                VerticalAlignment="Center"
+                KeyDown="OpenURLSearch_KeyDown"
+                PlaceholderText="Digite o url de streaming..." />
+
+            <ui:Button
+                x:Name="BtnBuscar_OpenURL"
+                Grid.Column="1"
+                Margin="10,0,10,0"
+                Appearance="Primary"
+                Background="#2D323F"
+                BorderBrush="Transparent"
+                Click="BtnBuscar_OpenURL_Click"
+                Content="Buscar"
+                Foreground="White"
+                MouseOverBackground="#3F3F46"
+                PressedBackground="#3F3F49" />
+        </Grid>
+    </Grid>
+</ui:FluentWindow>
