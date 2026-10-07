@@ -29,6 +29,7 @@
 
         <!--  BARRA DE TITULO  -->
         <ui:TitleBar
+            x:Name="TitleName"
             Title="Start Url Streaming"
             Grid.Row="0"
             ButtonsForeground="#AAAAAA"

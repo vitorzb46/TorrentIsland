@@ -52,6 +52,16 @@ public partial class PlayerViewModel
         _torrentQueueCommand ??= new RelayCommand(
             () => TorrentQueueRequested?.Invoke(this, EventArgs.Empty));
 
+    private ICommand? _openUrlYtbCommand;
+    public ICommand OpenUrlYtbCommand =>
+        _openUrlYtbCommand ??= new RelayCommand(
+            () => OpenUrlStreamRequested?.Invoke("Youtube", EventArgs.Empty));
+    
+    private ICommand? _openUrlCommand;
+    public ICommand OpenUrlCommand =>
+        _openUrlCommand ??= new RelayCommand(
+            () => OpenUrlStreamRequested?.Invoke("Media", EventArgs.Empty));
+
     private ICommand? _selectSubtitleCommand;
     public ICommand SelectSubtitleCommand =>
         _selectSubtitleCommand ??= new RelayCommand<int>(SelectSubtitleTrack);

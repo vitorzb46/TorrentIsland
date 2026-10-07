@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.Windows.Main;
 using Wpf.Ui.Controls;
@@ -9,11 +10,11 @@ namespace TorrentIsland.Presentation.Player.Windows.StreamUrl;
 public partial class OpenURL : FluentWindow
 {
     private readonly PlayerWindow _playerWindow;
-    public OpenURL(PlayerWindow playerWindow)
+    public OpenURL(PlayerWindow playerWindow, string? title)
     {
         _playerWindow = playerWindow;
         InitializeComponent();
-
+        TitleName.Title = title;
         IsVisibleChanged += (_, _) =>
         {
             if (IsVisible) _playerWindow.AbrirMenu();

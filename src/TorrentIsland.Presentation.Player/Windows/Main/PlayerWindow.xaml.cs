@@ -517,6 +517,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.TorrentSearchRequested += OnTorrentSearchRequested;
         _viewModel.TorrentQueueRequested += OnTorrentQueueRequested;
         _viewModel.SubtitleDelayChanged += OnSubtitleDelayChanged;
+        _viewModel.OpenUrlStreamRequested += OnOpenUrlStreamRequested;
 
         // Sincroniza a janela de controles com a janela de vídeo.
         LocationChanged += (_, _) => PosicionarControles();
@@ -559,6 +560,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.TorrentSearchRequested -= OnTorrentSearchRequested;
         _viewModel.TorrentQueueRequested -= OnTorrentQueueRequested;
         _viewModel.SubtitleDelayChanged -= OnSubtitleDelayChanged;
+        _viewModel.OpenUrlStreamRequested -= OnOpenUrlStreamRequested;
 
         LocationChanged -= (_, _) => PosicionarControles();
         SizeChanged -= (_, _) => PosicionarControles();
@@ -615,7 +617,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _ when isCloseBracket && isControlKey => ExecuteDelay(true, 5.0),
 
             (Key.V, _, true, _) => await ProcessPaste(e),
-            (Key.L, _, true, _) => await OpenUrl(e),
+            (Key.Y, _, true, _) => await OpenUrl(e, "Youtube"),
+            (Key.T, _, true, _) => await OpenUrl(e, "Mídia Streaming"),
 
             // Brilho
             (Key.B, _, true, _) => Adjust(()
@@ -674,15 +677,20 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         return resultado;
     }
 
-    private async Task<bool> OpenUrl(KeyEventArgs e)
+    private async Task<bool> OpenUrl(KeyEventArgs e, string? title)
     {
-        var window = new OpenURL(this)
-        {
-            Owner = GetWindow(this)
-        };
-        window?.Show();
+        OpenUrlStream(title);
         e.Handled = true;
         return true;
+    }
+
+    private void OpenUrlStream(string? title = null)
+    {
+        var window = new OpenURL(this, title)
+        {
+            Owner = GetWindow(this)
+        };        
+        window?.Show();
     }
     #endregion
 
@@ -761,6 +769,18 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         OsdNotification.Visibility = Visibility.Visible;
         ReiniciarTimerOsd();
+    }
+
+    private void OnOpenUrlStreamRequested(object? sender, EventArgs e)
+    {
+        if (sender is null) return;
+        if ((string)sender == "Youtube")
+        {
+            OpenUrlStream("Youtube");
+        }else
+        {
+            OpenUrlStream("Mídia Streaming");
+        }        
     }
 
     protected override void OnClosed(EventArgs e)

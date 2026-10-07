@@ -8,7 +8,7 @@ namespace TorrentIsland.Presentation.Player.ViewModel;
 
 public partial class PlayerViewModel
 {
-    private DispatcherTimer? _loadingDebounce;
+    private DispatcherTimer _loadingDebounce;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -28,6 +28,9 @@ public partial class PlayerViewModel
     public event EventHandler? TorrentQueueRequested;
 
     public event EventHandler? SubtitleDelayChanged;
+
+    /// <summary>Disparado quando o usuário aciona janela para url de streaming</summary>
+    public event EventHandler? OpenUrlStreamRequested;
 
 
     private void LoadingDebounce()
