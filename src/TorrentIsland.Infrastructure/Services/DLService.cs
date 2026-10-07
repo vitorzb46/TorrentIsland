@@ -34,7 +34,7 @@ public class DLService : IDLService
 
         if (!fetchData.Success || fetchData.Data == null)
         {
-            Log.Salvar("Erro ao obter dados do stream: " + fetchData.ErrorOutput);
+            Log.Salvar($"Erro ao obter dados do stream: {fetchData.ErrorOutput}");
             return string.Empty;
         }
 

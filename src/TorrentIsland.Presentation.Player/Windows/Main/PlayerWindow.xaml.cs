@@ -19,6 +19,7 @@ using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ContextMenus;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Controls;
+using TorrentIsland.Presentation.Player.Windows.StreamUrl;
 using TorrentIsland.Presentation.Player.Windows.WebSearch;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
@@ -163,8 +164,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 await MediaTimestamp.Load();
                 var media = await MediaSetupAsync(caminhoOuUrl);
                 if (media == null) return;
-
-                KeyGenerator.Hash(PlayerViewModel.FilePath);
+                
                 var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
                 _viewModel.SetMedia(media, timeCached.Time);
 
@@ -232,7 +232,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private async Task<Media?> MediaSetupAsync(string caminhoOuUrl)
     {
-        Media? media;
+        Media? media = null;
         if (File.Exists(caminhoOuUrl))
         {
             media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
@@ -240,28 +240,46 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
         else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
         {
-            media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromLocation);
+            string? url;
+            if (caminhoOuUrl.StartsWith("magnet"))
+            {
+                var torrents = await Managers.ObterTorrentsAsync();
+                if (torrents.Count > 0)
+                {
+                    PlayerViewModel.FilePath = torrents.Select(v => v.Value.FullPath).FirstOrDefault()!;
+                }
+                url = caminhoOuUrl;
+            }
+            else
+            {
+                url = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
+            }
 
-            var torrents = await Managers.ObterTorrentsAsync();
-            if (torrents.Count > 0)
+            if (string.IsNullOrEmpty(url))
             {
-                PlayerViewModel.FilePath = torrents.Select(v => v.Value.FullPath).FirstOrDefault()!;
-            }
-        }
-        else
-        {
-            var streamUrl = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
-            Log.Salvar($"Iniciando stream yt-dlp: {streamUrl}");
-            media = new Media(_viewModel.LibVLC, streamUrl, FromType.FromLocation);
-            if (media == null)
-            {
-                MessageBox.Show($"Url: {caminhoOuUrl} não suportada.", "Player", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    $"Url:{caminhoOuUrl} - Falha em obter dados para criação de streaming!",
+                    "Player",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
                 return null;
-            }
+            }  
+
+            media = new Media(_viewModel.LibVLC, url, FromType.FromLocation);
         }
+        
+        GenerateMkvHash();
 
         return media;
     }
+
+    private static void GenerateMkvHash()
+    {
+        var ext = Path.GetExtension(PlayerViewModel.FilePath);
+        if (ext != ".mkv") return;        
+        KeyGenerator.Hash(PlayerViewModel.FilePath);
+    }
+    
     /// <summary>
     /// Timer da sobreposição de tempo da legenda (On-Screen Display).
     /// </summary>
@@ -556,7 +574,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         if (e.ChangedButton == MouseButton.Left) ToggleFullscreen();
     }
 
-    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    protected override async void OnPreviewKeyDown(KeyEventArgs e)
     {
         // Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
         base.OnPreviewKeyDown(e);
@@ -596,7 +614,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _ when isOpenBracket && isControlKey => ExecuteDelay(false, 5.0),
             _ when isCloseBracket && isControlKey => ExecuteDelay(true, 5.0),
 
-            (Key.V, _, true, _) => ProcessPaste(e),
+            (Key.V, _, true, _) => await ProcessPaste(e),
+            (Key.L, _, true, _) => await OpenUrl(e),
 
             // Brilho
             (Key.B, _, true, _) => Adjust(()
@@ -639,52 +658,31 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         if (handled) e.Handled = true;
     }
 
-    private bool ProcessPaste(KeyEventArgs e)
+    private async Task<bool> ProcessPaste(KeyEventArgs e)
     {
-        var dataObject = Clipboard.GetDataObject();
-        if (dataObject == null) return false;
+        var mediaLoader = new MediaLoader(this);
 
-        var files = dataObject.GetData(DataFormats.FileDrop) as string[];
-        var text = dataObject.GetData(DataFormats.Text) as string;
-        string filepath(string[] fp) => fp.Length > 0 ?
-            Path.GetExtension(fp[0]).ToLowerInvariant() : string.Empty;
+        IDataObject? obj = Clipboard.GetDataObject();
+        if (obj == null) return false;
 
-        var processado = (files, text) switch
+        var files = (string[])obj.GetData(DataFormats.FileDrop);
+        var text = (string)obj.GetData(DataFormats.Text);
+
+        var resultado = await mediaLoader.InputAsync(files, text);
+
+        if (resultado) e.Handled = true;
+        return resultado;
+    }
+
+    private async Task<bool> OpenUrl(KeyEventArgs e)
+    {
+        var window = new OpenURL(this)
         {
-            (string[] f, _) when f.Length > 0 &&
-                Utils.ExtensoesVideo.Contains(filepath(f)) =>
-                    IniciarCarregamentoMidia(f[0]),
-
-            (string[] t, _) when t.Length > 0 &&
-                Utils.ExtensaoTorrent.Contains(filepath(t)) =>
-                    IniciarCarregamentoTorrent(t[0]),
-
-            (_, string m) when m != null &&
-                (m.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) ||
-                m.StartsWith("http://itorrents.net", StringComparison.OrdinalIgnoreCase)) =>
-                    IniciarCarregamentoTorrent(m),
-
-            (_, string yt) when !string.IsNullOrWhiteSpace(yt) =>
-                    IniciarCarregamentoMidia(yt),
-
-            _ => false
+            Owner = GetWindow(this)
         };
-
-        if (processado) e.Handled = true;
-        return processado;
-
-        bool IniciarCarregamentoMidia(string caminho)
-        {
-            _viewModel.LoadingMessage = "Carregando mídia...";
-            _ = CarregarMidiaAsync(caminho);
-            return true;
-        }
-
-        bool IniciarCarregamentoTorrent(string caminho)
-        {
-            _ = CarregarStreamTorrentAsync(caminho);
-            return true;
-        }
+        window?.Show();
+        e.Handled = true;
+        return true;
     }
     #endregion
 
