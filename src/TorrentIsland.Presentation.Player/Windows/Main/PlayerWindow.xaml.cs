@@ -581,12 +581,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         // Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
         base.OnPreviewKeyDown(e);
 
-        bool isOpenBracket = e.Key == Key.OemOpenBrackets || e.Key == Key.Oem5;
-        bool isCloseBracket = e.Key == Key.OemCloseBrackets || e.Key == Key.Oem6;
-        bool isNotMod = Keyboard.Modifiers == ModifierKeys.None;
-        bool isControlKey = Keyboard.Modifiers == ModifierKeys.Control;
-        bool isShiftKey = Keyboard.Modifiers == ModifierKeys.Shift;
-        bool ExecuteDelay(bool advance, double value)
+        bool ExecuteSubDelay(bool advance, double value)
         { _viewModel.DelaySpuCommand.Execute((advance, value)); return true; }
 
         bool Adjust(Action action, Func<string> osdMessage)
@@ -596,6 +591,14 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             return true;
         }
 
+        bool ExecuteCommand(ICommand cmd)
+        {
+            if (cmd.CanExecute(null)) cmd.Execute(null);
+            return true;
+        }
+
+        var mods = Keyboard.Modifiers;
+        
         switch (e.Key)
         {
             case Key.Escape when _viewModel.IsFullscreen:
@@ -608,53 +611,64 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             case Key.Up: _viewModel.ToggleVolume(true); ShowControls(); e.Handled = true; return;
         }
 
-        var handled = (e.Key, isNotMod, isControlKey, isShiftKey) switch
+        var handled = (e.Key, mods) switch
         {
-            // Delay de Legenda
-            _ when isOpenBracket && isNotMod => ExecuteDelay(false, 0.5),
-            _ when isCloseBracket && isNotMod => ExecuteDelay(true, 0.5),
-            _ when isOpenBracket && isControlKey => ExecuteDelay(false, 5.0),
-            _ when isCloseBracket && isControlKey => ExecuteDelay(true, 5.0),
+            (Key.T, ModifierKeys.Control | ModifierKeys.Shift) => ExecuteCommand(_viewModel.OpenTorrentFileCommand),
+            (Key.S, ModifierKeys.Control | ModifierKeys.Shift) => ExecuteCommand(_viewModel.StopPlayerCommand),
+            
+            (Key.T, ModifierKeys.Control) => await OpenUrl(e, "Mídia Streaming"),
+            (Key.Y, ModifierKeys.Control) => await OpenUrl(e, "Youtube"),
+            (Key.V, ModifierKeys.Control) => await ProcessPaste(e),
+            (Key.O, ModifierKeys.Control) => ExecuteCommand(_viewModel.OpenVideoCommand),
+            (Key.P, ModifierKeys.Control) => ExecuteCommand(_viewModel.OpenFolderCommand),
+            (Key.U, ModifierKeys.Control) => ExecuteCommand(_viewModel.OpenSubtitleExternalCommand),
+            (Key.I, ModifierKeys.Control) => ExecuteCommand(_viewModel.OpenAudioExternalCommand),
 
-            (Key.V, _, true, _) => await ProcessPaste(e),
-            (Key.Y, _, true, _) => await OpenUrl(e, "Youtube"),
-            (Key.T, _, true, _) => await OpenUrl(e, "Mídia Streaming"),
+            (Key.Oem5 or Key.OemOpenBrackets, ModifierKeys.None) => ExecuteSubDelay(true, 0.5),
+            (Key.Oem6 or Key.OemCloseBrackets, ModifierKeys.None) => ExecuteSubDelay(false, 0.5),
+
+            (Key.Oem5 or Key.OemOpenBrackets, ModifierKeys.Control) => ExecuteSubDelay(true, 5.0),
+            (Key.Oem6 or Key.OemCloseBrackets, ModifierKeys.Control) => ExecuteSubDelay(false, 5.0),
 
             // Brilho
-            (Key.B, _, true, _) => Adjust(()
-                => _viewModel.DecrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
-            (Key.B, _, _, true) => Adjust(()
-                => _viewModel.IncrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
+            (Key.B, ModifierKeys.Control) => Adjust(() => 
+                _viewModel.DecrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
+
+            (Key.B, ModifierKeys.Shift) => Adjust(() => 
+                _viewModel.IncrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
 
             // Contraste
-            (Key.C, _, true, _) => Adjust(()
-                => _viewModel.DecrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
-            (Key.C, _, _, true) => Adjust(()
-                => _viewModel.IncrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
+            (Key.C, ModifierKeys.Control) => Adjust(() => 
+                _viewModel.DecrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
+
+            (Key.C, ModifierKeys.Shift) => Adjust(() => 
+                _viewModel.IncrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
 
             // Matiz
-            (Key.H, _, true, _) => Adjust(()
-                => _viewModel.DecrementHue(), () => $"Matiz: {_viewModel.Hue}"),
-            (Key.H, _, _, true) => Adjust(()
-                => _viewModel.IncrementHue(), () => $"Matiz: {_viewModel.Hue}"),
+            (Key.H, ModifierKeys.Control) => Adjust(() => 
+                _viewModel.DecrementHue(), () => $"Matiz: {_viewModel.Hue}"),
+
+            (Key.H, ModifierKeys.Shift) => Adjust(() => 
+                _viewModel.IncrementHue(), () => $"Matiz: {_viewModel.Hue}"),
 
             // Saturação
-            (Key.S, _, true, _) => Adjust(()
-                => _viewModel.DecrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
-            (Key.S, _, _, true) => Adjust(()
-                => _viewModel.IncrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
+            (Key.S, ModifierKeys.Control) => Adjust(() => 
+                _viewModel.DecrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
+
+            (Key.S, ModifierKeys.Shift) => Adjust(() => 
+                _viewModel.IncrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
 
             // Gamma
-            (Key.G, _, true, _) => Adjust(()
-                => _viewModel.DecrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
-            (Key.G, _, _, true) => Adjust(()
-                => _viewModel.IncrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
+            (Key.G, ModifierKeys.Control) => Adjust(() => 
+                _viewModel.DecrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
+
+            (Key.G, ModifierKeys.Shift) => Adjust(() => 
+                _viewModel.IncrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
 
             // Reset
-            (Key.R, _, _, true) => Adjust(()
-                => _viewModel.ResetImageCommand.Execute(null), () => "Ajustes de imagem resetados"),
-
-            // Nenhuma combinação correspondida
+            (Key.R, ModifierKeys.Shift) => Adjust(() => 
+                _viewModel.ResetImageCommand.Execute(null), () => "Ajustes de imagem resetados"),
+                
             _ => false
         };
 

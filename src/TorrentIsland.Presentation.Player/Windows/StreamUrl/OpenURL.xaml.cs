@@ -38,6 +38,7 @@ public partial class OpenURL : FluentWindow
         if (e.Key == Key.Enter)
         {
             BtnBuscar_OpenURL_Click(sender, e);
+            Close();
             e.Handled = true;
         }
     }

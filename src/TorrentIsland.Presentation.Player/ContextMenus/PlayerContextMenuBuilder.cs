@@ -47,13 +47,13 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
 
     private object[] SubtitleTrack() =>
     [
-        BuildSubmenu("Faixas", SubtitleItems()),        
+        BuildSubmenu("Faixas", SubtitleItems()),
         new Separator(),
-        BuildItem("Ressincronizar legenda   +0,5s", _viewModel.DelaySpuCommand, (true, 0.5), customKey: "["),
-        BuildItem("Ressincronizar legenda   -0,5s", _viewModel.DelaySpuCommand, (false, 0.5), customKey: "]"),
-        BuildItem("Ressincronizar legenda   +5s", _viewModel.DelaySpuCommand, (true, 5.0), customKey: "Alt+["),
-        BuildItem("Ressincronizar legenda   -5s", _viewModel.DelaySpuCommand, (false, 5.0), customKey: "Alt+]"),
-        BuildItem("Ressincronizar legenda...", _viewModel.DelaySpuCommand, (false, 0.0), customKey: "Alt+R"),
+        BuildItem("Ressincronizar legenda   +0,5s", _viewModel.DelaySpuCommand, (true, 0.5), customKey: "]"),
+        BuildItem("Ressincronizar legenda   -0,5s", _viewModel.DelaySpuCommand, (false, 0.5), customKey: "["),
+        BuildItem("Ressincronizar legenda   +5s", _viewModel.DelaySpuCommand, (true, 5.0), customKey: "Ctrl+]"),
+        BuildItem("Ressincronizar legenda   -5s", _viewModel.DelaySpuCommand, (false, 5.0), customKey: "Ctrl+["),
+        BuildItem("Ressincronizar legenda...", _viewModel.DelaySpuCommand, (false, 0.0)),
     ];
     
     private object[] AudioTrack() =>
@@ -66,12 +66,12 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     [
         BuildItem("Reproduzir", _viewModel.TogglePlayCommand, customKey: "Espaço"),
         BuildItem("Pausar", _viewModel.TogglePlayCommand, customKey: "Espaço"),
-        BuildItem("Parar", _viewModel.StopPlayerCommand, customKey: "S"),
+        BuildItem("Parar", _viewModel.StopPlayerCommand, null, Key.S, ModifierKeys.Control | ModifierKeys.Shift),
     ];
 
     private object[] ScreenOptions() =>
     [
-        BuildItem("Tela Cheia", _viewModel.ToggleFullscreenCommand, Key.F11),
+        BuildItem("Tela Cheia", _viewModel.ToggleFullscreenCommand, null, Key.F11),
         new Separator(),
         BuildSubmenu("Proporção (Ratio)", AspectRatioOptions()),
         BuildSubmenu("Zoom", ZoomOptions()),
@@ -82,10 +82,10 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     [
         // TODO all shortcuts
         BuildItem("Abrir mídia...", _viewModel.OpenVideoCommand, null, Key.O, ModifierKeys.Control),
-        BuildItem("Abrir arquivo torrent...", _viewModel.OpenTorrentFileCommand, null, Key.Y, ModifierKeys.Control),
-        BuildItem("Abrir URL Mídia Streaming", _viewModel.OpenUrlCommand, null, Key.T, ModifierKeys.Control), // TODO
-        BuildItem("Abrir URL Youtube", _viewModel.OpenUrlYtbCommand, null, Key.Y, ModifierKeys.Control), // TODO
-        BuildItem("Abrir Pasta...", _viewModel.OpenFolderCommand, null, Key.P, ModifierKeys.Control), // TODO
+        BuildItem("Abrir arquivo torrent...", _viewModel.OpenTorrentFileCommand, null, Key.T, ModifierKeys.Control | ModifierKeys.Shift),
+        BuildItem("Abrir URL Mídia Streaming", _viewModel.OpenUrlCommand, null, Key.T, ModifierKeys.Control),
+        BuildItem("Abrir URL Youtube", _viewModel.OpenUrlYtbCommand, null, Key.Y, ModifierKeys.Control),
+        BuildItem("Abrir Pasta...", _viewModel.OpenFolderCommand, null, Key.P, ModifierKeys.Control),
         new Separator(),
         BuildItem("Carregar legenda externa...", _viewModel.OpenSubtitleExternalCommand, null, Key.U, ModifierKeys.Control),
         BuildItem("Carregar áudio externo...", _viewModel.OpenAudioExternalCommand, null, Key.I, ModifierKeys.Control),
@@ -103,6 +103,8 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         [
             BuildSubmenu("Brilho",
             [
+                BuildHint("Atalhos: Ctrl+B reduz  •  Shift+B aumenta"),
+                new Separator(),
                 BuildRadioItem("25%",  _viewModel.SetBrightnessCommand, 0.25f, Math.Abs(brightness - 0.25f) < 0.01f),
                 BuildRadioItem("50%",  _viewModel.SetBrightnessCommand, 0.50f, Math.Abs(brightness - 0.50f) < 0.01f),
                 BuildRadioItem("75%",  _viewModel.SetBrightnessCommand, 0.75f, Math.Abs(brightness - 0.75f) < 0.01f),
@@ -115,6 +117,8 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
 
             BuildSubmenu("Contraste",
             [
+                BuildHint("Atalhos: Ctrl+C reduz  •  Shift+C aumenta"),
+                new Separator(),
                 BuildRadioItem("0%",   _viewModel.SetContrastCommand, 0.00f, Math.Abs(contrast - 0.00f) < 0.01f),
                 BuildRadioItem("50%",  _viewModel.SetContrastCommand, 0.50f, Math.Abs(contrast - 0.50f) < 0.01f),
                 BuildRadioItem("100% (padrão)", _viewModel.SetContrastCommand, 1.00f, Math.Abs(contrast - 1.00f) < 0.01f),
@@ -124,6 +128,8 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
 
             BuildSubmenu("Matiz",
             [
+                BuildHint("Atalhos: Ctrl+H reduz  •  Shift+H aumenta"),
+                new Separator(),
                 BuildRadioItem("-180", _viewModel.SetHueCommand, -180f, hue == -180),
                 BuildRadioItem("-90",  _viewModel.SetHueCommand,  -90f, hue == -90),
                 BuildRadioItem("0 (padrão)", _viewModel.SetHueCommand, 0f, hue == 0),
@@ -133,6 +139,8 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
 
             BuildSubmenu("Saturação",
             [
+                BuildHint("Atalhos: Ctrl+S reduz  •  Shift+S aumenta"),
+                new Separator(),
                 BuildRadioItem("0%",   _viewModel.SetSaturationCommand, 0.0f, Math.Abs(saturation - 0.0f) < 0.01f),
                 BuildRadioItem("50%",  _viewModel.SetSaturationCommand, 0.5f, Math.Abs(saturation - 0.5f) < 0.01f),
                 BuildRadioItem("100% (padrão)", _viewModel.SetSaturationCommand, 1.0f, Math.Abs(saturation - 1.0f) < 0.01f),
@@ -144,6 +152,8 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
 
             BuildSubmenu("Gamma",
             [
+                BuildHint("Atalhos: Ctrl+G reduz  •  Shift+G aumenta"),
+                new Separator(),
                 BuildRadioItem("0.5",  _viewModel.SetGammaCommand, 0.5f, Math.Abs(gamma - 0.5f) < 0.01f),
                 BuildRadioItem("0.7",  _viewModel.SetGammaCommand, 0.7f, Math.Abs(gamma - 0.7f) < 0.01f),
                 BuildRadioItem("1.0 (padrão)", _viewModel.SetGammaCommand, 1.0f, Math.Abs(gamma - 1.0f) < 0.01f),
@@ -154,9 +164,16 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
 
             new Separator(),
 
-            BuildItem("Resetar ajustes de imagem", _viewModel.ResetImageCommand, customKey: "Alt+R"),
+            BuildItem("Resetar ajustes de imagem", _viewModel.ResetImageCommand, customKey: "Shift+R"),
         ];
     }
+
+    private static MenuItem BuildHint(string text) => new()
+    {
+        Header = text,
+        IsEnabled = false,
+        Style = _styleMI,
+    };
 
     private object[] AspectRatioOptions()
     {
