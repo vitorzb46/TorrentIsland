@@ -431,17 +431,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private void ThumbStop_Click(object? sender, EventArgs e)
     {
-        _viewModel.Stop();
-
         if (_viewModel.IsPlaying)
         {
             _viewModel.IsPlaying = false;
             BtnPlayPause.ImageSource = (ImageSource)FindResource("IconPlay");
             BtnPlayPause.Description = "Reproduzir";
         }
-
-        _viewModel.TempoAtualFormatado = "00:00:00";
-        _viewModel.TempoTotalFormatado = "00:00:00";
+        _viewModel.StopPlaybackState();
     }
 
     private void ThumbFullscreen_Click(object? sender, EventArgs e)

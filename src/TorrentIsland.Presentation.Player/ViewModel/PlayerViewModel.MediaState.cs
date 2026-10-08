@@ -78,6 +78,14 @@ public partial class PlayerViewModel
     public bool MostrarFeedback { get; private set { field = value; OnPropertyChanged(); } } = false;
 
     // METHODS
+    public void StopPlaybackState()
+    {
+        Stop();
+        PosicaoEmMilissegundos = 0;
+        DuracaoTotalEmMilissegundos = 0;
+        TempoAtualFormatado = "00:00:00";
+        TempoTotalFormatado = "00:00:00";
+    }
     public void AddMedia(Media media) => _playlist.Enqueue(media);
 
     public async Task PlayNextMedia()
@@ -126,6 +134,7 @@ public partial class PlayerViewModel
         _ = SaveCacheAsync();
         IsPlaying = false;
         IsVideoVisible = false;
+        _mediaPlayer.Position = 0.0f;
         _mediaPlayer.Stop();
     }
 
