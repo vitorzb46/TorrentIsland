@@ -58,8 +58,12 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     
     private object[] AudioTrack() =>
     [
+        BuildItem("Mutar / desmutar áudio", _viewModel.ToggleMuteCommand, Key.M),
         BuildSubmenu("Faixas", AudioItems()),
-        BuildItem("Mutar / desmutar áudio", _viewModel.ToggleMuteCommand, Key.M),      
+        new Separator(),
+        BuildItem("Ressincronizar áudio   +0,5s", _viewModel.DelayAudioCommand, (true, 0.5), customKey: "K"),
+        BuildItem("Ressincronizar áudio   -0,5s", _viewModel.DelayAudioCommand, (false, 0.5), customKey: "J"),
+        BuildItem("Ressincronizar áudio...", _viewModel.DelayAudioCommand, (false, 0.0)),         
     ];
     
     private object[] Playback() =>

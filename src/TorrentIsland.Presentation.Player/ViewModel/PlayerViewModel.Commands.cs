@@ -70,13 +70,22 @@ public partial class PlayerViewModel
     public ICommand SelectAudioCommand =>
         _selectAudioCommand ??= new RelayCommand<int>(SelectAudioTrack);
 
+    private ICommand? _delayAudioCommand;
+    public ICommand DelayAudioCommand =>
+        _delayAudioCommand ??= new RelayCommand<(bool delay, double timeDelay)>(
+            args =>
+            {
+                ToggleDelayAudio(args.delay, args.timeDelay);
+                OsdMessageChanged?.Invoke(this, EventArgs.Empty);
+            });
+
     private ICommand? _delaySpuCommand;
     public ICommand DelaySpuCommand =>
         _delaySpuCommand ??= new RelayCommand<(bool delay, double timeDelay)>(
             args =>
             {
                 ToggleDelaySpu(args.delay, args.timeDelay);
-                SubtitleDelayChanged?.Invoke(this, EventArgs.Empty);
+                OsdMessageChanged?.Invoke(this, EventArgs.Empty);
             });
 
     private ICommand? _togglePlayCommand;

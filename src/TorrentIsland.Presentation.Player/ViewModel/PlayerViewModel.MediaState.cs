@@ -21,7 +21,9 @@ public partial class PlayerViewModel
 
     public ObservableCollection<TrackItem> SubtitleTracks { get; } = [];
 
-    private static double SubtitleDelay { get; set; } = 0;
+    private double AudioDelay { get; set; } = 0;
+
+    private double SubtitleDelay { get; set; } = 0;
 
     public int CurrentAudio { get => _mediaPlayer.AudioTrack; }
 
@@ -173,19 +175,30 @@ public partial class PlayerViewModel
         }
     }
 
+    public void ToggleDelayAudio(bool atrasar, double timeDelay = 0.5)
+    {
+        AudioDelay = AdjustDelay(AudioDelay, atrasar, timeDelay, "áudio", (valor) => _mediaPlayer.SetAudioDelay(valor));
+    }
+
     public void ToggleDelaySpu(bool delay, double timeDelay = 0.5)
     {
-        if (delay)
+        SubtitleDelay = AdjustDelay(SubtitleDelay, delay, timeDelay, "legenda", (valor) => _mediaPlayer.SetSpuDelay(valor));
+    }
+
+    private double AdjustDelay(double track, bool atrasar, double timeDelay, string trackName, Action<long> action)
+    {
+        if (atrasar)
         {
-            SubtitleDelay += timeDelay;
+            track += timeDelay;
         }
         else
         {
-            SubtitleDelay -= timeDelay;
+            track -= timeDelay;
         }
 
-        _mediaPlayer.SetSpuDelay((long)SubtitleDelay * 1000000);
-        OsdMessage = $"Ressincronizar legenda: {SubtitleDelay:0.000;-0.000;0.000} seg.";
+        action((long)track * 1000000);
+        OsdMessage = $"Ressincronizar {trackName}: {track:0.000;-0.000;0.000} seg.";
+        return track;
     }
 
     public void InicializarDuracaoDoVideo(long totalMilliseconds)
@@ -256,6 +269,8 @@ public partial class PlayerViewModel
     {
         _media = media;
         _mediaPlayer.Media = media;
+        AudioDelay = 0;
+        SubtitleDelay = 0;
         _mediaPlayer.Play(_media);
     }
 

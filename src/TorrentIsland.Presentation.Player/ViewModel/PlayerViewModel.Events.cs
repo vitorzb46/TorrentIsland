@@ -27,7 +27,7 @@ public partial class PlayerViewModel
     /// <summary>Disparado quando o usuário aciona o atalho da janela de torrents.</summary>
     public event EventHandler? TorrentQueueRequested;
 
-    public event EventHandler? SubtitleDelayChanged;
+    public event EventHandler? OsdMessageChanged;
 
     /// <summary>Disparado quando o usuário aciona janela para url de streaming</summary>
     public event EventHandler? OpenUrlStreamRequested;

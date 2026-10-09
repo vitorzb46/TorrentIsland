@@ -512,7 +512,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.PlaybackActionRequested += OnPlaybackActionRequested;
         _viewModel.TorrentSearchRequested += OnTorrentSearchRequested;
         _viewModel.TorrentQueueRequested += OnTorrentQueueRequested;
-        _viewModel.SubtitleDelayChanged += OnSubtitleDelayChanged;
+        _viewModel.OsdMessageChanged += OnOsdMessageChanged;
         _viewModel.OpenUrlStreamRequested += OnOpenUrlStreamRequested;
 
         // Sincroniza a janela de controles com a janela de vídeo.
@@ -555,7 +555,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.PlaybackActionRequested -= OnPlaybackActionRequested;
         _viewModel.TorrentSearchRequested -= OnTorrentSearchRequested;
         _viewModel.TorrentQueueRequested -= OnTorrentQueueRequested;
-        _viewModel.SubtitleDelayChanged -= OnSubtitleDelayChanged;
+        _viewModel.OsdMessageChanged -= OnOsdMessageChanged;
         _viewModel.OpenUrlStreamRequested -= OnOpenUrlStreamRequested;
 
         LocationChanged -= (_, _) => PosicionarControles();
@@ -576,6 +576,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         // Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
         base.OnPreviewKeyDown(e);
+
+        bool ExecuteAudioDelay(bool advance, double value)
+        { _viewModel.DelayAudioCommand.Execute((advance, value)); return true; }
 
         bool ExecuteSubDelay(bool advance, double value)
         { _viewModel.DelaySpuCommand.Execute((advance, value)); return true; }
@@ -605,6 +608,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             case Key.M: _viewModel.ToggleMute(); return;
             case Key.Down: _viewModel.ToggleVolume(false); ShowControls(); e.Handled = true; return;
             case Key.Up: _viewModel.ToggleVolume(true); ShowControls(); e.Handled = true; return;
+            case Key.J: ExecuteAudioDelay(true, 0.5); return;
+            case Key.K: ExecuteAudioDelay(false, 0.5); return;
         }
 
         var handled = (e.Key, mods) switch
@@ -775,7 +780,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _controls.BuscarTorrentMenuItem_Click(sender, e);
         _torrentSearch.BtnAlternarTela_Click(sender, e);
     }
-    private void OnSubtitleDelayChanged(object? sender, EventArgs e)
+    private void OnOsdMessageChanged(object? sender, EventArgs e)
     {
         OsdNotification.Visibility = Visibility.Visible;
         ReiniciarTimerOsd();
