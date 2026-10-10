@@ -2,6 +2,7 @@
 using TorrentIsland.Application.Medias.Enums;
 using TorrentIsland.Application.Medias.Events;
 using TorrentIsland.Presentation.Player.Common;
+using TorrentIsland.Presentation.Player.TvCast;
 
 namespace TorrentIsland.Presentation.Player.ViewModel;
 
@@ -96,8 +97,25 @@ public partial class PlayerViewModel
     public ICommand ToggleMuteCommand =>
         _toggleMuteCommand ??= new RelayCommand(ToggleMute);
 
+    private ICommand? _setDeviceCommand;
+    public ICommand SetDeviceCommand =>
+        _setDeviceCommand ??= new RelayCommand<CastDevice>(SetTvCast);
 
+    private ICommand? _stopCastingCommand;
+    public ICommand StopCastingCommand =>
+        _stopCastingCommand ??= new RelayCommand(StopTvCast);
 
+    public void SetTvCast(CastDevice? device)
+    {
+        if(!_mediaCastManager.CastTo(device))
+        {
+            string v = device?.Name ?? "aparelho desconhecido";
+            OsdMessage = $"Falha ao transmitir para {v}";
+        }
+    }
+
+    public void StopTvCast() => _mediaCastManager.StopCasting();
+    
     public void SelectAudioTrack(int trackId) => _mediaPlayer.SetAudioTrack(trackId);
 
     public void SelectSubtitleTrack(int spuId) => _mediaPlayer.SetSpu(spuId);

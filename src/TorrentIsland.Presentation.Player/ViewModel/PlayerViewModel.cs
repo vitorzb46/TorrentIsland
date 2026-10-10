@@ -1,11 +1,13 @@
 using LibVLCSharp.Shared;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Medias.Events;
 using TorrentIsland.Infrastructure.Events;
 using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Presentation.Player.Common;
+using TorrentIsland.Presentation.Player.TvCast;
 
 namespace TorrentIsland.Presentation.Player.ViewModel;
 
@@ -13,15 +15,21 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
 {
     private readonly MediaPlayer _mediaPlayer;
 
+    private readonly MediaCastManager _mediaCastManager;
+    
     private bool _disposed;
 
     public LibVLC LibVLC { get; }
+
+    public IReadOnlyList<CastDevice> Devices => _mediaCastManager.Devices;
 
     #region Constructor
     public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer, IFormattingHelper fb)
     {
         LibVLC = libVLC;
         _mediaPlayer = mediaPlayer;
+        _mediaCastManager = new(LibVLC, _mediaPlayer);
+        _mediaCastManager.Start();
         _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Enable, 1.0f);
         _fb = fb;
         _mediaPlayer.PositionChanged += OnPositionChanged;
@@ -38,7 +46,11 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         Loading.LoadingMessageChanged += OnLoadingMessageChanged;
         TorrentStatusEvent.TorrentUpdated += OnTorrentUpdated;
         TorrentStatusEvent.TorrentQueue += OnTorrentQueue;
-        LoadingDebounce();
+        _loadingDebounce.Tick += (_, _) =>
+        {
+            _loadingDebounce.Stop();
+            IsLoading = false;
+        };
     }
     #endregion
 
@@ -75,6 +87,8 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     {
         if (_disposed) return;
         _disposed = true;
+
+        _mediaCastManager.Dispose();
 
         _mediaPlayer.PositionChanged -= OnPositionChanged;
         _mediaPlayer.Playing -= OnPlaying;

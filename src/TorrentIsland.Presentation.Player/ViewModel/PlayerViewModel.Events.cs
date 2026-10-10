@@ -8,8 +8,11 @@ namespace TorrentIsland.Presentation.Player.ViewModel;
 
 public partial class PlayerViewModel
 {
-    private DispatcherTimer _loadingDebounce;
-
+    private readonly DispatcherTimer _loadingDebounce = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(500)
+    };
+    
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary> Disparado toda vez que um novo valor é setado em FilePath </summary>
@@ -31,21 +34,7 @@ public partial class PlayerViewModel
 
     /// <summary>Disparado quando o usuário aciona janela para url de streaming</summary>
     public event EventHandler? OpenUrlStreamRequested;
-
-
-    private void LoadingDebounce()
-    {
-        _loadingDebounce = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(500)
-        };
-        _loadingDebounce.Tick += (_, _) =>
-        {
-            _loadingDebounce.Stop();
-            IsLoading = false;
-        };
-    }
-
+    
     private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
     {
         System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>

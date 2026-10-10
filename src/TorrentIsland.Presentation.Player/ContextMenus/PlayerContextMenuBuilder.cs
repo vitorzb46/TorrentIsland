@@ -73,12 +73,19 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildItem("Parar", _viewModel.StopPlayerCommand, null, Key.S, ModifierKeys.Control | ModifierKeys.Shift),
         new Separator(),
         BuildSubmenu("Enviar para TV", CastItems()),
+        BuildItem("Parar Tv Cast", _viewModel.StopCastingCommand),
     ];
 
     private object[] CastItems()
     {
-        // Todo
-        return [BuildHint("Nenhum dispositivo encontrado")];
+        if (_viewModel.Devices.Count == 0)
+            return [BuildHint("Nenhum dispositivo encontrado")];
+
+        return [.. _viewModel.Devices
+            .Select(device => (object)BuildItem(
+                device.Name,
+                _viewModel.SetDeviceCommand,
+                device))];
     }
 
     private object[] ScreenOptions() =>

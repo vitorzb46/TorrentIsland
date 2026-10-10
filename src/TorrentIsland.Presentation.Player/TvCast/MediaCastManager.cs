@@ -12,11 +12,12 @@ public sealed class MediaCastManager : IDisposable
     private List<CastDevice> _devices  = [];
     private bool _disposed;
     private bool _isDiscovering;
-
-    /// <summary>Disparado quando a lista de dispositivos muda (adicionado ou removido).</summary>
-    public event EventHandler? DevicesChanged;
-
-    public IReadOnlyList<CastDevice> Devices => _devices;
+    private readonly Lock _lock = new();
+    
+    public IReadOnlyList<CastDevice> Devices
+    {
+        get { lock(_lock) return [.. _devices]; }
+    }
 
     public CastDevice? CurrentDevice { get; private set; }
     
@@ -57,12 +58,11 @@ public sealed class MediaCastManager : IDisposable
             _isDiscovering = false;
 
         _devices.Clear();
-        DevicesChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public bool CastTo(CastDevice device)
+    public bool CastTo(CastDevice? device)
     {
-        if (_disposed || device.Item is null) return false;
+        if (_disposed || device?.Item is null) return false;
 
         var ok = SetCast(device.Item);
         if (ok)
@@ -102,27 +102,28 @@ public sealed class MediaCastManager : IDisposable
             Item = e.RendererItem,
         };
 
-        _devices.Add(device);
+        lock(_lock) _devices.Add(device);
         Log.Salvar($"[Cast] Descoberto: {device.Name} ({e.RendererItem.Type})");
-
-        DevicesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnItemDeleted(object? sender, RendererDiscovererItemDeletedEventArgs e)
     {
-        var removido = _devices.FirstOrDefault(d =>
+        CastDevice? removido;
+        lock (_lock)
+        {
+            removido = _devices.FirstOrDefault(d =>
             d.Item is not null &&
             d.Item.NativeReference == e.RendererItem.NativeReference);
 
-        if (removido is null) return;
+            if (removido is null) return;
 
-        _devices.Remove(removido);
+            _devices.Remove(removido);
+        }
+        
         Log.Salvar($"[Cast] Removido: {removido.Name}");
         
         if (CurrentDevice == removido)
             StopCasting();
-
-        DevicesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void Dispose()
