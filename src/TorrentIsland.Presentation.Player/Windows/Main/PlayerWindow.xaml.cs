@@ -17,6 +17,7 @@ using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Infrastructure.VLC;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ContextMenus;
+using TorrentIsland.Presentation.Player.TvCast;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Controls;
 using TorrentIsland.Presentation.Player.Windows.StreamUrl;
@@ -31,6 +32,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly ControlsWindow _controls;
     private readonly IDLService _ytDlService;
     private readonly TorrentSearchWindow _torrentSearch;
+    private readonly MediaCastManager _castManager;
     private readonly DispatcherTimer _inactivityTimer;
     private readonly DispatcherTimer _osdTimer;
     private readonly System.Timers.Timer _autosaveTimer;
@@ -54,6 +56,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
         _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer, fb);
 
+        _castManager = new MediaCastManager(vlc.LibVLC, vlc.MediaPlayer);
+        
         DataContext = _viewModel;
 
         VideoView.MediaPlayer = vlc.MediaPlayer;
@@ -514,6 +518,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.TorrentQueueRequested += OnTorrentQueueRequested;
         _viewModel.OsdMessageChanged += OnOsdMessageChanged;
         _viewModel.OpenUrlStreamRequested += OnOpenUrlStreamRequested;
+        _castManager.DevicesChanged += OnCastDevicesChanged;
+        _castManager.Start();
 
         // Sincroniza a janela de controles com a janela de vídeo.
         LocationChanged += (_, _) => PosicionarControles();
@@ -557,6 +563,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _viewModel.TorrentQueueRequested -= OnTorrentQueueRequested;
         _viewModel.OsdMessageChanged -= OnOsdMessageChanged;
         _viewModel.OpenUrlStreamRequested -= OnOpenUrlStreamRequested;
+        _castManager.DevicesChanged -= OnCastDevicesChanged;
+        _castManager.Dispose();
 
         LocationChanged -= (_, _) => PosicionarControles();
         SizeChanged -= (_, _) => PosicionarControles();
@@ -796,6 +804,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             OpenUrlStream("Mídia Streaming");
         }        
+    }
+
+    private void OnCastDevicesChanged(object? sender, EventArgs e)
+    {
+        // Todo
     }
 
     protected override void OnClosed(EventArgs e)

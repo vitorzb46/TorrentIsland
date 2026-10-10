@@ -71,7 +71,15 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildItem("Reproduzir", _viewModel.TogglePlayCommand, customKey: "Espaço"),
         BuildItem("Pausar", _viewModel.TogglePlayCommand, customKey: "Espaço"),
         BuildItem("Parar", _viewModel.StopPlayerCommand, null, Key.S, ModifierKeys.Control | ModifierKeys.Shift),
+        new Separator(),
+        BuildSubmenu("Enviar para TV", CastItems()),
     ];
+
+    private object[] CastItems()
+    {
+        // Todo
+        return [BuildHint("Nenhum dispositivo encontrado")];
+    }
 
     private object[] ScreenOptions() =>
     [
