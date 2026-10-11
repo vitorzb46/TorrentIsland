@@ -35,6 +35,26 @@ public sealed class AppSettings
     public static string NomeMidia { get; } = "%(title)s.%(ext)s";
     public static string VideoAudioQualidade { get; } = "bestvideo+bestaudio/best";
 
+    // Vlc Configs
+    public static bool VlcHttpReconnect { get; set; } = true;
+    public static bool VlcDropLateFrames { get; set; } = true;
+    public static bool VlcSkipFrames { get; set; } = true;
+    public static bool VlcNoVideoTitleShow { get; set; } = true;
+
+    public static int VlcNetworkCachingMs { get; set; } = 5000;
+    public static int VlcFileCachingMs { get; set; } = 5000;
+    public static int VlcLiveCachingMs { get; set; } = 3000;
+
+    public static bool VlcDirect3DBuffering { get; set; } = true;
+    public static bool VlcDirect3D11HwBlending { get; set; } = true;
+
+    public static string VlcHardwareDecoding { get; set; } = "any";
+    public static string VlcSkipLoopFilter { get; set; } = "all";
+
+    public static int VlcClockJitterMs { get; set; } = 0;
+    public static int VlcSwScaleMode { get; set; } = 10;
+    public static int VlcClockSynchro { get; set; } = 0;
+
     // Torrent (MonoTorrent)
     public static string FullPath { get; set; } = string.Empty;
     public static bool OneStream { get; set; } = true;
