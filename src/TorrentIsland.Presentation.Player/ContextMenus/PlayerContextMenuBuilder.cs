@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using TorrentIsland.Application.DTOs;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Presentation.Player.ViewModel;
 
 namespace TorrentIsland.Presentation.Player.ContextMenus;
@@ -42,9 +43,23 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     private object[] GlobalOptions() =>
     [
         BuildSubmenu("Aceleração de Hardware", HardwareDecoding()),
+        BuildSubmenu("Pular filtro de desbloqueio", SkipLoopFilter()),
         new Separator(),
         BuildHint("⚠ requer reinício do programa"),
     ];
+
+    private object[] SkipLoopFilter()
+    {
+        var current = AppSettings.VlcSkipLoopFilter;
+        return
+        [
+            BuildRadioItem("None (padrão)", _viewModel.SkipLoopFilterCommand, 0, current == 0),
+            BuildRadioItem("Non-ref", _viewModel.SkipLoopFilterCommand, 1, current == 1),
+            BuildRadioItem("Bidir", _viewModel.SkipLoopFilterCommand, 2, current == 2),
+            BuildRadioItem("Non-key", _viewModel.SkipLoopFilterCommand, 3, current == 3),
+            BuildRadioItem("All", _viewModel.SkipLoopFilterCommand, 4, current == 4),
+        ];
+    }
 
     private object[] HardwareDecoding()
     {

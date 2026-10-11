@@ -110,6 +110,16 @@ public partial class PlayerViewModel
     public ICommand HardwareDecodeCommand =>
         _hardwareDecodeCommand ??= new RelayCommand<int>(SetHardwareDecoding);
 
+    private ICommand? _skipLoopFilterCommand;
+    public ICommand SkipLoopFilterCommand =>
+        _skipLoopFilterCommand ??= new RelayCommand<int>(SetSkipLoop);
+
+    public static void SetSkipLoop(int sl)
+    {
+        if (sl is >= 0 and <= 4)
+            AppSettings.VlcSkipLoopFilter = sl;
+    }
+
     public static void SetHardwareDecoding(int hw)
     {
         AppSettings.VlcHardwareDecoding = hw switch
