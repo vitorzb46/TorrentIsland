@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -33,7 +34,47 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         menu.Items.Add(BuildSubmenu("Vídeo", Video()));
         menu.Items.Add(BuildSubmenu("Áudio", AudioTrack()));
         menu.Items.Add(BuildSubmenu("Legenda", SubtitleTrack()));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(BuildSubmenu("Opções Globais", GlobalOptions()));
         return menu;
+    }
+
+    private object[] GlobalOptions() =>
+    [
+        BuildSubmenu("Aceleração de Hardware", HardwareDecoding()),
+        new Separator(),
+        BuildHint("⚠ requer reinício do programa"),
+    ];
+
+    private object[] HardwareDecoding()
+    {
+        var current = PlayerViewModel.CurrentHardwareDecodingIndex();
+        var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        var isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+
+        var items = new List<object>
+        {
+            BuildRadioItem("Automático", _viewModel.HardwareDecodeCommand, 0, current == 0)
+        };
+
+        if (isWindows)
+        {
+            items.Add(BuildRadioItem("DXVA2", _viewModel.HardwareDecodeCommand, 1, current == 1, customKey: "Windows"));
+            items.Add(BuildRadioItem("D3D11VA", _viewModel.HardwareDecodeCommand, 2, current == 2, customKey: "Windows"));
+        }
+        else if (isLinux)
+        {
+            items.Add(BuildRadioItem("VAAPI", _viewModel.HardwareDecodeCommand, 3, current == 3, customKey: "Linux/AMD/Intel"));
+            items.Add(BuildRadioItem("VDPAU", _viewModel.HardwareDecodeCommand, 4, current == 4, customKey: "Linux/NVIDIA"));
+        }
+
+        // Opções específicas
+        items.Add(BuildRadioItem("CUVID", _viewModel.HardwareDecodeCommand, 5, current == 5, customKey: "NVIDIA"));
+        items.Add(BuildRadioItem("NVDEC/CUDA", _viewModel.HardwareDecodeCommand, 6, current == 6, customKey: "NVIDIA"));
+        items.Add(BuildRadioItem("Intel Quick Sync", _viewModel.HardwareDecodeCommand, 7, current == 7, customKey: "Intel"));
+        items.Add(BuildRadioItem("Desativado", _viewModel.HardwareDecodeCommand, 8, current == 8));
+
+        return [.. items];
     }
 
     private object[] Video() =>
@@ -59,6 +100,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     private object[] AudioTrack() =>
     [
         BuildItem("Mutar / desmutar áudio", _viewModel.ToggleMuteCommand, Key.M),
+        new Separator(),
         BuildSubmenu("Faixas", AudioItems()),
         new Separator(),
         BuildItem("Ressincronizar áudio   +0,5s", _viewModel.DelayAudioCommand, (true, 0.5), customKey: "K"),
@@ -99,7 +141,6 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
 
     private object[] MenuToOpen() =>
     [
-        // TODO all shortcuts
         BuildItem("Abrir mídia...", _viewModel.OpenVideoCommand, null, Key.O, ModifierKeys.Control),
         BuildItem("Abrir arquivo torrent...", _viewModel.OpenTorrentFileCommand, null, Key.T, ModifierKeys.Control | ModifierKeys.Shift),
         BuildItem("Abrir URL Mídia Streaming", _viewModel.OpenUrlCommand, null, Key.T, ModifierKeys.Control),

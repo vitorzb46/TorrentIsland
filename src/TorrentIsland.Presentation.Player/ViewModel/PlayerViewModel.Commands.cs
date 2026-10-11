@@ -1,6 +1,7 @@
 ﻿using System.Windows.Input;
 using TorrentIsland.Application.Medias.Enums;
 using TorrentIsland.Application.Medias.Events;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.TvCast;
 
@@ -104,6 +105,41 @@ public partial class PlayerViewModel
     private ICommand? _stopCastingCommand;
     public ICommand StopCastingCommand =>
         _stopCastingCommand ??= new RelayCommand(StopTvCast);
+
+    private ICommand? _hardwareDecodeCommand;
+    public ICommand HardwareDecodeCommand =>
+        _hardwareDecodeCommand ??= new RelayCommand<int>(SetHardwareDecoding);
+
+    public static void SetHardwareDecoding(int hw)
+    {
+        AppSettings.VlcHardwareDecoding = hw switch
+        {
+            0 => "any",
+            1 => "dxva2",
+            2 => "d3d11va",
+            3 => "vaapi",
+            4 => "vdpau_avcodec",
+            5 => "cuvid",
+            6 => "cuda",
+            7 => "qsv",
+            8 => "none",
+            _ => "any"
+        };
+    }
+
+    public static int CurrentHardwareDecodingIndex() =>
+        AppSettings.VlcHardwareDecoding switch
+        {
+            "dxva2"          => 1,
+            "d3d11va"        => 2,
+            "vaapi"          => 3,
+            "vdpau_avcodec"  => 4,
+            "cuvid"          => 5,
+            "cuda"           => 6,
+            "qsv"            => 7,
+            "none"           => 8,
+            _                => 0 // Any - Automático
+        };
 
     public void SetTvCast(CastDevice? device)
     {
