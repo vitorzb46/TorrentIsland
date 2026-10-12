@@ -44,9 +44,29 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     [
         BuildSubmenu("Aceleração de Hardware", HardwareDecoding()),
         BuildSubmenu("Pular filtro de desbloqueio", SkipLoopFilter()),
+        BuildSubmenu("Modo de redimensionamento por software", SwscaleMode()),
         new Separator(),
         BuildHint("⚠ requer reinício do programa"),
     ];
+
+    private object[] SwscaleMode()
+    {
+        var current = AppSettings.VlcSwScaleMode;
+        return
+        [
+            BuildRadioItem("Fast bilinear",                    _viewModel.SwScaleCommand, 0,  current == 0),
+            BuildRadioItem("Bilinear",                         _viewModel.SwScaleCommand, 1,  current == 1),
+            BuildRadioItem("Bicubic (padrão)",                 _viewModel.SwScaleCommand, 2,  current == 2),
+            BuildRadioItem("Experimental",                     _viewModel.SwScaleCommand, 3,  current == 3),
+            BuildRadioItem("Nearest neighbour (qualidade ruim)", _viewModel.SwScaleCommand, 4, current == 4),
+            BuildRadioItem("Area",                             _viewModel.SwScaleCommand, 5,  current == 5),
+            BuildRadioItem("Luma bicubic / chroma bilinear",   _viewModel.SwScaleCommand, 6,  current == 6),
+            BuildRadioItem("Gauss",                            _viewModel.SwScaleCommand, 7,  current == 7),
+            BuildRadioItem("SincR",                            _viewModel.SwScaleCommand, 8,  current == 8),
+            BuildRadioItem("Lanczos",                          _viewModel.SwScaleCommand, 9,  current == 9),
+            BuildRadioItem("Bicubic spline",                   _viewModel.SwScaleCommand, 10, current == 10),
+        ];
+    }
 
     private object[] SkipLoopFilter()
     {

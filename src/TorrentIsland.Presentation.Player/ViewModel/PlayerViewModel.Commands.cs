@@ -114,6 +114,16 @@ public partial class PlayerViewModel
     public ICommand SkipLoopFilterCommand =>
         _skipLoopFilterCommand ??= new RelayCommand<int>(SetSkipLoop);
 
+    private ICommand? _swScaleCommand;
+    public ICommand SwScaleCommand =>
+        _swScaleCommand ??= new RelayCommand<int>(SetSwScale);
+
+    public static void SetSwScale(int sw)
+    {
+        if (sw is >= 0 and <= 10)
+            AppSettings.VlcSwScaleMode = sw;
+    }
+
     public static void SetSkipLoop(int sl)
     {
         if (sl is >= 0 and <= 4)

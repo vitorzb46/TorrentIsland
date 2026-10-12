@@ -52,7 +52,7 @@ public sealed class AppSettings
     public static int VlcSkipLoopFilter { get; set; } = 0;
 
     public static int VlcClockJitterMs { get; set; } = 0;
-    public static int VlcSwScaleMode { get; set; } = 10;
+    public static int VlcSwScaleMode { get; set; } = 2;
     public static int VlcClockSynchro { get; set; } = 0;
 
     // Torrent (MonoTorrent)
