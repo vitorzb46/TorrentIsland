@@ -1,10 +1,9 @@
-﻿using HtmlAgilityPack;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Infrastructure.Logging;
-using TorrentIsland.Presentation.Player.Common;
+using HtmlDocument = HtmlAgilityPack.HtmlDocument;
 
 namespace TorrentIsland.Presentation.Player.Scripts;
 

@@ -14,9 +14,11 @@ using TorrentIsland.Application.Settings;
 using TorrentIsland.Domain.Interfaces;
 using TorrentIsland.Infrastructure.Configuration;
 using TorrentIsland.Infrastructure.Events;
+using TorrentIsland.Infrastructure.Helpers;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.MonoTorrent;
+using TorrentIsland.Infrastructure.Renderers;
 using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Infrastructure.VLC;
 
@@ -27,7 +29,7 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registra logging, configuração e os serviços de torrent (Application + Infrastructure).
     /// </summary>
-    public static IServiceCollection AddTorrentIsland(this IServiceCollection services, IConfiguration configuration, IConsoleLogRenderer renderer, int maxLogs = 10)
+    public static IServiceCollection AddTorrentIsland(this IServiceCollection services, IConfiguration configuration, IConsoleLogRenderer? renderer = null, int maxLogs = 10)
     {
         services.AddLogging(builder =>
         {
@@ -75,6 +77,10 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<TorrentLoopRenderer>();
         services.AddSingleton<IPlayerMonitorRenderer, PlayerMonitorRenderer>();
         services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
+        services.AddSingleton<IStreamService, StreamService>();
+        services.AddSingleton<IFormattingHelper, FormattingHelper>();
+        services.AddSingleton<IConsoleLogRenderer, ConsoleLogRenderer>();
+        services.AddSingleton<ILogPainel, LogPainel>();
 
         var binaries = services.BuildServiceProvider().GetRequiredService<IDLService>();
         Task.Run(async () => await binaries.CheckBinariesAsync());

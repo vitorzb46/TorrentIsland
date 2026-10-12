@@ -2,14 +2,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
 using System.Windows;
-using TorrentIsland.Application.Interfaces;
-using TorrentIsland.Application.Services;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.DependencyInjection;
-using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
-using TorrentIsland.Presentation.Console.Helpers;
-using TorrentIsland.Presentation.Console.Renderers;
 using TorrentIsland.Presentation.Player.Windows.Main;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
@@ -65,13 +60,7 @@ public partial class App : System.Windows.Application
         var configuration = new ConfigurationBuilder()
         .SetBasePath(AppContext.BaseDirectory)
         .Build();
-        services.AddSingleton<ILogPainel, LogPainel>();
-        services.AddSingleton<IConsoleLogRenderer, ConsoleLogRenderer>();
-        var consoleLog = services.BuildServiceProvider().GetRequiredService<IConsoleLogRenderer>();
-
-        services.AddTorrentIsland(configuration, consoleLog, maxLogs: 10);
-        services.AddSingleton<IFormattingHelper, FormattingHelper>();
-        services.AddSingleton<IStreamService, StreamService>();
+        services.AddTorrentIsland(configuration);
         services.AddSingleton<PlayerWindow>();
     }
 }

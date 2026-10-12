@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Input;
-using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.Windows.Main;
 using Wpf.Ui.Controls;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace TorrentIsland.Presentation.Player.Windows.StreamUrl;
 

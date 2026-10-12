@@ -17,11 +17,20 @@ using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Infrastructure.VLC;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ContextMenus;
-using TorrentIsland.Presentation.Player.TvCast;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Controls;
 using TorrentIsland.Presentation.Player.Windows.StreamUrl;
 using TorrentIsland.Presentation.Player.Windows.WebSearch;
+using Brushes = System.Windows.Media.Brushes;
+using Clipboard = System.Windows.Clipboard;
+using Cursors = System.Windows.Input.Cursors;
+using DataFormats = System.Windows.DataFormats;
+using DragDropEffects = System.Windows.DragDropEffects;
+using DragEventArgs = System.Windows.DragEventArgs;
+using IDataObject = System.Windows.IDataObject;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using MessageBox = System.Windows.MessageBox;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
 
@@ -54,7 +63,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         var vlc = new VlcPlayerService();
 
         _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer, fb);
-        
+
         DataContext = _viewModel;
 
         VideoView.MediaPlayer = vlc.MediaPlayer;
@@ -165,7 +174,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                 await MediaTimestamp.Load();
                 var media = await MediaSetupAsync(caminhoOuUrl);
                 if (media == null) return;
-                
+
                 var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
                 _viewModel.SetMedia(media, timeCached.Time);
 
@@ -264,11 +273,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
                 return null;
-            }  
+            }
 
             media = new Media(_viewModel.LibVLC, url, FromType.FromLocation);
         }
-        
+
         GenerateMkvHash();
 
         return media;
@@ -277,10 +286,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private static void GenerateMkvHash()
     {
         var ext = Path.GetExtension(PlayerViewModel.FilePath);
-        if (ext != ".mkv") return;        
+        if (ext != ".mkv") return;
         KeyGenerator.Hash(PlayerViewModel.FilePath);
     }
-    
+
     /// <summary>
     /// Timer da sobreposição de tempo da legenda (On-Screen Display).
     /// </summary>
@@ -598,7 +607,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         }
 
         var mods = Keyboard.Modifiers;
-        
+
         switch (e.Key)
         {
             case Key.Escape when _viewModel.IsFullscreen:
@@ -617,7 +626,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             (Key.T, ModifierKeys.Control | ModifierKeys.Shift) => ExecuteCommand(_viewModel.OpenTorrentFileCommand),
             (Key.S, ModifierKeys.Control | ModifierKeys.Shift) => ExecuteCommand(_viewModel.StopPlayerCommand),
-            
+
             (Key.T, ModifierKeys.Control) => await OpenUrl(e, "Mídia Streaming"),
             (Key.Y, ModifierKeys.Control) => await OpenUrl(e, "Youtube"),
             (Key.V, ModifierKeys.Control) => await ProcessPaste(e),
@@ -633,44 +642,44 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             (Key.Oem6 or Key.OemCloseBrackets, ModifierKeys.Control) => ExecuteSubDelay(false, 5.0),
 
             // Brilho
-            (Key.B, ModifierKeys.Control) => Adjust(() => 
+            (Key.B, ModifierKeys.Control) => Adjust(() =>
                 _viewModel.DecrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
 
-            (Key.B, ModifierKeys.Shift) => Adjust(() => 
+            (Key.B, ModifierKeys.Shift) => Adjust(() =>
                 _viewModel.IncrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
 
             // Contraste
-            (Key.C, ModifierKeys.Control) => Adjust(() => 
+            (Key.C, ModifierKeys.Control) => Adjust(() =>
                 _viewModel.DecrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
 
-            (Key.C, ModifierKeys.Shift) => Adjust(() => 
+            (Key.C, ModifierKeys.Shift) => Adjust(() =>
                 _viewModel.IncrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
 
             // Matiz
-            (Key.H, ModifierKeys.Control) => Adjust(() => 
+            (Key.H, ModifierKeys.Control) => Adjust(() =>
                 _viewModel.DecrementHue(), () => $"Matiz: {_viewModel.Hue}"),
 
-            (Key.H, ModifierKeys.Shift) => Adjust(() => 
+            (Key.H, ModifierKeys.Shift) => Adjust(() =>
                 _viewModel.IncrementHue(), () => $"Matiz: {_viewModel.Hue}"),
 
             // Saturação
-            (Key.S, ModifierKeys.Control) => Adjust(() => 
+            (Key.S, ModifierKeys.Control) => Adjust(() =>
                 _viewModel.DecrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
 
-            (Key.S, ModifierKeys.Shift) => Adjust(() => 
+            (Key.S, ModifierKeys.Shift) => Adjust(() =>
                 _viewModel.IncrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
 
             // Gamma
-            (Key.G, ModifierKeys.Control) => Adjust(() => 
+            (Key.G, ModifierKeys.Control) => Adjust(() =>
                 _viewModel.DecrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
 
-            (Key.G, ModifierKeys.Shift) => Adjust(() => 
+            (Key.G, ModifierKeys.Shift) => Adjust(() =>
                 _viewModel.IncrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
 
             // Reset
-            (Key.R, ModifierKeys.Shift) => Adjust(() => 
+            (Key.R, ModifierKeys.Shift) => Adjust(() =>
                 _viewModel.ResetImageCommand.Execute(null), () => "Ajustes de imagem resetados"),
-                
+
             _ => false
         };
 
@@ -705,7 +714,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         var window = new OpenURL(this, title)
         {
             Owner = GetWindow(this)
-        };        
+        };
         window?.Show();
     }
     #endregion
@@ -793,12 +802,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         if ((string)sender == "Youtube")
         {
             OpenUrlStream("Youtube");
-        }else
+        }
+        else
         {
             OpenUrlStream("Mídia Streaming");
-        }        
+        }
     }
-    
+
     protected override void OnClosed(EventArgs e)
     {
         _autosaveTimer.Stop();

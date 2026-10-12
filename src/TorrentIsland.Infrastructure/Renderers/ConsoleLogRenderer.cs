@@ -5,7 +5,7 @@ using System.Text;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
 
-namespace TorrentIsland.Presentation.Console.Renderers;
+namespace TorrentIsland.Infrastructure.Renderers;
 
 /// <summary>
 /// Renderiza no console o painel estático + as últimas linhas do buffer em anel.
@@ -18,7 +18,7 @@ public sealed class ConsoleLogRenderer : BackgroundService, IConsoleLogRenderer
 
     private static int tempoRender = 100;
     private readonly IServiceProvider _services;
-    private readonly object _sync = new();
+    private readonly Lock _sync = new();
     private string _cliAtual = string.Empty;
     private DateTime _ultimaRenderizacao = DateTime.MinValue;
     private static readonly TimeSpan IntervaloMinimo = TimeSpan.FromMilliseconds(tempoRender);

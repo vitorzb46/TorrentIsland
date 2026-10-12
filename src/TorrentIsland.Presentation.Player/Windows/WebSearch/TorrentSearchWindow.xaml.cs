@@ -8,6 +8,11 @@ using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Main;
 using static TorrentIsland.Presentation.Player.Scripts.Limao;
+using ContextMenu = System.Windows.Controls.ContextMenu;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using ListBox = System.Windows.Controls.ListBox;
+using MenuItem = System.Windows.Controls.MenuItem;
+using MessageBox = System.Windows.MessageBox;
 
 namespace TorrentIsland.Presentation.Player.Windows.WebSearch;
 
@@ -229,7 +234,7 @@ public partial class TorrentSearchWindow : Wpf.Ui.Controls.FluentWindow
     {
         var estiloItem = new Style(typeof(ListBoxItem));
         estiloItem.Setters.Add(new Setter(ContextMenuProperty, menuContexto));
-        estiloItem.Setters.Add(new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch));
+        estiloItem.Setters.Add(new Setter(HorizontalContentAlignmentProperty, System.Windows.HorizontalAlignment.Stretch));
         estiloItem.Setters.Add(new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Center));
         listBox.ItemContainerStyle = estiloItem;
     }

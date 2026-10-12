@@ -2,9 +2,10 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Presentation.Player.ViewModel;
+using ContextMenu = System.Windows.Controls.ContextMenu;
+using MenuItem = System.Windows.Controls.MenuItem;
 
 namespace TorrentIsland.Presentation.Player.ContextMenus;
 
@@ -131,7 +132,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildItem("Ressincronizar legenda   -5s", _viewModel.DelaySpuCommand, (false, 5.0), customKey: "Ctrl+["),
         BuildItem("Ressincronizar legenda...", _viewModel.DelaySpuCommand, (false, 0.0)),
     ];
-    
+
     private object[] AudioTrack() =>
     [
         BuildItem("Mutar / desmutar áudio", _viewModel.ToggleMuteCommand, Key.M),
@@ -140,9 +141,9 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         new Separator(),
         BuildItem("Ressincronizar áudio   +0,5s", _viewModel.DelayAudioCommand, (true, 0.5), customKey: "K"),
         BuildItem("Ressincronizar áudio   -0,5s", _viewModel.DelayAudioCommand, (false, 0.5), customKey: "J"),
-        BuildItem("Ressincronizar áudio...", _viewModel.DelayAudioCommand, (false, 0.0)),         
+        BuildItem("Ressincronizar áudio...", _viewModel.DelayAudioCommand, (false, 0.0)),
     ];
-    
+
     private object[] Playback() =>
     [
         BuildItem("Reproduzir", _viewModel.TogglePlayCommand, customKey: "Espaço"),
@@ -288,7 +289,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
             BuildRadioItem("HDTV (16:9)",
                 _viewModel.SetAspectRatioCommand, "16:9", current == "16:9"),
             BuildRadioItem("Widescreen (16:10)",
-                _viewModel.SetAspectRatioCommand, "16:10", current == "16:10"),            
+                _viewModel.SetAspectRatioCommand, "16:10", current == "16:10"),
             new Separator(),
             BuildRadioItem("Cinema largo (2.21:1)",
                 _viewModel.SetAspectRatioCommand, "2.21:1", current == "2.21:1"),
@@ -362,7 +363,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         Gesture(key, mods, customKey, item);
         return item;
     }
-    
+
     private static MenuItem BuildRadioItem(
         string header,
         ICommand cmd,
@@ -372,7 +373,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         ModifierKeys mods = ModifierKeys.None,
         string? customKey = null)
     {
-        var item =  new MenuItem
+        var item = new MenuItem
         {
             Header = header,
             IsCheckable = true,
@@ -384,7 +385,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         Gesture(key, mods, customKey, item);
         return item;
     }
-    
+
     private static MenuItem BuildSubmenu(string header, object[] children)
     {
         var menu = new MenuItem { Header = header, Style = _styleMI };

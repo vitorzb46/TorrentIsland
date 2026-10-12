@@ -4,6 +4,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using TorrentIsland.Presentation.Player.ViewModel;
+using Brush = System.Windows.Media.Brush;
+using Brushes = System.Windows.Media.Brushes;
+using FontFamily = System.Windows.Media.FontFamily;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using IDataObject = System.Windows.IDataObject;
+using ToolTip = System.Windows.Controls.ToolTip;
 
 namespace TorrentIsland.Presentation.Player.Common;
 
@@ -43,7 +49,7 @@ public class Utils
         ".mp3", ".m4a", ".aac", ".flac", ".wav", ".wma", ".ogg", ".oga",
         ".alac", ".ape", ".wv", ".tta", ".tak", ".dsf", ".dff",
         ".amr", ".awb", ".gsm", ".spx", ".opus",
-        ".ac3", ".a52", ".eac3", ".dts", ".mlp", ".thd", 
+        ".ac3", ".a52", ".eac3", ".dts", ".mlp", ".thd",
         ".mka", ".aif", ".aiff", ".au", ".snd", ".voc", ".mid", ".midi"
     ];
 

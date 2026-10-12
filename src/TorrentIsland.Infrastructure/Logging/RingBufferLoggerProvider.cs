@@ -11,11 +11,11 @@ namespace TorrentIsland.Infrastructure.Logging;
 public sealed class RingBufferLoggerProvider : ILoggerProvider
 {
     private readonly ConcurrentQueue<string> _entries = new();
-    private readonly IConsoleLogRenderer renderer1;
+    private readonly IConsoleLogRenderer? renderer1;
 
     public int MaxLogs { get; }
 
-    public RingBufferLoggerProvider(IConsoleLogRenderer renderer1, int maxLogs = 10)
+    public RingBufferLoggerProvider(IConsoleLogRenderer? renderer1, int maxLogs = 10)
     {
         MaxLogs = Math.Max(1, maxLogs);
         this.renderer1 = renderer1;
@@ -43,10 +43,10 @@ public sealed class RingBufferLoggerProvider : ILoggerProvider
     {
     }
 
-    private sealed class Logger(RingBufferLoggerProvider provider, IConsoleLogRenderer renderer) : ILogger
+    private sealed class Logger(RingBufferLoggerProvider provider, IConsoleLogRenderer? renderer) : ILogger
     {
         private readonly RingBufferLoggerProvider _provider = provider;
-        private readonly IConsoleLogRenderer renderer = renderer;
+        private readonly IConsoleLogRenderer? renderer = renderer;
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -60,7 +60,7 @@ public sealed class RingBufferLoggerProvider : ILoggerProvider
                 message = $"{message} :: {exception}";
             }
 
-            _provider.Enqueue($"{message}".PadRight(renderer.Largura));
+            _provider.Enqueue($"{message}".PadRight(renderer!.Largura));
         }
     }
 }

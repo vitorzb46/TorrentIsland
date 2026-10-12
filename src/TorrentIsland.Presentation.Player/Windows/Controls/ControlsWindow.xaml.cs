@@ -15,7 +15,13 @@ using TorrentIsland.Presentation.Player.Windows.Main;
 using TorrentIsland.Presentation.Player.Windows.WebSearch;
 using Wpf.Ui.Controls;
 using Button = System.Windows.Controls.Button;
+using ContextMenu = System.Windows.Controls.ContextMenu;
 using MenuItem = System.Windows.Controls.MenuItem;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using Point = System.Windows.Point;
+using Size = System.Windows.Size;
+using ToolTip = System.Windows.Controls.ToolTip;
 
 namespace TorrentIsland.Presentation.Player.Windows.Controls;
 
