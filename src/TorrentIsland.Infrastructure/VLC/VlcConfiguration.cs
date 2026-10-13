@@ -30,6 +30,13 @@ public sealed class VlcConfiguration
         if (AppSettings.VlcSkipFrames) args.Add("--skip-frames");
         if (AppSettings.VlcNoVideoTitleShow) args.Add("--no-video-title-show");
 
+        if (AppSettings.VlcDeinterlacing)
+        {
+            args.Add("--deinterlace=1");
+            args.Add("--video-filter=deinterlace");
+            args.Add($"--deinterlace-mode={AppSettings.VlcDeinterlaceMode}");
+        }
+
         return [.. args];
     }
 }

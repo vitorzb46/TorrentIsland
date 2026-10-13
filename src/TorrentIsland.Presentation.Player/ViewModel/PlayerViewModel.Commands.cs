@@ -122,6 +122,30 @@ public partial class PlayerViewModel
     public ICommand ClockSynchroCommand =>
         _clockSynchroCommand ??= new RelayCommand<int>(SetClockSynchro);
 
+    private ICommand? _deinterlaceCommand;
+    public ICommand DeinterlaceCommand =>
+        _deinterlaceCommand ??= new RelayCommand<int>(SetDeinterlaceMode);
+
+    public static void SetDeinterlaceMode(int dm)
+    {
+        AppSettings.VlcDeinterlaceMode = dm switch
+        {
+            1  => "discard",
+            2  => "blend",
+            3  => "mean",
+            4  => "bob",
+            5  => "linear",
+            6  => "x",
+            7  => "yadif",
+            8  => "yadif2x",
+            9  => "phosphor",
+            10 => "ivtc",
+            _  => null
+        };
+
+        AppSettings.VlcDeinterlacing = AppSettings.VlcDeinterlaceMode != null;
+    }
+
     public static void SetClockSynchro(int cs)
     {
         if (cs is >= -1 and <= 1)

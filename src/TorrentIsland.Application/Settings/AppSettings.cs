@@ -55,6 +55,9 @@ public sealed class AppSettings
     public static int VlcSwScaleMode { get; set; } = 2;
     public static int VlcClockSynchro { get; set; } = -1;
 
+    public static bool VlcDeinterlacing { get; set; } = false;
+    public static string? VlcDeinterlaceMode { get; set; } = null;
+
     // Torrent (MonoTorrent)
     public static string FullPath { get; set; } = string.Empty;
     public static bool OneStream { get; set; } = true;

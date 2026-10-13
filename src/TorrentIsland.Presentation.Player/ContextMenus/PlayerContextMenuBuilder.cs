@@ -47,9 +47,35 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildSubmenu("Pular filtro de desbloqueio", SkipLoopFilter()),
         BuildSubmenu("Modo de redimensionamento por software", SwscaleMode()),
         BuildSubmenu("Sincronização de relógio", ClockSync()),
+        BuildSubmenu("Modo de desentrelaçamento", DeinterlaceFilter()),
         new Separator(),
         BuildHint("⚠ requer reinício do programa"),
     ];
+
+    private object[] DeinterlaceFilter()
+    {
+        var current = AppSettings.VlcDeinterlaceMode;
+        return
+        [
+            BuildRadioItem("Desativado",       _viewModel.DeinterlaceCommand, 0,  current == null),
+            BuildSubmenu("Método Simples", [
+                BuildRadioItem("Discard",          _viewModel.DeinterlaceCommand, 1,  current == "discard"),
+                BuildRadioItem("Blend",            _viewModel.DeinterlaceCommand, 2,  current == "blend"),
+                BuildRadioItem("Mean",             _viewModel.DeinterlaceCommand, 3,  current == "mean"),
+            ]),
+            BuildSubmenu("Dobradores leves", [
+                BuildRadioItem("Bob",              _viewModel.DeinterlaceCommand, 4,  current == "bob"),
+                BuildRadioItem("Linear",           _viewModel.DeinterlaceCommand, 5,  current == "linear"),
+            ]),
+            BuildSubmenu("Dobradores de alta qualidade", [
+                BuildRadioItem("X",                _viewModel.DeinterlaceCommand, 6,  current == "x"),
+                BuildRadioItem("Yadif",            _viewModel.DeinterlaceCommand, 7,  current == "yadif"),
+                BuildRadioItem("Yadif (2x)",       _viewModel.DeinterlaceCommand, 8,  current == "yadif2x"),
+            ]),            
+            BuildRadioItem("Phosphor",         _viewModel.DeinterlaceCommand, 9,  current == "phosphor"),
+            BuildRadioItem("IVTC (telecine)",  _viewModel.DeinterlaceCommand, 10, current == "ivtc"),
+        ];
+    }
 
     private object[] ClockSync()
     {
