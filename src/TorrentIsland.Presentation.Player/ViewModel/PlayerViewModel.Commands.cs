@@ -118,6 +118,16 @@ public partial class PlayerViewModel
     public ICommand SwScaleCommand =>
         _swScaleCommand ??= new RelayCommand<int>(SetSwScale);
 
+    private ICommand? _clockSynchroCommand;
+    public ICommand ClockSynchroCommand =>
+        _clockSynchroCommand ??= new RelayCommand<int>(SetClockSynchro);
+
+    public static void SetClockSynchro(int cs)
+    {
+        if (cs is >= -1 and <= 1)
+            AppSettings.VlcClockSynchro = cs;
+    }
+
     public static void SetSwScale(int sw)
     {
         if (sw is >= 0 and <= 10)

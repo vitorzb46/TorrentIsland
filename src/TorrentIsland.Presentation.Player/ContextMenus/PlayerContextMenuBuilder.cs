@@ -46,9 +46,21 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildSubmenu("Aceleração de Hardware", HardwareDecoding()),
         BuildSubmenu("Pular filtro de desbloqueio", SkipLoopFilter()),
         BuildSubmenu("Modo de redimensionamento por software", SwscaleMode()),
+        BuildSubmenu("Sincronização de relógio", ClockSync()),
         new Separator(),
         BuildHint("⚠ requer reinício do programa"),
     ];
+
+    private object[] ClockSync()
+    {
+        var current = AppSettings.VlcClockSynchro;
+        return
+        [
+            BuildRadioItem("Automático",    _viewModel.ClockSynchroCommand, -1, current == -1),
+            BuildRadioItem("Desabilitado",  _viewModel.ClockSynchroCommand, 0, current == 0),
+            BuildRadioItem("Habilitado",    _viewModel.ClockSynchroCommand, 1, current == 1),
+        ];
+    }
 
     private object[] SwscaleMode()
     {

@@ -53,7 +53,7 @@ public sealed class AppSettings
 
     public static int VlcClockJitterMs { get; set; } = 0;
     public static int VlcSwScaleMode { get; set; } = 2;
-    public static int VlcClockSynchro { get; set; } = 0;
+    public static int VlcClockSynchro { get; set; } = -1;
 
     // Torrent (MonoTorrent)
     public static string FullPath { get; set; } = string.Empty;
