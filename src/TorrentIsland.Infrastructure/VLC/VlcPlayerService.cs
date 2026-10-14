@@ -23,6 +23,11 @@ public sealed class VlcPlayerService
             EnableMouseInput = false,
             EnableKeyInput = false            
         };
+
+        _libVLC.Log += (sender, e) =>
+        {
+            Log.Salvar($"[{e.Level}] {e.Module}: {e.Message}");
+        };
     }
 
     public LibVLC LibVLC => _libVLC;

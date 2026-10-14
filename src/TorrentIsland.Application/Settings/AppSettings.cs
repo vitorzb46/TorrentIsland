@@ -36,6 +36,7 @@ public sealed class AppSettings
     public static string VideoAudioQualidade { get; } = "bestvideo+bestaudio/best";
 
     // Vlc Configs
+    public static bool VlcVerboseLog { get; set; } = true;
     public static bool VlcHttpReconnect { get; set; } = true;
     public static bool VlcDropLateFrames { get; set; } = true;
     public static bool VlcSkipFrames { get; set; } = true;

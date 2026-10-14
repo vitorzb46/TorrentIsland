@@ -8,6 +8,8 @@ public sealed class VlcConfiguration
     {
         var args = new List<string>();
 
+        if (AppSettings.VlcVerboseLog) args.Add("--verbose=2");
+        
         // Rede
         if (AppSettings.VlcHttpReconnect) args.Add("--http-reconnect");
         args.Add($"--network-caching={AppSettings.VlcNetworkCachingMs}");
