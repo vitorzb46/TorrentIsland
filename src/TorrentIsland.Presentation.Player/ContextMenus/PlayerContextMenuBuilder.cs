@@ -46,8 +46,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildSubmenu("Aceleração de Hardware", HardwareDecoding()),
         BuildSubmenu("Pular filtro de desbloqueio", SkipLoopFilter()),
         BuildSubmenu("Modo de redimensionamento por software", SwscaleMode()),
-        BuildSubmenu("Sincronização de relógio", ClockSync()),
-        BuildSubmenu("Modo de desentrelaçamento", DeinterlaceFilter()),
+        BuildSubmenu("Sincronização de relógio", ClockSync()),        
         BuildSubmenu("Filtros de vídeo", VideoFilters()),
         new Separator(),
         BuildHint("⚠ requer reinício do programa"),
@@ -55,9 +54,28 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
 
     private object[] VideoFilters() =>
     [
+        BuildSubmenu("Modo de desentrelaçamento", DeinterlaceFilter()),
         BuildSubmenu("Nitidez (de contornos)", Sharpen()),
+        BuildSubmenu("Filtro de remoção (Gradfun)", Gradfun()),
+        new Separator(),
         BuildSubmenu("Efeito Sépia", Sepia()),
     ];
+
+    private object[] Gradfun()
+    {
+        var current = AppSettings.VlcGradfunRadius;
+
+        return
+        [
+            BuildRadioItem("Desativado", _viewModel.GradfunCommand, (-1, -1f), current == null),
+            BuildRadioItem("Sutil",      _viewModel.GradfunCommand, (8,  0.8f), current == 8),
+            BuildRadioItem("Padrão",     _viewModel.GradfunCommand, (16, 1.2f), current == 16),
+            BuildRadioItem("Intenso",    _viewModel.GradfunCommand, (24, 2.5f), current == 24),
+            BuildRadioItem("Agressivo",  _viewModel.GradfunCommand, (32, 4.0f), current == 32),
+            new Separator(),
+            BuildItem("Custom..."), // Todo
+        ];
+    }
 
     private object[] Sepia()
     {

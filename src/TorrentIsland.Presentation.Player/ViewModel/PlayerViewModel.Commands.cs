@@ -134,6 +134,30 @@ public partial class PlayerViewModel
     public ICommand SepiaCommand =>
         _sepiaCommand ??= new RelayCommand<int>(SetSepia);
 
+    private ICommand? _gradfunCommand;
+    public ICommand GradfunCommand =>
+        _gradfunCommand ??= new RelayCommand<(int? radius, float? str)>((args) =>
+        {
+            SetGradfun(args.radius, args.str);
+        });
+
+    public static void SetGradfun(int? radius, float? strength)
+    {
+        if (radius is -1 && strength is -1f)
+        {
+            AppSettings.VlcGradfunRadius = null;
+            AppSettings.VlcGradfunStrength = null;
+            AppSettings.VlcGradfunFilter = false;
+            return;
+        }
+
+        bool radiusIsValid = radius is >= 4 and <= 32;
+        bool strengthIsValid = strength is >= 0.51f and <= 255.0f;
+        AppSettings.VlcGradfunRadius = radiusIsValid ? radius : 16;
+        AppSettings.VlcGradfunStrength = strengthIsValid ? strength : 1.2f;
+        AppSettings.VlcGradfunFilter = radiusIsValid && strengthIsValid;
+    }
+
     public static void SetSepia(int sepia)
     {
         bool isValid = sepia is >= 0 and <= 255;

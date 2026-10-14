@@ -1,3 +1,4 @@
+using System.Globalization;
 using TorrentIsland.Application.Settings;
 
 namespace TorrentIsland.Infrastructure.VLC;
@@ -32,24 +33,38 @@ public sealed class VlcConfiguration
         if (AppSettings.VlcSkipFrames) args.Add("--skip-frames");
         if (AppSettings.VlcNoVideoTitleShow) args.Add("--no-video-title-show");
 
-        if (AppSettings.VlcDeinterlacing)
+        var videoFilters = new List<string>();
+
+        // Filtros técnicos vem primeiro na ordem de aplicação que os filtros estéticos
+        if (AppSettings.VlcDeinterlacing && AppSettings.VlcDeinterlaceMode is string dm)
         {
-            args.Add("--deinterlace=1");
-            args.Add("--video-filter=deinterlace");
-            args.Add($"--deinterlace-mode={AppSettings.VlcDeinterlaceMode}");
+            videoFilters.Add("deinterlace");
+            args.Add($"--deinterlace-mode={dm}");
         }
 
-        if (AppSettings.VlcSharpenFilter)
+        if (AppSettings.VlcSharpenFilter && AppSettings.VlcSharpenSigma is float sigma)
         {
-            args.Add("--video-filter=sharpen");
-            args.Add($"--sharpen-sigma={AppSettings.VlcSharpenSigma}"); // entre 0 e 2
+            videoFilters.Add("sharpen");
+            args.Add($"--sharpen-sigma={sigma.ToString(CultureInfo.InvariantCulture)}"); // entre 0 e 2
         }
 
+        if (AppSettings.VlcGradfunFilter
+            && AppSettings.VlcGradfunRadius is int radius
+            && AppSettings.VlcGradfunStrength is float strength)
+        {
+            videoFilters.Add("gradfun");
+            args.Add($"--gradfun-radius={radius}");
+            args.Add($"--gradfun-strength={strength.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        //Estético
         if (AppSettings.VlcSepiaFilter)
         {
-            args.Add("--video-filter=sepia");
+            videoFilters.Add("sepia");
             args.Add($"--sepia-intensity={AppSettings.VlcSepiaIntensity}");
         }
+
+        if (videoFilters.Count > 0) args.Add($"--video-filter={string.Join(",", videoFilters)}");
         
         return [.. args];
     }
