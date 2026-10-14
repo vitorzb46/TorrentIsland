@@ -39,6 +39,12 @@ public sealed class VlcConfiguration
             args.Add($"--deinterlace-mode={AppSettings.VlcDeinterlaceMode}");
         }
 
+        if (AppSettings.VlcSharpenFilter)
+        {
+            args.Add("--video-filter=sharpen");
+            args.Add($"--sharpen-sigma={AppSettings.VlcSharpenSigma}"); // entre 0 e 2
+        }
+        
         return [.. args];
     }
 }

@@ -48,9 +48,31 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildSubmenu("Modo de redimensionamento por software", SwscaleMode()),
         BuildSubmenu("Sincronização de relógio", ClockSync()),
         BuildSubmenu("Modo de desentrelaçamento", DeinterlaceFilter()),
+        BuildSubmenu("Filtros de vídeo", VideoFilters()),
         new Separator(),
         BuildHint("⚠ requer reinício do programa"),
     ];
+
+    private object[] VideoFilters() =>
+    [
+        BuildSubmenu("Nitidez (de contornos)", Sharpen()),
+    ];
+
+    private object[] Sharpen()
+    {
+        var current = AppSettings.VlcSharpenSigma;
+
+        return
+        [
+            BuildRadioItem("Desativado",     _viewModel.SharpenCommand, -1f, current == null),
+            BuildRadioItem("Sutil (padrão)", _viewModel.SharpenCommand, 0.05f, current == 0.05f),
+            BuildRadioItem("Moderado",       _viewModel.SharpenCommand, 0.5f, current == 0.5f),
+            BuildRadioItem("Forte",          _viewModel.SharpenCommand, 1.0f, current == 1.0f),
+            BuildRadioItem("Extremo",        _viewModel.SharpenCommand, 2.0f, current == 2.0f),
+            new Separator(),
+            BuildItem("Custom...") // Todo
+        ];
+    }
 
     private object[] DeinterlaceFilter()
     {

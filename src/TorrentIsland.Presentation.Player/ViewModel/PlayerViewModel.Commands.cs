@@ -126,6 +126,23 @@ public partial class PlayerViewModel
     public ICommand DeinterlaceCommand =>
         _deinterlaceCommand ??= new RelayCommand<int>(SetDeinterlaceMode);
 
+    private ICommand? _sharpenCommand;
+    public ICommand SharpenCommand =>
+        _sharpenCommand ??= new RelayCommand<float>(SetSharpen);
+
+    public static void SetSharpen(float sharpen)
+    {
+        if (sharpen == -1f)
+        {
+            AppSettings.VlcSharpenSigma = null;
+            return;
+        }
+
+        bool isValid = sharpen is >= 0.0f and <= 2.0f;
+        AppSettings.VlcSharpenFilter = isValid;
+        AppSettings.VlcSharpenSigma = isValid ? sharpen : 0.05f;
+    }
+
     public static void SetDeinterlaceMode(int dm)
     {
         AppSettings.VlcDeinterlaceMode = dm switch

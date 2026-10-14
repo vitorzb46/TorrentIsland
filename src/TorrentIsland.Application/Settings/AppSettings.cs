@@ -59,6 +59,9 @@ public sealed class AppSettings
     public static bool VlcDeinterlacing { get; set; } = false;
     public static string? VlcDeinterlaceMode { get; set; } = null;
 
+    public static bool VlcSharpenFilter { get; set; }
+    public static float? VlcSharpenSigma { get; set; } = 0.05f;
+
     // Torrent (MonoTorrent)
     public static string FullPath { get; set; } = string.Empty;
     public static bool OneStream { get; set; } = true;
