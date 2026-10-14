@@ -44,6 +44,12 @@ public sealed class VlcConfiguration
             args.Add("--video-filter=sharpen");
             args.Add($"--sharpen-sigma={AppSettings.VlcSharpenSigma}"); // entre 0 e 2
         }
+
+        if (AppSettings.VlcSepiaFilter)
+        {
+            args.Add("--video-filter=sepia");
+            args.Add($"--sepia-intensity={AppSettings.VlcSepiaIntensity}");
+        }
         
         return [.. args];
     }

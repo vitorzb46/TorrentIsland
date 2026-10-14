@@ -56,7 +56,24 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     private object[] VideoFilters() =>
     [
         BuildSubmenu("Nitidez (de contornos)", Sharpen()),
+        BuildSubmenu("Efeito Sépia", Sepia()),
     ];
+
+    private object[] Sepia()
+    {
+        var current = AppSettings.VlcSepiaIntensity;
+
+        return
+        [
+            BuildRadioItem("Desativado",  _viewModel.SepiaCommand, 0,   current == 0),
+            BuildRadioItem("Sutil",       _viewModel.SepiaCommand, 60,  current == 60),
+            BuildRadioItem("Clássico",    _viewModel.SepiaCommand, 150, current == 150),
+            BuildRadioItem("Intenso",     _viewModel.SepiaCommand, 220, current == 220),
+            BuildRadioItem("Total",       _viewModel.SepiaCommand, 255, current == 255),
+            new Separator(),
+            BuildItem("Custom..."), // Todo
+        ];
+    }
 
     private object[] Sharpen()
     {

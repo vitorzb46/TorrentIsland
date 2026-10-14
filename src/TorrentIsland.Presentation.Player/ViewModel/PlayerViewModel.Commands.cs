@@ -130,6 +130,17 @@ public partial class PlayerViewModel
     public ICommand SharpenCommand =>
         _sharpenCommand ??= new RelayCommand<float>(SetSharpen);
 
+    private ICommand? _sepiaCommand;
+    public ICommand SepiaCommand =>
+        _sepiaCommand ??= new RelayCommand<int>(SetSepia);
+
+    public static void SetSepia(int sepia)
+    {
+        bool isValid = sepia is >= 0 and <= 255;
+        AppSettings.VlcSepiaIntensity = isValid ? sepia : 0;
+        AppSettings.VlcSepiaFilter = isValid;
+    }
+
     public static void SetSharpen(float sharpen)
     {
         if (sharpen == -1f)
