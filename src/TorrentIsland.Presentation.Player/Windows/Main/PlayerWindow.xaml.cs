@@ -40,13 +40,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly PlayerViewModel _viewModel;
     private readonly ControlsWindow _controls;
     private readonly IDLService _ytDlService;
+    private readonly PlayerSessionTimers _timers;
     private readonly TorrentSearchWindow _torrentSearch;
-    private readonly DispatcherTimer _inactivityTimer;
-    private readonly DispatcherTimer _osdTimer;
-    private readonly System.Timers.Timer _autosaveTimer;
-    private int _menusAbertos;
-    private int _saving;
-
+    
     public PlayerWindow(IStreamService streamService,
                         IManagers managers,
                         IDLService ytDlService,
@@ -54,8 +50,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
                         IFormattingHelper fb,
                         ITorrentService torrentService)
     {
-        Managers = managers;
-
         InitializeComponent();
 
         TitleLeft.Text = "TorrentIsland";
@@ -69,30 +63,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         VideoView.MediaPlayer = vlc.MediaPlayer;
 
         _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService);
-        _inactivityTimer = new DispatcherTimer();
-        _osdTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(2)
-        };
 
-        _autosaveTimer = new System.Timers.Timer
-        {
-            Interval = TimeSpan.FromSeconds(30).TotalMilliseconds
-        };
-
-        _autosaveTimer.Elapsed += async (_, _) =>
-        {
-            if (Interlocked.CompareExchange(ref _saving, 1, 0) != 0) return;
-            try
-            {
-                if (!Managers.GetEngine()) return;
-                await Managers.SaveEngine().ConfigureAwait(false);
-            }
-            catch (Exception ex) { Log.Salvar($"[Autosave] {ex.Message}"); }
-            finally { Interlocked.Exchange(ref _saving, 0); }
-        };
-        _autosaveTimer.Start();
-
+        Managers = managers;
+        StreamService = streamService;
+        _ytDlService = ytDlService;
+        _timers = new PlayerSessionTimers(_viewModel, Managers);
+        _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
+        
         SubscribeEvents();
 
         Loaded += (_, _) =>
@@ -112,9 +89,9 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         {
             UnsubscribeEvents();
 
-            _inactivityTimer?.Stop();
-            _osdTimer?.Stop();
-
+            _timers.InactivityStop();
+            _timers.OsdStop();
+            
             _controls?.Close();
 
             _viewModel?.Dispose();
@@ -122,37 +99,20 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Log.Salvar("[Shutdown] PlayerWindow fechada.");
             Environment.Exit(0);
         };
-
-        StreamService = streamService;
-        _ytDlService = ytDlService;
-        _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
     }
     #endregion
 
     #region Properties
-    public bool MenuAberto => _menusAbertos > 0;
     public string MediaUrl { get; set; } = "";
     private IStreamService StreamService { get; }
     private IManagers Managers { get; }
     #endregion
 
     #region Public Methods    
-    public void AbrirMenu() => _menusAbertos++;
-
-    public void FecharMenu()
-    {
-        if (_menusAbertos == 0) return;
-
-        _menusAbertos--;
-    }
-    public void ReiniciarTimerInatividade(double time = 5)
-    {
-        if (!_viewModel.IsFullscreen ||
-            (MenuAberto && Math.Abs(time - 5) < 0.01)) return;
-        _inactivityTimer.Stop();
-        _inactivityTimer.Interval = TimeSpan.FromSeconds(time);
-        _inactivityTimer.Start();
-    }
+    public void ReiniciarTimerInatividade() => _timers.ReiniciarTimerInatividade();
+    public void AbrirMenu() => _timers.AbrirMenu();
+    public void FecharMenu() => _timers.FecharMenu();
+    
     public async Task CarregarPastaAsync(List<string>? folder)
     {
         // TODO
@@ -290,14 +250,6 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         KeyGenerator.Hash(PlayerViewModel.FilePath);
     }
 
-    /// <summary>
-    /// Timer da sobreposição de tempo da legenda (On-Screen Display).
-    /// </summary>
-    private void ReiniciarTimerOsd()
-    {
-        _osdTimer.Stop();
-        _osdTimer.Start();
-    }
     /// <summary>Posiciona a janela de controles na parte inferior da janela de vídeo.</summary>
     private void PosicionarControles()
     {
@@ -343,7 +295,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             _controls.Visibility = Visibility.Visible;
             Mouse.OverrideCursor = Cursors.Arrow;
         }
-        ReiniciarTimerInatividade();
+        _timers.ReiniciarTimerInatividade();
     }
 
     private void HideControls()
@@ -479,7 +431,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         e.Handled = true;
         AbrirMenu();
-        ReiniciarTimerInatividade();
+        _timers.ReiniciarTimerInatividade();
         ReforcarTopmostControles();
 
         var builder = new PlayerContextMenuBuilder(_viewModel);
@@ -489,7 +441,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         menu.Closed += (_, _) =>
         {
             FecharMenu();
-            ReiniciarTimerInatividade();
+            _timers.ReiniciarTimerInatividade();
             ReforcarTopmostControles();
         };
         menu.IsOpen = true;
@@ -502,7 +454,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         _viewModel.OsdMessage = texto;
         OsdNotification.Visibility = Visibility.Visible;
-        ReiniciarTimerOsd();
+        _timers.ReiniciarTimerOsd();
     }
 
     private void OverlayGrid_MouseMove(object sender, MouseEventArgs e)
@@ -533,31 +485,30 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         // Janela de controles separada (evita o airspace do HWND nativo bloquear os cliques).
         // Owner é atribuído no Loaded (a janela dona precisa estar visível antes).        
         _controls.FullscreenRequested += (_, _) => ToggleFullscreen();
-        _controls.ActivityDetected += (_, _) => ReiniciarTimerInatividade();
+        _controls.ActivityDetected += (_, _) => _timers.ReiniciarTimerInatividade();
         _controls.Closed += (_, _) =>
         {
-            _inactivityTimer?.Stop();
+            _timers.InactivityStop();
             Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.ContextIdle);
         };
 
-
-        _inactivityTimer.Tick += (_, _) =>
+        _timers.InactivityTick(() =>
         {
-            if (!_viewModel.IsFullscreen || MenuAberto) return;
+            if (!_viewModel.IsFullscreen || _timers.MenuAberto) return;
             HideControls();
-        };
+        });
 
-        _osdTimer.Tick += (s, e) =>
+        _timers.OsdTick(() =>
         {
             OsdNotification.Visibility = Visibility.Collapsed;
-            _osdTimer.Stop();
-        };
+            _timers.OsdStop();
+        });
     }
 
     private void UnsubscribeEvents()
     {
         _controls.FullscreenRequested -= (_, _) => ToggleFullscreen();
-        _controls.ActivityDetected -= (_, _) => ReiniciarTimerInatividade();
+        _controls.ActivityDetected -= (_, _) => _timers.ReiniciarTimerInatividade();
         OverlayGrid.ContextMenuOpening -= OverlayGrid_ContextMenuOpening;
         PlayerViewModel.FilePathChanged -= OnFilePathChanged;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
@@ -793,7 +744,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private void OnOsdMessageChanged(object? sender, EventArgs e)
     {
         OsdNotification.Visibility = Visibility.Visible;
-        ReiniciarTimerOsd();
+        _timers.ReiniciarTimerOsd();
     }
 
     private void OnOpenUrlStreamRequested(object? sender, EventArgs e)
@@ -811,18 +762,11 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     protected override void OnClosed(EventArgs e)
     {
-        _autosaveTimer.Stop();
-
+        _timers.AutoSaverStop();
+        
         Task.Run(async () =>
         {
-            try
-            {
-                if (!Managers.GetEngine()) return;
-                await Managers.SaveEngine();
-            }
-            catch (Exception ex) { Log.Salvar($"[Shutdown] {ex.Message}"); }
-
-            _autosaveTimer?.Dispose();
+            await _timers.SaveEngineOnCloseAsync(Managers, "Shutdown");
         });
 
         base.OnClosed(e);
