@@ -13,8 +13,10 @@ public class KeyGenerator
     /// </summary>
     /// <param name="filePath">caminho de arquivo de mídia.</param>
     /// <returns>Retorna um SHA256 em formato string.</returns>
-    public static string Hash(string filePath)
+    public static string Hash(string? filePath)
     {
+        ArgumentException.ThrowIfNullOrEmpty(filePath);
+
         if (HashString != string.Empty) return HashString;
 
         var info = new FileInfo(filePath);

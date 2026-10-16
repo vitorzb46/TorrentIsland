@@ -42,7 +42,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     private readonly IDLService _ytDlService;
     private readonly PlayerSessionTimers _timers;
     private readonly TorrentSearchWindow _torrentSearch;
-    
+    private readonly MediaFactory _mediaFactory;
+
     public PlayerWindow(IStreamService streamService,
                         IManagers managers,
                         IDLService ytDlService,
@@ -69,6 +70,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
         _ytDlService = ytDlService;
         _timers = new PlayerSessionTimers(_viewModel, Managers);
         _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
+        _mediaFactory = new MediaFactory(vlc.LibVLC, _ytDlService, Managers);
         
         SubscribeEvents();
 
@@ -132,10 +134,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             {
                 await PrepareForNewMediaAsync();
                 await MediaTimestamp.Load();
-                var media = await MediaSetupAsync(caminhoOuUrl);
-                if (media == null) return;
+                var factory = await _mediaFactory.CreateAsync(caminhoOuUrl);
+                if (factory?.Media is null) return;
 
-                var timeCached = await MediaTimestamp.LoadCache(PlayerViewModel.FilePath);
+                var media = factory.Media;
+                PlayerViewModel.FilePath = factory.FilePath;
+                var timeCached = await MediaTimestamp.LoadCache(factory.FilePath);
                 _viewModel.SetMedia(media, timeCached.Time);
 
                 await Utils.AtualizarUIAsync(async () =>
@@ -194,60 +198,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     private async Task<bool> TryAddMediaAsync(string file)
     {
-        Media? media = await MediaSetupAsync(file);
-        if (media == null) return false;
-        _viewModel.AddMedia(media);
+        var factory = await _mediaFactory.CreateAsync(file);
+        if (factory?.Media == null) return false;
+        _viewModel.AddMedia(factory.Media);
         return true;
-    }
-
-    private async Task<Media?> MediaSetupAsync(string caminhoOuUrl)
-    {
-        Media? media = null;
-        if (File.Exists(caminhoOuUrl))
-        {
-            media = new Media(_viewModel.LibVLC, caminhoOuUrl, FromType.FromPath);
-            PlayerViewModel.FilePath = caminhoOuUrl;
-        }
-        else if (Uri.TryCreate(caminhoOuUrl, UriKind.Absolute, out _))
-        {
-            string? url;
-            if (caminhoOuUrl.StartsWith("magnet"))
-            {
-                var torrents = await Managers.ObterTorrentsAsync();
-                if (torrents.Count > 0)
-                {
-                    PlayerViewModel.FilePath = torrents.Select(v => v.Value.FullPath).FirstOrDefault()!;
-                }
-                url = caminhoOuUrl;
-            }
-            else
-            {
-                url = await _ytDlService.GetStreamingUrl(caminhoOuUrl);
-            }
-
-            if (string.IsNullOrEmpty(url))
-            {
-                MessageBox.Show(
-                    $"Url:{caminhoOuUrl} - Falha em obter dados para criação de streaming!",
-                    "Player",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-                return null;
-            }
-
-            media = new Media(_viewModel.LibVLC, url, FromType.FromLocation);
-        }
-
-        GenerateMkvHash();
-
-        return media;
-    }
-
-    private static void GenerateMkvHash()
-    {
-        var ext = Path.GetExtension(PlayerViewModel.FilePath);
-        if (ext != ".mkv") return;
-        KeyGenerator.Hash(PlayerViewModel.FilePath);
     }
 
     /// <summary>Posiciona a janela de controles na parte inferior da janela de vídeo.</summary>
