@@ -1,4 +1,3 @@
-using LibVLCSharp.Shared;
 using LibVLCSharp.WPF;
 using System.ComponentModel;
 using System.IO;
@@ -10,11 +9,10 @@ using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Medias.Enums;
 using TorrentIsland.Application.Medias.Events;
-using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
-using TorrentIsland.Infrastructure.Services;
 using TorrentIsland.Infrastructure.VLC;
+using TorrentIsland.Presentation.Player.Abstractions;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ContextMenus;
 using TorrentIsland.Presentation.Player.ViewModel;
@@ -34,43 +32,42 @@ using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
 
-public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
+public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiContext
 {
     #region Fields + Constructor
     private readonly PlayerViewModel _viewModel;
     private readonly ControlsWindow _controls;
-    private readonly IDLService _ytDlService;
     private readonly PlayerSessionTimers _timers;
+    private readonly ILocalMediaLoader _localMedia;
+    private readonly IStreamTorrentLoader _streamLoader;
+    private readonly IMediasFolderLoader _folderLoader;
     private readonly TorrentSearchWindow _torrentSearch;
-    private readonly MediaFactory _mediaFactory;
 
-    public PlayerWindow(IStreamService streamService,
-                        IManagers managers,
-                        IDLService ytDlService,
+    public PlayerWindow(IManagers managers,
                         ITorrentStatusEvent torrentStatus,
-                        IFormattingHelper fb,
-                        ITorrentService torrentService)
+                        ITorrentService torrentService,
+                        VlcPlayerService vlc,
+                        PlayerViewModel viewModel,
+                        PlayerSessionTimers timers,
+                        Func<IPlayerUiContext, ILocalMediaLoader> localLoaderFactory,
+                        Func<IPlayerUiContext, IMediasFolderLoader> folderLoaderFactory,
+                        Func<IPlayerUiContext, IStreamTorrentLoader> torrentLoaderFactory)
     {
         InitializeComponent();
-
+        Managers = managers;
         TitleLeft.Text = "TorrentIsland";
 
-        var vlc = new VlcPlayerService();
-
-        _viewModel = new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer, fb);
+        _viewModel = viewModel;
+        _timers = timers;
+        _localMedia = localLoaderFactory(this);
+        _folderLoader = folderLoaderFactory(this);
+        _streamLoader = torrentLoaderFactory(this);
 
         DataContext = _viewModel;
-
         VideoView.MediaPlayer = vlc.MediaPlayer;
-
+        
         _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService);
-
-        Managers = managers;
-        StreamService = streamService;
-        _ytDlService = ytDlService;
-        _timers = new PlayerSessionTimers(_viewModel, Managers);
         _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
-        _mediaFactory = new MediaFactory(vlc.LibVLC, _ytDlService, Managers);
         
         SubscribeEvents();
 
@@ -86,13 +83,14 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             PosicionarControles();
             _controls.ShowActivated = false;
             _controls.Show();
+
+            _timers.AutoSaverStart();
         };
         Closed += (_, _) =>
         {
             UnsubscribeEvents();
 
-            _timers.InactivityStop();
-            _timers.OsdStop();
+            _timers.Dispose();
             
             _controls?.Close();
 
@@ -106,104 +104,29 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
 
     #region Properties
     public string MediaUrl { get; set; } = "";
-    private IStreamService StreamService { get; }
     private IManagers Managers { get; }
+
+    public PlayerViewModel ViewModel => _viewModel;
     #endregion
 
-    #region Public Methods    
+    #region Public Methods 
+    void IPlayerUiContext.ShowControls() => ShowControls();
+    public void ApplyBlackBackground() => Utils.VideoView_Background_Black();   
     public void ReiniciarTimerInatividade() => _timers.ReiniciarTimerInatividade();
     public void AbrirMenu() => _timers.AbrirMenu();
     public void FecharMenu() => _timers.FecharMenu();
     
-    public async Task CarregarPastaAsync(List<string>? folder)
-    {
-        // TODO
-        foreach (var file in folder!)
-        {
-            if (!await TryAddMediaAsync(file))
-                continue;
-        }
-        await _viewModel.PlayNextMedia();
-    }
-
-    public async Task CarregarMidiaAsync(string caminhoOuUrl)
-    {
-        try
-        {
-            await _viewModel.LoadingStateAsync("Carregando mídia...", async () =>
-            {
-                await PrepareForNewMediaAsync();
-                await MediaTimestamp.Load();
-                var factory = await _mediaFactory.CreateAsync(caminhoOuUrl);
-                if (factory?.Media is null) return;
-
-                var media = factory.Media;
-                PlayerViewModel.FilePath = factory.FilePath;
-                var timeCached = await MediaTimestamp.LoadCache(factory.FilePath);
-                _viewModel.SetMedia(media, timeCached.Time);
-
-                await Utils.AtualizarUIAsync(async () =>
-                {
-                    await _viewModel.PopulateTracksAsync();
-                    _viewModel.SetPause(false);
-                    ShowControls();
-                    VideoView.InvalidateVisual();
-                    Utils.VideoView_Background_Black();
-                    await Task.Delay(300); //Tempo de espera para evitar artefato visual
-                });
-            });
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro ao carregar mídia: {ex.Message} {ex.StackTrace} {ex.InnerException}");
-            MessageBox.Show($"Não foi possível carregar a mídia: {caminhoOuUrl}", "Player",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    public async Task CarregarStreamTorrentAsync(string caminhoOuUrl)
-    {
-        try
-        {
-            await _viewModel.LoadingStateAsync("Iniciando streaming...", async () =>
-            {
-                string streamUrl = await Task.Run(async () =>
-                {
-                    return await StreamService.ToPlayerAsync(caminhoOuUrl);
-                });
-                AppSettings.OneStream = true;
-                await CarregarMidiaAsync(streamUrl);
-            });
-        }
-        catch (Exception ex)
-        {
-            Log.Salvar($"Erro ao iniciar stream de torrent: {ex.Message}");
-            MessageBox.Show($"Não foi possível iniciar o stream do torrent!", "Player",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-
-            if (_viewModel.GetMediaPlayer != null)
-                _viewModel.IsVideoVisible = true;
-        }
-    }
+    public async Task CarregarPastaAsync(List<string>? folder) =>
+        await _folderLoader.LoadAsync(folder).ConfigureAwait(false);
+        
+    public async Task CarregarMidiaAsync(string caminhoOuUrl) =>
+        await _localMedia.LoadAsync(caminhoOuUrl).ConfigureAwait(false);
+        
+    public async Task CarregarStreamTorrentAsync(string caminhoOuUrl) =>
+        await _streamLoader.LoadAsync(caminhoOuUrl).ConfigureAwait(false);
     #endregion
 
     #region Private Methods
-    private async Task PrepareForNewMediaAsync()
-    {
-        var media = _viewModel.GetMedia();
-        if (media is null) return;
-        await _viewModel.SaveCacheAsync();
-        _viewModel.MediaDispose();
-    }
-
-    private async Task<bool> TryAddMediaAsync(string file)
-    {
-        var factory = await _mediaFactory.CreateAsync(file);
-        if (factory?.Media == null) return false;
-        _viewModel.AddMedia(factory.Media);
-        return true;
-    }
-
     /// <summary>Posiciona a janela de controles na parte inferior da janela de vídeo.</summary>
     private void PosicionarControles()
     {
@@ -446,17 +369,17 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
             Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.ContextIdle);
         };
 
-        _timers.InactivityTick(() =>
+        _timers.InactivityTimer.Tick += (_, _) =>
         {
             if (!_viewModel.IsFullscreen || _timers.MenuAberto) return;
             HideControls();
-        });
+        };
 
-        _timers.OsdTick(() =>
+        _timers.OsdTimer.Tick += (_, _) =>
         {
             OsdNotification.Visibility = Visibility.Collapsed;
             _timers.OsdStop();
-        });
+        };
     }
 
     private void UnsubscribeEvents()
@@ -631,10 +554,10 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow
     {
         Dispatcher.Invoke(() =>
         {
-            TitleCenter.Text = PlayerViewModel.FileName;
-            Title = string.IsNullOrEmpty(PlayerViewModel.FileName)
+            TitleCenter.Text = _viewModel.FileName;
+            Title = string.IsNullOrEmpty(_viewModel.FileName)
                 ? "TorrentIsland"
-                : $"{PlayerViewModel.FileName} - TorrentIsland";
+                : $"{_viewModel.FileName} - TorrentIsland";
         });
     }
 

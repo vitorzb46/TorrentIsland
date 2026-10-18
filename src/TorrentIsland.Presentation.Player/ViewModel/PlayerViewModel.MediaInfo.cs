@@ -12,13 +12,13 @@ public partial class PlayerViewModel
 
     public static nint VlcHwnd { get; private set; }
 
-    public static string FileName => Path.GetFileName(FilePath) ?? string.Empty;
+    public string FileName => Path.GetFileName(FilePath) ?? string.Empty;
 
     public bool IsOpening { get; set { field = value; OnPropertyChanged(); } } = false;
 
     public bool IsVideoVisible { get; set { field = value; OnPropertyChanged(); } } = false;
 
-    public static string FilePath
+    public string FilePath
     {
         get;
         set

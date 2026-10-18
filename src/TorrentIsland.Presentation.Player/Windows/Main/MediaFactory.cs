@@ -3,7 +3,6 @@ using LibVLCSharp.Shared;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Infrastructure.Interfaces;
 using TorrentIsland.Infrastructure.Services;
-using TorrentIsland.Presentation.Player.ViewModel;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
 
@@ -21,15 +20,19 @@ public sealed class MediaFactory(LibVLC libVLC, IDLService dL, IManagers manager
     {
         ArgumentException.ThrowIfNullOrEmpty(filePathOrUrl);
 
-        _media = null;
-        _isMagnetic = false;
-        _filePath = filePathOrUrl;
-
+        NewIteration(filePathOrUrl);
         CheckIfFileExists();
         await CheckIfComesFromUrl();
         GenerateMkvHash();
+        
+        return new ResolvedMedia(_media, filePathOrUrl);
+    }
 
-        return new ResolvedMedia(_media, _filePath);
+    private void NewIteration(string filePathOrUrl)
+    {
+        _media = null;
+        _isMagnetic = false;
+        _filePath = filePathOrUrl;
     }
 
     private void CheckIfFileExists()

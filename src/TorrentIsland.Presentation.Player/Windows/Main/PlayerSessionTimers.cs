@@ -19,6 +19,8 @@ public class PlayerSessionTimers : IDisposable
     private int _saving;
     private int _menusAbertos;
 
+    public DispatcherTimer InactivityTimer => _inactivityTimer;
+    public DispatcherTimer OsdTimer => _osdTimer;
     public bool MenuAberto => _menusAbertos > 0;
 
     public PlayerSessionTimers(PlayerViewModel viewModel, IManagers managers)
@@ -26,7 +28,6 @@ public class PlayerSessionTimers : IDisposable
         _viewModel = viewModel;
         _managers = managers;
         _autosaveTimer.Elapsed += OnAutosaveElapsed;
-        AutoSaverStart();
     }
     
     private async Task<bool> TryAutoSaveEngineAsync(IManagers managers)
@@ -64,15 +65,7 @@ public class PlayerSessionTimers : IDisposable
         _inactivityTimer.Interval = TimeSpan.FromSeconds(time);
         InactivityStart();
     }
-
-    public void InactivityTick(Action action)
-    {
-        _inactivityTimer.Tick += (_, _) =>
-        {
-            action();
-        };
-    }
-
+    
     public void InactivityStart() => _inactivityTimer?.Start();
 
     public void InactivityStop() => _inactivityTimer?.Stop();
@@ -88,15 +81,7 @@ public class PlayerSessionTimers : IDisposable
         OsdStop();
         OsdStart();
     }
-
-    public void OsdTick(Action action)
-    {
-        _osdTimer.Tick += (_, _) =>
-        {
-            action();
-        };
-    }
-
+    
     public void OsdStart() => _osdTimer?.Start();
 
     public void OsdStop() => _osdTimer?.Stop();
