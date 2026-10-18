@@ -68,7 +68,7 @@ public class EventHandling(ClientEngine engine, IManagers managers, ILogger<Torr
         {
             Logger.LogInformation("[red]Encerrando processo...[/]");
 
-            await SaveEngineAsync(AppSettings.ArquivoEngineState);
+            await Managers.SaveEngine();
 
             await Task.Delay(2000, token).ConfigureAwait(false);
         };
@@ -79,19 +79,9 @@ public class EventHandling(ClientEngine engine, IManagers managers, ILogger<Torr
 
             Logger.LogInformation("[red]Ctrl + c pressionado. Aguarde...[/]");
 
-            await SaveEngineAsync(AppSettings.ArquivoEngineState);
+            await Managers.SaveEngine();
 
             Environment.Exit(0);
         };
-    }
-
-    private async Task SaveEngineAsync(string fileName)
-    {
-        try
-        {
-            var bytes = await engine.SaveStateAsync().ConfigureAwait(false);
-            File.WriteAllBytes(fileName, bytes);
-        }
-        catch (Exception) { }
     }
 }

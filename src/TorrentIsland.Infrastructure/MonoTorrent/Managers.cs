@@ -15,10 +15,16 @@ using static TorrentIsland.Application.Settings.AppSettings;
 
 namespace TorrentIsland.Infrastructure.MonoTorrent;
 
+internal sealed class Lock
+{
+    internal static readonly SemaphoreSlim File = new(1,1);
+}
+
 public class Managers : IManagers
 {
     private readonly ClientEngine _engine;
     private readonly IEntityMapping _map;
+    
 
     public ConcurrentDictionary<Guid, TorrentManager> TorrentCollection { get; set; } = [];
     internal TorrentSettings Settings { get; private set; }
@@ -148,9 +154,29 @@ public class Managers : IManagers
 
     public async Task SaveEngine()
     {
-        await _engine.SaveStateAsync(ArquivoEngineState).ConfigureAwait(false);
-        Log.Salvar($"Engine salva em: {ArquivoEngineState}");
+        if (!await Lock.File.WaitAsync(TimeSpan.FromSeconds(5)))
+        {
+            Log.Salvar("[Engine] Timeout ao aguardar lock para salvar estado.");
+            return;
+        }
+        try
+        {
+            await Task.Run(async () =>
+            {
+                await _engine.SaveStateAsync(ArquivoEngineState).ConfigureAwait(false);
+                Log.Salvar($"Engine salva em: {ArquivoEngineState}");
+            });  
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"[Engine] Erro ao salvar estado: {ex.Message}");
+        }
+        finally
+        {
+            Lock.File.Release();
+        }      
     }
+    
     public IEnumerable<string> GetTrackers(Guid id)
     {
         return TorrentCollection[id].TrackerManager.Tiers

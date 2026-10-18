@@ -5,7 +5,6 @@ namespace TorrentIsland.Infrastructure.VLC;
 
 /// <summary>
 /// Wrapper para LibVLCSharp: encapsula o ciclo de vida de LibVLC/MediaPlayer.
-/// A integração com a UI (VideoView) fica na camada de apresentação.
 /// </summary>
 public sealed class VlcPlayerService
 {
