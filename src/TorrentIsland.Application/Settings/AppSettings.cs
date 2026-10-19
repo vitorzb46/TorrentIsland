@@ -7,7 +7,7 @@ public sealed class AppSettings
 {
     // File Logging
     public static bool StackTrace { get; } = false;
-    
+
     // Pastas - AppData
     public static string AppDataFolder { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
     public static string CacheFolder { get; } = Path.Combine(AppDataFolder, "TorrentIsland", "Cache");

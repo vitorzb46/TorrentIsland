@@ -21,6 +21,7 @@ using TorrentIsland.Presentation.Player.Windows.WebSearch;
 using Wpf.Ui.Controls;
 using Brushes = System.Windows.Media.Brushes;
 using Clipboard = System.Windows.Clipboard;
+using Cursor = System.Windows.Input.Cursor;
 using Cursors = System.Windows.Input.Cursors;
 using DataFormats = System.Windows.DataFormats;
 using DragEventArgs = System.Windows.DragEventArgs;
@@ -209,7 +210,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     private void ProcessDragInteraction(object sender, DragEventArgs e)
     {
         _dropHandler.OnDrop(sender, e);
-        _dropHandler.HandleDragDrop();
+        _dropHandler.HandleDragDrop(sender, e);
     }
 
     private async void PlayerWindow_Drop(object sender, DragEventArgs e)

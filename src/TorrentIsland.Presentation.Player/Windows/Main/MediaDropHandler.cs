@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Windows;
 using TorrentIsland.Presentation.Player.Common;
+using DragEventArgs = System.Windows.DragEventArgs;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
 
@@ -11,27 +12,31 @@ public sealed class MediaDropHandler
     private bool _video;
     private bool _torrent;
 
-    private DragEventArgs? _e;
-
     public void OnDrop(object sender, DragEventArgs e)
     {
+        NewIteration(e);
+
         if (!Utils.TryGetDataObject(e.Data, out string[] arquivos)) return;
 
         if (TryProcessMultipleFiles(arquivos)) return;
 
         ProcessSingleFile(arquivos);
+    }
 
-        _e = e;
+    private void NewIteration(DragEventArgs e)
+    {
+        _files.Clear();
+        _file = null;
+        _video = false;
+        _torrent = false;
+        e.Handled = true;
     }
 
     private bool TryProcessMultipleFiles(string[] arquivos)
     {
         if (arquivos.Length == 1) return false;
 
-        foreach (string f in arquivos)
-        {
-            _files.Add(f);
-        }
+        _files.AddRange(arquivos);
 
         return true;
     }
@@ -39,17 +44,18 @@ public sealed class MediaDropHandler
     private void ProcessSingleFile(string[] arquivos)
     {
         _file = arquivos[0];
-        _video = Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant());
-        _torrent = Utils.ExtensaoTorrent.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant());
+        string ext = Path.GetExtension(arquivos[0]).ToLowerInvariant();
+        _video = Utils.ExtensoesVideo.Contains(ext);
+        _torrent = Utils.ExtensaoTorrent.Contains(ext);
     }
 
-    public bool HandleDragDrop()
+    public bool HandleDragDrop(object sender, DragEventArgs e)
     {
         if (_file == null) return false;
         if (!_video && !_torrent) return false;
 
-        _e?.Effects = DragDropEffects.Copy;
-        _e?.Handled = true;
+        e.Effects = DragDropEffects.Copy;
+        e.Handled = true;
         return true;
     }
 
@@ -63,9 +69,11 @@ public sealed class MediaDropHandler
 
     private async Task<bool> TryLoadMultipleFilesAsync(PlayerWindow window)
     {
-        if (_files?.Count == 1 || _files == null) return false;
+        if (_files.Count <= 1 || _files == null) return false;
 
         RemoveNonVideoFiles();
+
+        if (_files.Count == 0) return false;
 
         var primeiro = _files[0];
         await window.CarregarMidiaAsync(primeiro).ConfigureAwait(false);
@@ -77,7 +85,7 @@ public sealed class MediaDropHandler
 
     private void RemoveNonVideoFiles()
     {
-        for (int i = 1; i < _files?.Count; i++)
+        for (int i = _files.Count - 1; i >= 0; i--)
         {
             bool isVideo = Utils.ExtensoesVideo.Contains(Path.GetExtension(_files[i]).ToLowerInvariant());
             if (!isVideo) _files.RemoveAt(i);
@@ -86,7 +94,7 @@ public sealed class MediaDropHandler
 
     private async Task LoadSingleFileAsync(PlayerWindow window)
     {
-        if (_file == null) return;
+        if (_file == null) throw new FileFormatException("Arquivo não reconhecido!");
 
         if (_video) await window.CarregarMidiaAsync(_file);
 

@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <UseWindowsForms>true</UseWindowsForms>
+    <!--<UseWindowsForms>true</UseWindowsForms>-->
     <PublishSingleFile>false</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
