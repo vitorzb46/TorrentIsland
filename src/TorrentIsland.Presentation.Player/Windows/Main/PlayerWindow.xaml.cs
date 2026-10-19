@@ -1,6 +1,5 @@
 using LibVLCSharp.WPF;
 using System.ComponentModel;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -24,12 +23,9 @@ using Brushes = System.Windows.Media.Brushes;
 using Clipboard = System.Windows.Clipboard;
 using Cursors = System.Windows.Input.Cursors;
 using DataFormats = System.Windows.DataFormats;
-using DragDropEffects = System.Windows.DragDropEffects;
 using DragEventArgs = System.Windows.DragEventArgs;
 using IDataObject = System.Windows.IDataObject;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
@@ -40,6 +36,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     private readonly PlayerViewModel _viewModel;
     private readonly ControlsWindow _controls;
     private readonly PlayerSessionTimers _timers;
+    private readonly MediaDropHandler _dropHandler;
     private readonly ILocalMediaLoader _localMedia;
     private readonly IStreamTorrentLoader _streamLoader;
     private readonly ControlsWindowPositioner _controlsPositioner;
@@ -52,6 +49,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
                         VlcPlayerService vlc,
                         PlayerViewModel viewModel,
                         PlayerSessionTimers timers,
+                        MediaDropHandler dropHandler,
                         Func<IPlayerUiContext, ILocalMediaLoader> localLoaderFactory,
                         Func<IPlayerUiContext, IMediasFolderLoader> folderLoaderFactory,
                         Func<IPlayerUiContext, IStreamTorrentLoader> torrentLoaderFactory,
@@ -63,6 +61,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
 
         _viewModel = viewModel;
         _timers = timers;
+        _dropHandler = dropHandler;
         _localMedia = localLoaderFactory(this);
         _folderLoader = folderLoaderFactory(this);
         _streamLoader = torrentLoaderFactory(this);
@@ -203,46 +202,20 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
         }
     }
 
-    private void PlayerWindow_DragEnter(object sender, DragEventArgs e)
-    {
-        if (Utils.TryGetDataObject(e.Data, out string[] arquivos)
-            && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
-        {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
-        }
-    }
+    private void PlayerWindow_DragEnter(object sender, DragEventArgs e) => ProcessDragInteraction(sender, e);
 
-    private void PlayerWindow_DragOver(object sender, DragEventArgs e)
+    private void PlayerWindow_DragOver(object sender, DragEventArgs e) => ProcessDragInteraction(sender, e);
+
+    private void ProcessDragInteraction(object sender, DragEventArgs e)
     {
-        if (Utils.TryGetDataObject(e.Data, out string[] arquivos)
-            && (Utils.ExtensoesVideo.Contains(arquivos[0]) || Utils.ExtensaoTorrent.Contains(arquivos[0])))
-        {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
-        }
+        _dropHandler.OnDrop(sender, e);
+        _dropHandler.HandleDragDrop();
     }
 
     private async void PlayerWindow_Drop(object sender, DragEventArgs e)
     {
-        if (Utils.TryGetDataObject(e.Data, out string[] arquivos))
-        {
-            if (Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
-            {
-                _viewModel.LoadingMessage = "Carregando mídia...";
-                await CarregarMidiaAsync(arquivos[0]);
-            }
-            else if (Utils.ExtensaoTorrent.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
-            {
-                Log.Salvar($"Arquivo torrent colado: {arquivos[0]}");
-                await CarregarStreamTorrentAsync(arquivos[0]);
-            }
-            else
-            {
-                MessageBox.Show("Formato de arquivo não suportado.", "Player",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
+        _dropHandler.OnDrop(sender, e);
+        await _dropHandler.LoadDroppedMediaAsync(this).ConfigureAwait(false);
     }
 
     private void ThumbPlayPause_Click(object? sender, EventArgs e) => _viewModel.TogglePlay();

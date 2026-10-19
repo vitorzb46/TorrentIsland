@@ -123,6 +123,11 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<IScreenMetrics, SystemScreenMetrics>();
 
+        services.AddTransient<MediaDropHandler>();
+
+
+        //Factories
+
         services.AddTransient<Func<IPlayerUiContext, ILocalMediaLoader>>(sp =>
             ui => new LocalMediaLoader(ui, sp.GetRequiredService<MediaFactory>()));
 

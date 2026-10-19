@@ -1,5 +1,4 @@
 using TorrentIsland.Presentation.Player.Abstractions;
-using TorrentIsland.Presentation.Player.ViewModel;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
 
@@ -8,7 +7,6 @@ public class MediasFolderLoader(IPlayerUiContext context, MediaFactory mediaFact
 {
     private readonly IPlayerUiContext _context = context;
     private readonly MediaFactory _mediaFactory = mediaFactory;
-
 
     public async Task LoadAsync(List<string>? folder)
     {
