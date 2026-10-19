@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MonoTorrent.Client;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.DependencyInjection;
@@ -11,6 +12,7 @@ using TorrentIsland.Infrastructure.Logging;
 using TorrentIsland.Infrastructure.MonoTorrent;
 using TorrentIsland.Infrastructure.VLC;
 using TorrentIsland.Presentation.Player.Abstractions;
+using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Main;
 using Wpf.Ui.Appearance;
@@ -91,7 +93,7 @@ public partial class App : System.Windows.Application
             .Build();
 
         services.AddTorrentIsland(configuration, clientEngine: clientEngine, vlc: vlc);
-        
+
         services.AddSingleton(sp =>
         {
             var vlc = sp.GetRequiredService<VlcPlayerService>();
@@ -114,6 +116,13 @@ public partial class App : System.Windows.Application
             return new PlayerSessionTimers(vm, managers);
         });
 
+        services.AddSingleton(Dispatcher.CurrentDispatcher);
+
+        services.AddSingleton<IUiDispatcher>(sp =>
+            new UiDispatcher(sp.GetRequiredService<Dispatcher>()));
+
+        services.AddSingleton<IScreenMetrics, SystemScreenMetrics>();
+
         services.AddTransient<Func<IPlayerUiContext, ILocalMediaLoader>>(sp =>
             ui => new LocalMediaLoader(ui, sp.GetRequiredService<MediaFactory>()));
 
@@ -125,6 +134,14 @@ public partial class App : System.Windows.Application
                 ui,
                 sp.GetRequiredService<IStreamService>(),
                 sp.GetRequiredService<Func<IPlayerUiContext, ILocalMediaLoader>>()(ui)));
+
+        services.AddTransient<Func<IPlayerUiContext, IControlsWindow, ControlsWindowPositioner>>(sp =>
+            (ui, controls) => new ControlsWindowPositioner(
+                ui,
+                controls,
+                sp.GetRequiredService<PlayerViewModel>(),
+                sp.GetRequiredService<IUiDispatcher>(),
+                sp.GetRequiredService<IScreenMetrics>()));
 
         services.AddSingleton<PlayerWindow>();
         services.AddSingleton<IPlayerUiContext>(sp => sp.GetRequiredService<PlayerWindow>());

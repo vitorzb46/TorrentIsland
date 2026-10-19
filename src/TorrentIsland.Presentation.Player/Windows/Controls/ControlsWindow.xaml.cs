@@ -9,6 +9,7 @@ using System.Windows.Media;
 using TorrentIsland.Application.DTOs;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Infrastructure.Logging;
+using TorrentIsland.Presentation.Player.Abstractions;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Main;
@@ -25,7 +26,7 @@ using ToolTip = System.Windows.Controls.ToolTip;
 
 namespace TorrentIsland.Presentation.Player.Windows.Controls;
 
-public partial class ControlsWindow : Window, IDisposable
+public partial class ControlsWindow : Window, IControlsWindow, IDisposable
 {
     private readonly PlayerViewModel _viewModel;
     private readonly PlayerWindow _playerWindow;
@@ -36,7 +37,15 @@ public partial class ControlsWindow : Window, IDisposable
     private bool _isSeeking { get; set; }
     private bool _isDisposed { get; set; }
 
-    private ToolTip? _timelineTooltip;
+    double IControlsWindow.Height => Height;
+
+    Visibility IControlsWindow.Visibility
+    {
+        get => Visibility;
+        set => Visibility = value;
+    }
+
+    private readonly ToolTip? _timelineTooltip;
 
     /// <summary>Dispara quando o usuário alternar tela cheia (a janela de vídeo executa).</summary>
     public event EventHandler? FullscreenRequested;
@@ -436,5 +445,12 @@ public partial class ControlsWindow : Window, IDisposable
         }
 
         GC.SuppressFinalize(this);
+    }
+
+    public void Apply(ControlsGeometry geometry)
+    {
+        Width = geometry.Width;
+        Left = geometry.Left;
+        Top = geometry.Top;
     }
 }

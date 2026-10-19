@@ -86,9 +86,14 @@ public class Utils
     /// <param name="formato">O formato dos dados.</param>
     /// <param name="resultado">Os dados obtidos.</param>
     /// <returns>True se os dados foram obtidos com sucesso e convertidos, false caso contrário.</returns>
+    public static bool TryGetDataObject<T>(IDataObject dataObject, out T resultado) =>
+        TryGetDataObject(dataObject, null!, out resultado);
+
     public static bool TryGetDataObject<T>(IDataObject dataObject, string formato, out T resultado)
     {
         resultado = default!;
+
+        formato ??= DataFormats.FileDrop;
 
         if (!dataObject.GetDataPresent(formato))
             return false;

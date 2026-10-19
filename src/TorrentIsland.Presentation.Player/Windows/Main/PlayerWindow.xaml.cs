@@ -19,6 +19,7 @@ using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Controls;
 using TorrentIsland.Presentation.Player.Windows.StreamUrl;
 using TorrentIsland.Presentation.Player.Windows.WebSearch;
+using Wpf.Ui.Controls;
 using Brushes = System.Windows.Media.Brushes;
 using Clipboard = System.Windows.Clipboard;
 using Cursors = System.Windows.Input.Cursors;
@@ -28,11 +29,12 @@ using DragEventArgs = System.Windows.DragEventArgs;
 using IDataObject = System.Windows.IDataObject;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
 
-public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiContext
+public partial class PlayerWindow : FluentWindow, IPlayerUiContext
 {
     #region Fields + Constructor
     private readonly PlayerViewModel _viewModel;
@@ -40,6 +42,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
     private readonly PlayerSessionTimers _timers;
     private readonly ILocalMediaLoader _localMedia;
     private readonly IStreamTorrentLoader _streamLoader;
+    private readonly ControlsWindowPositioner _controlsPositioner;
     private readonly IMediasFolderLoader _folderLoader;
     private readonly TorrentSearchWindow _torrentSearch;
 
@@ -51,7 +54,8 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
                         PlayerSessionTimers timers,
                         Func<IPlayerUiContext, ILocalMediaLoader> localLoaderFactory,
                         Func<IPlayerUiContext, IMediasFolderLoader> folderLoaderFactory,
-                        Func<IPlayerUiContext, IStreamTorrentLoader> torrentLoaderFactory)
+                        Func<IPlayerUiContext, IStreamTorrentLoader> torrentLoaderFactory,
+                        Func<IPlayerUiContext, IControlsWindow, ControlsWindowPositioner> positionerFactory)
     {
         InitializeComponent();
         Managers = managers;
@@ -63,12 +67,15 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
         _folderLoader = folderLoaderFactory(this);
         _streamLoader = torrentLoaderFactory(this);
 
+
         DataContext = _viewModel;
         VideoView.MediaPlayer = vlc.MediaPlayer;
-        
+
         _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService);
         _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
-        
+
+        _controlsPositioner = positionerFactory(this, _controls);
+
         SubscribeEvents();
 
         Loaded += (_, _) =>
@@ -91,7 +98,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
             UnsubscribeEvents();
 
             _timers.Dispose();
-            
+
             _controls?.Close();
 
             _viewModel?.Dispose();
@@ -107,70 +114,38 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
     private IManagers Managers { get; }
 
     public PlayerViewModel ViewModel => _viewModel;
+    public VideoView PwVideoView { get => VideoView; set => VideoView = value; }
+    public Window Property => this;
     #endregion
 
     #region Public Methods 
     void IPlayerUiContext.ShowControls() => ShowControls();
-    public void ApplyBlackBackground() => Utils.VideoView_Background_Black();   
+    public void ApplyBlackBackground() => Utils.VideoView_Background_Black();
     public void ReiniciarTimerInatividade() => _timers.ReiniciarTimerInatividade();
     public void AbrirMenu() => _timers.AbrirMenu();
     public void FecharMenu() => _timers.FecharMenu();
-    
+
     public async Task CarregarPastaAsync(List<string>? folder) =>
         await _folderLoader.LoadAsync(folder).ConfigureAwait(false);
-        
+
     public async Task CarregarMidiaAsync(string caminhoOuUrl) =>
         await _localMedia.LoadAsync(caminhoOuUrl).ConfigureAwait(false);
-        
+
     public async Task CarregarStreamTorrentAsync(string caminhoOuUrl) =>
         await _streamLoader.LoadAsync(caminhoOuUrl).ConfigureAwait(false);
     #endregion
 
     #region Private Methods
     /// <summary>Posiciona a janela de controles na parte inferior da janela de vídeo.</summary>
-    private void PosicionarControles()
-    {
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            VideoView.Width = 0;
-            VideoView.Height = 0;
-            VideoView.Width = double.NaN;
-            VideoView.Height = double.NaN;
-            VideoView.InvalidateVisual();
-        }), DispatcherPriority.Render);
-
-        if (_controls is null) return;
-
-        // Se estiver em modo cinema, usamos a matemática baseada na tela cheia
-        if (_viewModel.IsFullscreen)
-        {
-            _controls.Width = SystemParameters.PrimaryScreenWidth;
-            _controls.Left = 0; // Zera a propriedade esquerda permanentemente na tela cheia
-            _controls.Top = SystemParameters.PrimaryScreenHeight - _controls.Height;
-        }
-        // Janela Maximizada (Botão maximizar do windows (do player))
-        else if (WindowState == WindowState.Maximized)
-        {
-            _controls.Width = SystemParameters.WorkArea.Width;
-            _controls.Left = SystemParameters.WorkArea.Left;
-            _controls.Top = SystemParameters.WorkArea.Bottom - _controls.Height;
-        }
-        // Se estiver em modo janela normal, usamos a matemática baseada no Player (this)
-        else
-        {
-            _controls.Width = ActualWidth;
-            _controls.Left = Left;
-            _controls.Top = Top + ActualHeight - _controls.Height;
-        }
-    }
+    private void PosicionarControles() => _controlsPositioner.RefreshLayout();
 
     // --- Modo cinema ---
     private void ShowControls()
     {
         if (_controls.Visibility != Visibility.Visible)
         {
-            _controls.Visibility = Visibility.Visible;
-            Mouse.OverrideCursor = Cursors.Arrow;
+            UpdateControlsDisplay(Visibility.Visible, Cursors.Arrow);
+            _controlsPositioner.RefreshLayout();
         }
         _timers.ReiniciarTimerInatividade();
     }
@@ -178,9 +153,13 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
     private void HideControls()
     {
         if (!_viewModel.IsFullscreen) return;
+        UpdateControlsDisplay(Visibility.Collapsed, Cursors.None);
+    }
 
-        _controls.Visibility = Visibility.Collapsed;
-        Mouse.OverrideCursor = Cursors.None;
+    private void UpdateControlsDisplay(Visibility visibility, Cursor cursors)
+    {
+        _controls.Visibility = visibility;
+        Mouse.OverrideCursor = cursors;
     }
 
     private void ToggleFullscreen()
@@ -188,20 +167,12 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
         if (WindowState == WindowState.Normal)
         {
             // Entra em tela cheia
-            MyTitleBar?.Visibility = Visibility.Collapsed;
-            Background = Brushes.Black;
-            WindowStyle = WindowStyle.None;
-            WindowState = WindowState.Maximized;
-            _viewModel.IsFullscreen = true;
+            UpdateWindowDisplayMode(Visibility.Collapsed, WindowStyle.None, WindowState.Maximized, true);
         }
         else
         {
             // Volta para o modo janela
-            MyTitleBar?.Visibility = Visibility.Visible;
-            Background = Brushes.Black;
-            WindowStyle = WindowStyle.SingleBorderWindow;
-            WindowState = WindowState.Normal;
-            _viewModel.IsFullscreen = false;
+            UpdateWindowDisplayMode(Visibility.Visible, WindowStyle.SingleBorderWindow, WindowState.Normal, false);
         }
 
         _viewModel.IsFullscreen = WindowState == WindowState.Maximized;
@@ -209,9 +180,17 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
         // Executa o posicionamento um milissegundo depois, garantindo que o Windows já mudou de tamanho
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            PosicionarControles();
             ShowControls();
         }), DispatcherPriority.Render);
+    }
+
+    private void UpdateWindowDisplayMode(Visibility visibility, WindowStyle style, WindowState state, bool isFullscreen)
+    {
+        MyTitleBar?.Visibility = visibility;
+        Background = Brushes.Black;
+        WindowStyle = style;
+        WindowState = state;
+        _viewModel.IsFullscreen = isFullscreen;
     }
 
     private void Player_Mouse(object sender, MouseEventArgs e)
@@ -226,7 +205,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
 
     private void PlayerWindow_DragEnter(object sender, DragEventArgs e)
     {
-        if (Utils.TryGetDataObject(e.Data, DataFormats.FileDrop, out string[] arquivos)
+        if (Utils.TryGetDataObject(e.Data, out string[] arquivos)
             && Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
         {
             e.Effects = DragDropEffects.Copy;
@@ -236,7 +215,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
 
     private void PlayerWindow_DragOver(object sender, DragEventArgs e)
     {
-        if (Utils.TryGetDataObject(e.Data, DataFormats.FileDrop, out string[] arquivos)
+        if (Utils.TryGetDataObject(e.Data, out string[] arquivos)
             && (Utils.ExtensoesVideo.Contains(arquivos[0]) || Utils.ExtensaoTorrent.Contains(arquivos[0])))
         {
             e.Effects = DragDropEffects.Copy;
@@ -246,7 +225,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
 
     private async void PlayerWindow_Drop(object sender, DragEventArgs e)
     {
-        if (Utils.TryGetDataObject(e.Data, DataFormats.FileDrop, out string[] arquivos))
+        if (Utils.TryGetDataObject(e.Data, out string[] arquivos))
         {
             if (Utils.ExtensoesVideo.Contains(Path.GetExtension(arquivos[0]).ToLowerInvariant()))
             {
@@ -640,7 +619,7 @@ public partial class PlayerWindow : Wpf.Ui.Controls.FluentWindow, IPlayerUiConte
     protected override void OnClosed(EventArgs e)
     {
         _timers.AutoSaverStop();
-        
+
         Task.Run(async () =>
         {
             await _timers.SaveEngineOnCloseAsync(Managers, "Shutdown");
