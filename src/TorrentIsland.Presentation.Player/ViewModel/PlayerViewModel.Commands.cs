@@ -58,7 +58,7 @@ public partial class PlayerViewModel
     public ICommand OpenUrlYtbCommand =>
         _openUrlYtbCommand ??= new RelayCommand(
             () => OpenUrlStreamRequested?.Invoke("Youtube", EventArgs.Empty));
-    
+
     private ICommand? _openUrlCommand;
     public ICommand OpenUrlCommand =>
         _openUrlCommand ??= new RelayCommand(
@@ -182,17 +182,17 @@ public partial class PlayerViewModel
     {
         AppSettings.VlcDeinterlaceMode = dm switch
         {
-            1  => "discard",
-            2  => "blend",
-            3  => "mean",
-            4  => "bob",
-            5  => "linear",
-            6  => "x",
-            7  => "yadif",
-            8  => "yadif2x",
-            9  => "phosphor",
+            1 => "discard",
+            2 => "blend",
+            3 => "mean",
+            4 => "bob",
+            5 => "linear",
+            6 => "x",
+            7 => "yadif",
+            8 => "yadif2x",
+            9 => "phosphor",
             10 => "ivtc",
-            _  => null
+            _ => null
         };
 
         AppSettings.VlcDeinterlacing = AppSettings.VlcDeinterlaceMode != null;
@@ -236,20 +236,20 @@ public partial class PlayerViewModel
     public static int CurrentHardwareDecodingIndex() =>
         AppSettings.VlcHardwareDecoding switch
         {
-            "dxva2"          => 1,
-            "d3d11va"        => 2,
-            "vaapi"          => 3,
-            "vdpau_avcodec"  => 4,
-            "cuvid"          => 5,
-            "cuda"           => 6,
-            "qsv"            => 7,
-            "none"           => 8,
-            _                => 0 // Any - Automático
+            "dxva2" => 1,
+            "d3d11va" => 2,
+            "vaapi" => 3,
+            "vdpau_avcodec" => 4,
+            "cuvid" => 5,
+            "cuda" => 6,
+            "qsv" => 7,
+            "none" => 8,
+            _ => 0 // Any - Automático
         };
 
     public void SetTvCast(CastDevice? device)
     {
-        if(!_mediaCastManager.CastTo(device))
+        if (!_mediaCastManager.CastTo(device))
         {
             string v = device?.Name ?? "aparelho desconhecido";
             OsdMessage = $"Falha ao transmitir para {v}";
@@ -257,7 +257,7 @@ public partial class PlayerViewModel
     }
 
     public void StopTvCast() => _mediaCastManager.StopCasting();
-    
+
     public void SelectAudioTrack(int trackId) => _mediaPlayer.SetAudioTrack(trackId);
 
     public void SelectSubtitleTrack(int spuId) => _mediaPlayer.SetSpu(spuId);
@@ -274,5 +274,17 @@ public partial class PlayerViewModel
     {
         _mediaPlayer.Mute = !_mediaPlayer.Mute;
         IsMuted = _mediaPlayer.Mute;
+    }
+
+    public void ExecuteAudioDelay(bool advance, double value) =>
+        DelayAudioCommand.Execute((advance, value));
+
+    public void ExecuteSubDelay(bool advance, double value) =>
+        DelaySpuCommand.Execute((advance, value));
+
+    public void ExecuteCommand(ICommand cmd)
+    {
+        if (cmd.CanExecute(null))
+            cmd.Execute(null);
     }
 }

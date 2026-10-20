@@ -125,6 +125,8 @@ public partial class App : System.Windows.Application
 
         services.AddTransient<MediaDropHandler>();
 
+        services.AddTransient<IShortcutManager, ShortcutManager>();
+
 
         //Factories
 

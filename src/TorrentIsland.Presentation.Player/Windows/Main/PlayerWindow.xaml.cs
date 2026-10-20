@@ -38,6 +38,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     private readonly ControlsWindow _controls;
     private readonly PlayerSessionTimers _timers;
     private readonly MediaDropHandler _dropHandler;
+    private readonly IShortcutManager _scManager;
     private readonly ILocalMediaLoader _localMedia;
     private readonly IStreamTorrentLoader _streamLoader;
     private readonly ControlsWindowPositioner _controlsPositioner;
@@ -47,6 +48,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     public PlayerWindow(IManagers managers,
                         ITorrentStatusEvent torrentStatus,
                         ITorrentService torrentService,
+                        IShortcutManager shortcutManager,
                         VlcPlayerService vlc,
                         PlayerViewModel viewModel,
                         PlayerSessionTimers timers,
@@ -63,10 +65,11 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
         _viewModel = viewModel;
         _timers = timers;
         _dropHandler = dropHandler;
+        _scManager = shortcutManager;
+
         _localMedia = localLoaderFactory(this);
         _folderLoader = folderLoaderFactory(this);
         _streamLoader = torrentLoaderFactory(this);
-
 
         DataContext = _viewModel;
         VideoView.MediaPlayer = vlc.MediaPlayer;
@@ -75,6 +78,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
         _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
 
         _controlsPositioner = positionerFactory(this, _controls);
+        _scManager.RegisterPlayerShortcuts(this, _viewModel);
 
         SubscribeEvents();
 
@@ -118,8 +122,30 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     public Window Property => this;
     #endregion
 
-    #region Public Methods 
-    void IPlayerUiContext.ShowControls() => ShowControls();
+    #region Public Methods
+    public async Task<bool> ProcessPaste(KeyEventArgs e)
+    {
+        var mediaLoader = new MediaLoader(this);
+
+        IDataObject? obj = Clipboard.GetDataObject();
+        if (obj == null) return false;
+
+        var files = (string[])obj.GetData(DataFormats.FileDrop);
+        var text = (string)obj.GetData(DataFormats.Text);
+
+        var resultado = await mediaLoader.InputAsync(files, text);
+
+        if (resultado) e.Handled = true;
+        return resultado;
+    }
+
+    public async Task<bool> OpenUrl(KeyEventArgs e, string? title)
+    {
+        OpenUrlStream(title);
+        e.Handled = true;
+        return true;
+    }
+    public void ShowControls() => SCShowControls();
     public void ApplyBlackBackground() => Utils.VideoView_Background_Black();
     public void ReiniciarTimerInatividade() => _timers.ReiniciarTimerInatividade();
     public void AbrirMenu() => _timers.AbrirMenu();
@@ -140,7 +166,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     private void PosicionarControles() => _controlsPositioner.RefreshLayout();
 
     // --- Modo cinema ---
-    private void ShowControls()
+    private void SCShowControls()
     {
         if (_controls.Visibility != Visibility.Visible)
         {
@@ -162,7 +188,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
         Mouse.OverrideCursor = cursors;
     }
 
-    private void ToggleFullscreen()
+    public void ToggleFullscreen()
     {
         if (WindowState == WindowState.Normal)
         {
@@ -366,137 +392,10 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     protected override async void OnPreviewKeyDown(KeyEventArgs e)
     {
         // Log.Salvar($"Tecla: {e.Key} | SystemKey: {e.SystemKey} | Modifiers: {Keyboard.Modifiers}");
-        base.OnPreviewKeyDown(e);
 
-        bool ExecuteAudioDelay(bool advance, double value)
-        { _viewModel.DelayAudioCommand.Execute((advance, value)); return true; }
+        bool shortcut = await _scManager.TryHandleAsync(e);
 
-        bool ExecuteSubDelay(bool advance, double value)
-        { _viewModel.DelaySpuCommand.Execute((advance, value)); return true; }
-
-        bool Adjust(Action action, Func<string> osdMessage)
-        {
-            action();
-            ShowOsd(osdMessage());
-            return true;
-        }
-
-        bool ExecuteCommand(ICommand cmd)
-        {
-            if (cmd.CanExecute(null)) cmd.Execute(null);
-            return true;
-        }
-
-        var mods = Keyboard.Modifiers;
-
-        switch (e.Key)
-        {
-            case Key.Escape when _viewModel.IsFullscreen:
-            case Key.F11: ToggleFullscreen(); return;
-            case Key.Space: _viewModel.TogglePlay(); return;
-            case Key.Left: _viewModel.RetrocederTempo(); return;
-            case Key.Right: _viewModel.AvancarTempo(); return;
-            case Key.M: _viewModel.ToggleMute(); return;
-            case Key.Down: _viewModel.ToggleVolume(false); ShowControls(); e.Handled = true; return;
-            case Key.Up: _viewModel.ToggleVolume(true); ShowControls(); e.Handled = true; return;
-            case Key.J: ExecuteAudioDelay(true, 0.5); return;
-            case Key.K: ExecuteAudioDelay(false, 0.5); return;
-        }
-
-        var handled = (e.Key, mods) switch
-        {
-            (Key.T, ModifierKeys.Control | ModifierKeys.Shift) => ExecuteCommand(_viewModel.OpenTorrentFileCommand),
-            (Key.S, ModifierKeys.Control | ModifierKeys.Shift) => ExecuteCommand(_viewModel.StopPlayerCommand),
-
-            (Key.T, ModifierKeys.Control) => await OpenUrl(e, "Mídia Streaming"),
-            (Key.Y, ModifierKeys.Control) => await OpenUrl(e, "Youtube"),
-            (Key.V, ModifierKeys.Control) => await ProcessPaste(e),
-            (Key.O, ModifierKeys.Control) => ExecuteCommand(_viewModel.OpenVideoCommand),
-            (Key.P, ModifierKeys.Control) => ExecuteCommand(_viewModel.OpenFolderCommand),
-            (Key.U, ModifierKeys.Control) => ExecuteCommand(_viewModel.OpenSubtitleExternalCommand),
-            (Key.I, ModifierKeys.Control) => ExecuteCommand(_viewModel.OpenAudioExternalCommand),
-
-            (Key.Oem5 or Key.OemOpenBrackets, ModifierKeys.None) => ExecuteSubDelay(true, 0.5),
-            (Key.Oem6 or Key.OemCloseBrackets, ModifierKeys.None) => ExecuteSubDelay(false, 0.5),
-
-            (Key.Oem5 or Key.OemOpenBrackets, ModifierKeys.Control) => ExecuteSubDelay(true, 5.0),
-            (Key.Oem6 or Key.OemCloseBrackets, ModifierKeys.Control) => ExecuteSubDelay(false, 5.0),
-
-            // Brilho
-            (Key.B, ModifierKeys.Control) => Adjust(() =>
-                _viewModel.DecrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
-
-            (Key.B, ModifierKeys.Shift) => Adjust(() =>
-                _viewModel.IncrementBrightness(), () => $"Brilho: {_viewModel.Brightness:P0}"),
-
-            // Contraste
-            (Key.C, ModifierKeys.Control) => Adjust(() =>
-                _viewModel.DecrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
-
-            (Key.C, ModifierKeys.Shift) => Adjust(() =>
-                _viewModel.IncrementContrast(), () => $"Contraste: {_viewModel.Contrast:P0}"),
-
-            // Matiz
-            (Key.H, ModifierKeys.Control) => Adjust(() =>
-                _viewModel.DecrementHue(), () => $"Matiz: {_viewModel.Hue}"),
-
-            (Key.H, ModifierKeys.Shift) => Adjust(() =>
-                _viewModel.IncrementHue(), () => $"Matiz: {_viewModel.Hue}"),
-
-            // Saturação
-            (Key.S, ModifierKeys.Control) => Adjust(() =>
-                _viewModel.DecrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
-
-            (Key.S, ModifierKeys.Shift) => Adjust(() =>
-                _viewModel.IncrementSaturation(), () => $"Saturação: {_viewModel.Saturation:P0}"),
-
-            // Gamma
-            (Key.G, ModifierKeys.Control) => Adjust(() =>
-                _viewModel.DecrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
-
-            (Key.G, ModifierKeys.Shift) => Adjust(() =>
-                _viewModel.IncrementGamma(), () => $"Gamma: {_viewModel.Gamma:F1}"),
-
-            // Reset
-            (Key.R, ModifierKeys.Shift) => Adjust(() =>
-                _viewModel.ResetImageCommand.Execute(null), () => "Ajustes de imagem resetados"),
-
-            _ => false
-        };
-
-        if (handled) e.Handled = true;
-    }
-
-    private async Task<bool> ProcessPaste(KeyEventArgs e)
-    {
-        var mediaLoader = new MediaLoader(this);
-
-        IDataObject? obj = Clipboard.GetDataObject();
-        if (obj == null) return false;
-
-        var files = (string[])obj.GetData(DataFormats.FileDrop);
-        var text = (string)obj.GetData(DataFormats.Text);
-
-        var resultado = await mediaLoader.InputAsync(files, text);
-
-        if (resultado) e.Handled = true;
-        return resultado;
-    }
-
-    private async Task<bool> OpenUrl(KeyEventArgs e, string? title)
-    {
-        OpenUrlStream(title);
-        e.Handled = true;
-        return true;
-    }
-
-    private void OpenUrlStream(string? title = null)
-    {
-        var window = new OpenURL(this, title)
-        {
-            Owner = GetWindow(this)
-        };
-        window?.Show();
+        if (shortcut) e.Handled = true;
     }
     #endregion
 
@@ -588,6 +487,15 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
         {
             OpenUrlStream("Mídia Streaming");
         }
+    }
+
+    private void OpenUrlStream(string? title = null)
+    {
+        var window = new OpenURL(this, title)
+        {
+            Owner = GetWindow(this)
+        };
+        window?.Show();
     }
 
     protected override void OnClosed(EventArgs e)
