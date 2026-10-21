@@ -14,11 +14,11 @@ public sealed class ControlsWindowPositioner(IPlayerUiContext context,
 
     public void RefreshLayout()
     {
-        Reposition();
         dispatcher.BeginInvoke(new Action(() =>
         {
+            Reposition();
             ResetVideoView();
-        }), DispatcherPriority.Render);
+        }), DispatcherPriority.Render);        
     }
 
     private void Reposition()
