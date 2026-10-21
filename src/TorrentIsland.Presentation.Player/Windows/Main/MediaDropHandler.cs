@@ -1,6 +1,8 @@
 ﻿using System.IO;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using TorrentIsland.Presentation.Player.Common;
+using TorrentIsland.Presentation.Player.ViewModel;
 using DragEventArgs = System.Windows.DragEventArgs;
 
 namespace TorrentIsland.Presentation.Player.Windows.Main;
@@ -78,8 +80,10 @@ public sealed class MediaDropHandler
         var primeiro = _files[0];
         await window.CarregarMidiaAsync(primeiro).ConfigureAwait(false);
 
+        PlayerViewModel._isDragAndDrop = true;
         await window.CarregarPastaAsync(_files).ConfigureAwait(false);
-
+        PlayerViewModel._isDragAndDrop = false;
+        
         return true;
     }
 

@@ -79,8 +79,11 @@ public partial class PlayerViewModel
         _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, select: true);
     }
 
+    public static bool _isDragAndDrop;
     private async Task LoadMediaTracksAsync()
     {
+        if (_isDragAndDrop) return;
+
         Utils.VideoView_Background_Black();
         await LoadingStateAsync("Carregando faixas...", async () =>
         {
