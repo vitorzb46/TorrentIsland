@@ -15,7 +15,7 @@ public class LocalMediaLoader(IPlayerUiContext context, MediaFactory factory) : 
     {
         try
         {
-            await NewMethod(filePathOrUrl);
+            await InitializeMediaAsync(filePathOrUrl);
         }
         catch (Exception ex)
         {
@@ -23,31 +23,38 @@ public class LocalMediaLoader(IPlayerUiContext context, MediaFactory factory) : 
         }
     }
 
-    private async Task NewMethod(string url)
+    private async Task InitializeMediaAsync(string url)
     {
         await _context.ViewModel.LoadingStateAsync("Carregando mídia...", async () =>
         {
-            await PrepareForNewMediaAsync();
-            await MediaTimestamp.Load();
-
-            var factory = await _factory.CreateAsync(url);
-            if (factory?.Media is null) return;
-
-            _context.ViewModel.FilePath = factory.FilePath;
-
-            var timeCached = await MediaTimestamp.LoadCache(factory.FilePath);
-            var media = factory.Media;
-            _context.ViewModel.SetMedia(media, timeCached.Time);
-
-            await Utils.AtualizarUIAsync(async () =>
+            try
             {
-                await _context.ViewModel.PopulateTracksAsync();
-                _context.ViewModel.SetPause(false);
-                _context.ShowControls();
-                _context.InvalidateVisual();
-                _context.ApplyBlackBackground();
-                await Task.Delay(300); //Tempo de espera para evitar artefato visual
-            });
+                await PrepareForNewMediaAsync();
+                await MediaTimestamp.Load();
+    
+                var factory = await _factory.CreateAsync(url);
+                if (factory?.Media is null) return;
+    
+                _context.ViewModel.FilePath = factory.FilePath;
+                Log.Salvar(_context.ViewModel.FilePath);
+                var timeCached = await MediaTimestamp.LoadCache(factory.FilePath);
+                var media = factory.Media;
+                _context.ViewModel.SetMedia(media, timeCached.Time);
+    
+                await Utils.AtualizarUIAsync(async () =>
+                {
+                    await _context.ViewModel.PopulateTracksAsync();
+                    _context.ViewModel.SetPause(false);
+                    _context.ShowControls();
+                    _context.InvalidateVisual();
+                    _context.ApplyBlackBackground();
+                    await Task.Delay(300); //Tempo de espera para evitar artefato visual
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Salvar(ex.Message);
+            }
         });
     }
 

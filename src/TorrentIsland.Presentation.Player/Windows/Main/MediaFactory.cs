@@ -13,7 +13,7 @@ public sealed class MediaFactory(LibVLC libVLC, IDLService dL, IManagers manager
     private readonly IDLService _ytDl = dL;
     private readonly IManagers _managers = managers;
     private Media? _media;
-    private bool _isMagnetic;
+    private bool _isTorrent;
     private string? _filePath;
 
     public async Task<ResolvedMedia?> CreateAsync(string filePathOrUrl)
@@ -23,15 +23,16 @@ public sealed class MediaFactory(LibVLC libVLC, IDLService dL, IManagers manager
         NewIteration(filePathOrUrl);
         CheckIfFileExists();
         await CheckIfComesFromUrl();
-        GenerateMkvHash();
-        
-        return new ResolvedMedia(_media, filePathOrUrl);
+
+        ArgumentException.ThrowIfNullOrEmpty(_filePath);
+        GenerateMkvHash();        
+        return new ResolvedMedia(_media, _filePath);
     }
 
     private void NewIteration(string filePathOrUrl)
     {
         _media = null;
-        _isMagnetic = false;
+        _isTorrent = false;
         _filePath = filePathOrUrl;
     }
 
@@ -56,18 +57,19 @@ public sealed class MediaFactory(LibVLC libVLC, IDLService dL, IManagers manager
     
     private async Task<string> ResolveUrl()
     {
-        if (_filePath!.StartsWith("magnet"))
+        bool magnet = _filePath!.StartsWith("magnet");
+        bool stream = _filePath!.StartsWith("http://127.0.0.1");
+        if (magnet || stream)
         {
-            _isMagnetic = true;
+            _isTorrent = true;
             return _filePath;
         }
-
         return await _ytDl.GetStreamingUrl(_filePath);
     }
 
     private async Task IsTorrentStream()
     {
-        if (!_isMagnetic) return;
+        if (!_isTorrent) return;
         var torrentMap = await _managers.ObterTorrentsAsync();
         if (torrentMap.Count == 0) return;
 

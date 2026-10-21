@@ -47,10 +47,7 @@ public partial class PlayerViewModel
 
         await Task.Run(async () =>
         {
-            await TimeLogging.Time(async () =>
-            {
-                await ProcessarLegendasUndAsync().ConfigureAwait(false);
-            }, "ProcessarLegendasUndAsync").ConfigureAwait(false);
+            await ProcessarLegendasUndAsync();
         }, ct);
 
         // await ProcessarLegendasUndAsync();

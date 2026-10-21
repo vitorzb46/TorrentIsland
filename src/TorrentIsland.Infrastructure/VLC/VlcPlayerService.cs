@@ -1,4 +1,5 @@
 using LibVLCSharp.Shared;
+using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Logging;
 
 namespace TorrentIsland.Infrastructure.VLC;
@@ -23,20 +24,24 @@ public sealed class VlcPlayerService
             EnableKeyInput = false            
         };
 
-        _libVLC.Log += (sender, e) =>
-        {
-            Log.Salvar($"[{e.Level}] {e.Module}: {e.Message}");
-        };
+        _libVLC.Log += OnVlcLog;
     }
-
+    
     public LibVLC LibVLC => _libVLC;
     public MediaPlayer MediaPlayer => _mediaPlayer;
+
+    private void OnVlcLog(object? sender, LogEventArgs e)
+    {
+        if (!AppSettings.VlcVerboseLog) return;
+        Log.Salvar($"[{e.Level}] {e.Module}: {e.Message}");
+    }
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
 
+        _libVLC.Log -= OnVlcLog;
         try
         {
             _mediaPlayer?.Stop();
@@ -49,7 +54,7 @@ public sealed class VlcPlayerService
         }
         catch (Exception ex)
         {
-            Log.Salvar($"Erro dispose VlcPlayerService: {ex}");
+            Log.Salvar($"[Erro] dispose VlcPlayerService: {ex.Message}");
         }
     }
 }

@@ -27,6 +27,8 @@ namespace TorrentIsland.Infrastructure.Subtitles.Extraction;
 /// </remarks>
 internal sealed class SubtitleExtractor
 {
+    private static string? _cachePath;
+    private static (Dictionary<ulong, SubtitleTrackMetadata> porNumero, List<SubtitleTrackMetadata> ordenados) _cache;
 
     /// <summary>
     /// Lê apenas o cabeçalho do arquivo Matroska/WebM e retorna os metadados das faixas
@@ -50,7 +52,9 @@ internal sealed class SubtitleExtractor
         var document = parser.ParseDocument(stream)
                     ?? throw new InvalidDataException("Falha ao parsear o arquivo EBML.");
 
-        var (porNumero, ordenados) = GetMetadata(document);
+        var (porNumero, ordenados) = GetMetadata(document, filePath);
+        _cache = (porNumero, ordenados);
+        _cachePath = filePath;
         return ordenados;
     }
     
@@ -89,14 +93,16 @@ internal sealed class SubtitleExtractor
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         var document = parser.ParseDocument(stream)
                     ?? throw new InvalidDataException("Falha ao parsear o arquivo EBML.");
+                    
 
-        var (tracksPorNumero, tracksOrdenados) = GetMetadata(document);
-        if (tracksPorNumero.Count == 0) return [];
+        var (porNumero, _) = (filePath == _cachePath && _cache.porNumero != null) 
+            ? _cache 
+            : GetMetadata(document, filePath);
+
+        Dictionary<ulong, SubtitleTrackMetadata>? tracksPorNumero = porNumero;
 
         var cuesPorTrack = new Dictionary<ulong, List<SubtitleCue>>();
         var clusters = document!.FindMasters("/Segment/Cluster").ToList();
-
-        
         int processados = 0;
         foreach (var cluster in clusters)
         {
@@ -189,55 +195,79 @@ internal sealed class SubtitleExtractor
     /// </returns>
     private static
         (Dictionary<ulong, SubtitleTrackMetadata> porNumero, List<SubtitleTrackMetadata> ordenados)
-            GetMetadata(MasterElement document)
+            GetMetadata(MasterElement document, string FilePath)
     {
         var porNumero = new Dictionary<ulong, SubtitleTrackMetadata>();
         var ordenados = new List<SubtitleTrackMetadata>();
 
-        var resultado = new Dictionary<ulong, SubtitleTrackMetadata>();
-
-        foreach (var segment in document.Children
-                                    .Where(c => c.Id == 0x18538067)
-                                    .OfType<MasterElement>())
-        foreach (var tracks in segment.Children
-                                    .Where(c => c.Id == 0x1654AE6B)
-                                    .OfType<MasterElement>())
-        foreach (var entry in tracks.Children
-                                    .Where(c => c.Id == 0xAE)
-                                    .OfType<MasterElement>())
+        Log.Salvar($"[GetMetadata] Iniciando leitura de metadados. Arquivo: {FilePath}");
+        Log.Salvar($"[GetMetadata] DocType do arquivo: '{document.DocType}'");
+        try
         {
-            byte[]? trackTypeRaw = null, trackNumberRaw = null;
-            string codecId = "", language = "", name = "";
-            byte[] codecPrivate = [];
+            var segmentos = document.Children
+                .Where(c => c.Id == 0x18538067)
+                .OfType<MasterElement>()
+                .ToList();
+            Log.Salvar($"[GetMetadata] Segmentos encontrados: {segmentos.Count}");
 
-            foreach (var field in entry.Children)
+            foreach (var segment in segmentos)
             {
-                switch (field.Id)
+                var tracksList = segment.Children
+                    .Where(c => c.Id == 0x1654AE6B)
+                    .OfType<MasterElement>()
+                    .ToList();
+                Log.Salvar($"[GetMetadata] Blocos Tracks: {tracksList.Count}");
+
+                foreach (var tracks in tracksList)
                 {
-                    case 0x83:     trackTypeRaw   = field.ElementDataToBytes(); break;
-                    case 0xD7:     trackNumberRaw = field.ElementDataToBytes(); break;
-                    case 0x86:     codecId        = EbmlCodec.ToString(field.ElementDataToBytes()); break;
-                    case 0x22B59C: language       = EbmlCodec.ToString(field.ElementDataToBytes()); break;
-                    case 0x536E:   name           = EbmlCodec.ToString(field.ElementDataToBytes()); break;
-                    case 0x63A2:   codecPrivate   = field.ElementDataToBytes(); break;
+                    var entries = tracks.Children
+                        .Where(c => c.Id == 0xAE)
+                        .OfType<MasterElement>()
+                        .ToList();                    
+                    Log.Salvar($"[GetMetadata] TrackEntries: {entries.Count}");
+
+                    foreach (var entry in entries)
+                    {
+                        byte[]? trackTypeRaw = null, trackNumberRaw = null;
+                        string codecId = "", language = "", name = "";
+                        byte[] codecPrivate = [];
+    
+                        foreach (var field in entry.Children)
+                        {
+                            switch (field.Id)
+                            {
+                                case 0x83:     trackTypeRaw   = field.ElementDataToBytes(); break;
+                                case 0xD7:     trackNumberRaw = field.ElementDataToBytes(); break;
+                                case 0x86:     codecId        = EbmlCodec.ToString(field.ElementDataToBytes()); break;
+                                case 0x22B59C: language       = EbmlCodec.ToString(field.ElementDataToBytes()); break;
+                                case 0x536E:   name           = EbmlCodec.ToString(field.ElementDataToBytes()); break;
+                                case 0x63A2:   codecPrivate   = field.ElementDataToBytes(); break;
+                            }
+                        }
+    
+                        if (trackTypeRaw is null || trackNumberRaw is null) continue;
+                        if (EbmlCodec.ToUInt64(trackTypeRaw) != 0x11) continue;
+    
+                        var number = EbmlCodec.ToUInt64(trackNumberRaw);
+                        var meta = new SubtitleTrackMetadata
+                        {
+                            TrackNumber  = number,
+                            CodecId      = codecId,
+                            Language     = string.IsNullOrEmpty(language) ? "und" : language,
+                            Name         = name,
+                            CodecPrivate = codecPrivate
+                        };
+    
+                        porNumero[number] = meta;
+                        ordenados.Add(meta);
+                    }
                 }
             }
-
-            if (trackTypeRaw is null || trackNumberRaw is null) continue;
-            if (EbmlCodec.ToUInt64(trackTypeRaw) != 0x11) continue;
-
-            var number = EbmlCodec.ToUInt64(trackNumberRaw);
-            var meta = new SubtitleTrackMetadata
-            {
-                TrackNumber  = number,
-                CodecId      = codecId,
-                Language     = string.IsNullOrEmpty(language) ? "und" : language,
-                Name         = name,
-                CodecPrivate = codecPrivate
-            };
-
-            porNumero[number] = meta;
-            ordenados.Add(meta);
+        }
+        catch (Exception ex)
+        {
+            Log.Salvar($"[GetMetadata] Falha ao ler estrutura EBML: {ex.Message}");
+            return (porNumero, ordenados);
         }
 
         // Garante ordem crescente de TrackNumber (ordem do arquivo)
