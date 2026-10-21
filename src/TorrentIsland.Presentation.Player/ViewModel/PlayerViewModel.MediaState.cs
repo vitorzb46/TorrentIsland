@@ -10,7 +10,7 @@ public partial class PlayerViewModel
 {
     // BACKING FIELDS
     private Media? _media;
-    private readonly Queue<Media> _playlist = new();
+    private readonly Queue<Media> _playlist = new();    
     private int _cliquesAvancar = 0;
     private int _cliquesRetroceder = 0;
     private DateTime _ultimoCliqueAvancar = DateTime.MinValue;

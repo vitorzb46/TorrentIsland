@@ -247,7 +247,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
 
     private void ThumbPlayPause_Click(object? sender, EventArgs e) => _viewModel.TogglePlay();
 
-    private void ThumbStop_Click(object? sender, EventArgs e)
+    private async void ThumbStop_Click(object? sender, EventArgs e)
     {
         if (_viewModel.IsPlaying)
         {
@@ -257,6 +257,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
         }
         _viewModel.StopPlaybackState();
         _viewModel.FilePath = string.Empty;
+        await _viewModel.PlayNextMedia();
     }
 
     private void ThumbFullscreen_Click(object? sender, EventArgs e)
