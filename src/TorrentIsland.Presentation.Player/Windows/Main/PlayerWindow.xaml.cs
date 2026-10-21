@@ -256,6 +256,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
             BtnPlayPause.Description = "Reproduzir";
         }
         _viewModel.StopPlaybackState();
+        _viewModel.FilePath = string.Empty;
     }
 
     private void ThumbFullscreen_Click(object? sender, EventArgs e)
