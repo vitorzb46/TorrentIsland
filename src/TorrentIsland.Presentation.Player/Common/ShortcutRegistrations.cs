@@ -8,12 +8,12 @@ namespace TorrentIsland.Presentation.Player.Common;
 public static class ShortcutRegistrations
 {
     public static void RegisterPlayerShortcuts(this IShortcutManager manager, IPlayerUiContext window, PlayerViewModel vm)
-    {
-        manager.Register(Key.F11, ModifierKeys.None, () => window.ToggleFullscreen());
-        manager.Register(Key.Space, ModifierKeys.None, () => vm.TogglePlay());
-        manager.Register(Key.Left, ModifierKeys.None, () => vm.RetrocederTempo());
-        manager.Register(Key.Right, ModifierKeys.None, () => vm.AvancarTempo());
-        manager.Register(Key.M, ModifierKeys.None, () => vm.ToggleMute());
+    {        
+        manager.Register(Key.F11, ModifierKeys.None, window.ToggleFullscreen);
+        manager.Register(Key.Space, ModifierKeys.None, vm.TogglePlay);
+        manager.Register(Key.Left, ModifierKeys.None, vm.RetrocederTempo);
+        manager.Register(Key.Right, ModifierKeys.None, vm.AvancarTempo);
+        manager.Register(Key.M, ModifierKeys.None, vm.ToggleMute);
 
         manager.Register(Key.J, ModifierKeys.None, () => vm.ExecuteAudioDelay(true, 0.5));
         manager.Register(Key.K, ModifierKeys.None, () => vm.ExecuteAudioDelay(false, 0.5));
@@ -28,6 +28,8 @@ public static class ShortcutRegistrations
         manager.Register(Key.P, ModifierKeys.Control, () => vm.ExecuteCommand(vm.OpenFolderCommand));
         manager.Register(Key.U, ModifierKeys.Control, () => vm.ExecuteCommand(vm.OpenSubtitleExternalCommand));
         manager.Register(Key.I, ModifierKeys.Control, () => vm.ExecuteCommand(vm.OpenAudioExternalCommand));
+
+        manager.Register(Key.F12, ModifierKeys.None, () => vm.ExecuteCommand(vm.PrintScreenCommand));
 
         manager.Register(Key.Down, ModifierKeys.None, () =>
         {

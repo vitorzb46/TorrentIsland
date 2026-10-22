@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.Windows.Input;
+﻿using System.Windows.Input;
 using TorrentIsland.Application.Medias.Enums;
 using TorrentIsland.Application.Medias.Events;
 using TorrentIsland.Application.Settings;
@@ -10,8 +9,6 @@ namespace TorrentIsland.Presentation.Player.ViewModel;
 
 public partial class PlayerViewModel
 {
-    private int _printCount;
-
     private ICommand? _openVideoCommand;
     public ICommand OpenVideoCommand =>
         _openVideoCommand ??= new RelayCommand(
@@ -154,9 +151,32 @@ public partial class PlayerViewModel
 
     public void PrintScreen(string? filePath = null, uint num = 0, uint width = 0, uint height = 0)
     {
+        var utc = DateTime.Now.ToString("dd:MM:yyyy HH:mm:ss.ffff");
+        string dtFormatted = FormatDateTime(utc, '_', [' ', '/', ':']);
         string arg0 = filePath ?? AppSettings.PrintScreenFolder;
-        string fp = string.Concat(arg0, "\\TorrentIsland_print_", $"{++_printCount}", ".png");
+        string fp = string.Concat(arg0, "\\TorrentIsland_print_", $"{dtFormatted}", ".png");
         _mediaPlayer.TakeSnapshot(num, fp, width, height);
+    }
+
+    private string FormatDateTime(string text, char newChar, HashSet<char> oldChars)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(text);
+
+        if (oldChars is null or { Count: 0 })
+            throw new ArgumentException("Caracteres não pode ser vazio ou nulo!", nameof(oldChars));
+            
+        HashSet<char> hash = oldChars;
+        Span<char> chars = stackalloc char[text.Length];
+        text.CopyTo(chars);
+        
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (hash.Contains(c))
+                chars[i] = newChar;
+        }
+
+        return new string(chars);
     }
 
     public static void SetGradfun(int? radius, float? strength)
