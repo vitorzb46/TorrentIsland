@@ -20,6 +20,7 @@ public sealed class AppSettings
     public static string DownloadsFolder { get; } = Path.Combine(CurrentFolder, "Downloads");
     public static string TorrentsFolder { get; } = Path.Combine(CurrentFolder, "Torrents");
     public static string ResourcesFolder { get; } = Path.Combine(CurrentFolder, "Resources");
+    public static string PrintScreenFolder { get; } = Path.Combine(CurrentFolder, "Prints");
 
     // Arquivos
     public static string AppLog { get; } = Path.Combine(CurrentFolder, "TorrentIsland.log");

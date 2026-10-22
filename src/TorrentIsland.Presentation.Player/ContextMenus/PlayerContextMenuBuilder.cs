@@ -268,6 +268,8 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         BuildSubmenu("Proporção (Ratio)", AspectRatioOptions()),
         BuildSubmenu("Zoom", ZoomOptions()),
         BuildSubmenu("Imagem", ImageOptions()),
+        new Separator(),
+        BuildItem("Captura de tela", _viewModel.PrintScreenCommand, null, Key.F12),
     ];
 
     private object[] MenuToOpen() =>

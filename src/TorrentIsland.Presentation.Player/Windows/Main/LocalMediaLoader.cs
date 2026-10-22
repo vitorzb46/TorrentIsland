@@ -53,7 +53,7 @@ public class LocalMediaLoader(IPlayerUiContext context, MediaFactory factory) : 
             }
             catch (Exception ex)
             {
-                Log.Salvar(ex.Message);
+                Log.Salvar($"{ex.Message}\n{ex.StackTrace}");
             }
         });
     }

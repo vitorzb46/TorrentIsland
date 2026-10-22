@@ -1,4 +1,5 @@
-﻿using System.Windows.Input;
+﻿using System.IO;
+using System.Windows.Input;
 using TorrentIsland.Application.Medias.Enums;
 using TorrentIsland.Application.Medias.Events;
 using TorrentIsland.Application.Settings;
@@ -9,6 +10,8 @@ namespace TorrentIsland.Presentation.Player.ViewModel;
 
 public partial class PlayerViewModel
 {
+    private int _printCount;
+
     private ICommand? _openVideoCommand;
     public ICommand OpenVideoCommand =>
         _openVideoCommand ??= new RelayCommand(
@@ -140,6 +143,21 @@ public partial class PlayerViewModel
         {
             SetGradfun(args.radius, args.str);
         });
+
+    private ICommand? _printScreenCommand;
+    public ICommand PrintScreenCommand =>
+        _printScreenCommand ??= new RelayCommand<(string? fp, uint num, uint width, uint height)>
+            ((args) =>
+            {
+                PrintScreen(args.fp, args.num, args.width, args.height);
+            });  
+
+    public void PrintScreen(string? filePath = null, uint num = 0, uint width = 0, uint height = 0)
+    {
+        string arg0 = filePath ?? AppSettings.PrintScreenFolder;
+        string fp = string.Concat(arg0, "\\TorrentIsland_print_", $"{++_printCount}", ".png");
+        _mediaPlayer.TakeSnapshot(num, fp, width, height);
+    }
 
     public static void SetGradfun(int? radius, float? strength)
     {
