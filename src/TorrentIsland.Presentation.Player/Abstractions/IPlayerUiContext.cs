@@ -10,6 +10,9 @@ public interface IPlayerUiContext
     PlayerViewModel ViewModel { get; }
     VideoView PwVideoView { get; set; }
     Window Property { get; }
+    void AbrirMenu();
+    void FecharMenu();
+    void ReiniciarTimerInatividade();
     void ShowControls();
     void InvalidateVisual();
     void ApplyBlackBackground();
