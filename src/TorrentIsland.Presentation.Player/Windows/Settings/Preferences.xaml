@@ -19,22 +19,432 @@
     WindowBackdropType="Mica"
     WindowStartupLocation="CenterScreen"
     WindowStyle="None">
+    
+    <Window.Resources>
+        <Style x:Key="FilterLabelStyle" TargetType="TextBlock">
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.5" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
 
-    <ui:TitleBar
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Barra de Título -->
+        <ui:TitleBar
             x:Name="TitleName"
-            Title="Preferences"
             Grid.Row="0"
+            Title="Preferences"
             ButtonsForeground="#AAAAAA"
             Foreground="White"
             ShowMinimize="False"
             ShowMaximize="False"
             Style="{StaticResource TituloGlobalStyle}">
-
             <ui:TitleBar.Icon>
-                <ui:SymbolIcon
-                    Filled="True"
-                    Foreground="#2D323F"
-                    Symbol="Glance24" />
+                <ui:SymbolIcon Filled="True" Foreground="#2D323F" Symbol="Glance24" />
             </ui:TitleBar.Icon>
         </ui:TitleBar>
+        
+        <ScrollViewer Grid.Row="1" Margin="20,0,5,20" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,15,20">
+
+                <!-- SEÇÃO: YT-DLP -->
+                <ui:TextBlock Text="Yt-DLP" FontSize="18" FontWeight="SemiBold" Margin="0,10,0,10" />
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Permitir Download de Dependências (Necessário para funcionar!)" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding AllowDownload}" />
+                </Grid>
+
+                <!-- SEÇÃO: TORRENT -->
+                <ui:TextBlock Text="Torrent" FontSize="18" FontWeight="SemiBold" Margin="0,20,0,10" />
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Limite de Download (KB/s)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="0 = Ilimitado. Digite o limite em Kilobytes por segundo." Value="{Binding TorrentLimiteDownload}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Limite de Upload (KB/s)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="0 = Ilimitado. Digite o limite em Kilobytes por segundo." Value="{Binding TorrentLimiteUpload}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Conexões Máximas" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Número máximo de conexões simultâneas (padrão: 100)." Value="{Binding TorrentConnections}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+
+                <!-- SEÇÃO: TORRENT GLOBAL -->
+                <ui:TextBlock Text="Torrent (Global)" FontSize="18" FontWeight="SemiBold" Margin="0,20,0,10" />
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Redirecionar Porta (UPnP)" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding RedirecionarPorta}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Descoberta de Peer Local" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding DescobertaPeerLocal}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Carregar Fast Resume" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding LoadFastResume}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Carregar Metadados Magnet" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding LoadMagnetLinkMetadata}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Carregar Cache DHT" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding LoadDhtCache}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Slots de Upload" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Número de peers para os quais você pode enviar dados simultaneamente." Value="{Binding UploadSlotsMaximo}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Porta Livre (Requer reinício)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Porta TCP/UDP para o servidor de streaming local." Value="{Binding PortaLivre}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+
+                <!-- SEÇÃO: VLC -->
+                <ui:TextBlock Text="VLC (Requer reinício)" FontSize="18" FontWeight="SemiBold" Margin="0,20,0,10" />
+                
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Log Verbose" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcVerboseLog}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Reconexão HTTP" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcHttpReconnect}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Descartar Frames Atrasados" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcDropLateFrames}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Pular Frames" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcSkipFrames}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Esconder Título do Vídeo" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcNoVideoTitleShow}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Direct3D Buffering" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcDirect3DBuffering}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Direct3D11 HW Blending" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcDirect3D11HwBlending}" />
+                </Grid>
+
+                <!-- VLC: Cache -->
+                <ui:TextBlock Text="Cache de Rede" FontSize="14" Margin="0,15,0,5" Foreground="Gray" />
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Network Caching (ms)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Tempo de buffer para streams de rede em milissegundos." Value="{Binding VlcNetworkCachingMs}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="File Caching (ms)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Tempo de buffer para arquivos locais em milissegundos." Value="{Binding VlcFileCachingMs}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Live Caching (ms)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Tempo de buffer para transmissões ao vivo em milissegundos." Value="{Binding VlcLiveCachingMs}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+
+                <!-- VLC: Decodificação e Escala -->
+                <ui:TextBlock Text="Decodificação e Escala" FontSize="14" Margin="0,15,0,5" Foreground="Gray" />
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Hardware Decoding" VerticalAlignment="Center" />
+                    <ui:TextBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Método de aceleração. Ex: any, dxva2, d3d11va." Text="{Binding VlcHardwareDecoding}" ClearButtonEnabled="False" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Skip Loop Filter (0-4)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Nível de processamento de filtro de loop (0 a 4)." Value="{Binding VlcSkipLoopFilter}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="SW Scale Mode (0-10)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Algoritmo de redimensionamento. 2 = Bicubic (padrão)." Value="{Binding VlcSwScaleMode}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Clock Synchro (-1 a 1)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="-1 = Automático, 0 = Desativado, 1 = Forçado." Value="{Binding VlcClockSynchro}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Clock Jitter (ms)" VerticalAlignment="Center" />
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Tolerância de jitter do relógio em milissegundos." Value="{Binding VlcClockJitterMs}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" />
+                </Grid>
+
+                <!-- VLC: Filtros -->
+                <ui:TextBlock Text="Filtros" FontSize="14" Margin="0,15,0,5" Foreground="Gray" />
+                
+                <!-- Deinterlacing -->
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Desentrelaçamento (Deinterlacing)" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcDeinterlacing}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Modo Deinterlace" VerticalAlignment="Center" 
+                               IsEnabled="{Binding VlcDeinterlacing}" Style="{StaticResource FilterLabelStyle}" />
+                    
+                    <ui:TextBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Modos válidos: blend, linear, yadif, etc." 
+                                Text="{Binding VlcDeinterlaceMode}" ClearButtonEnabled="False" IsEnabled="{Binding VlcDeinterlacing}">
+                        <ui:TextBox.Style>
+                            <Style TargetType="ui:TextBox" BasedOn="{StaticResource {x:Type ui:TextBox}}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="ToolTip" Value="É necessário ativar o filtro correspondente para ter o efeito desejado." />
+                                        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:TextBox.Style>
+                    </ui:TextBox>
+                </Grid>
+
+                <!-- Sharpen -->
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Filtro Sharpen" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcSharpenFilter}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Sharpen Sigma" VerticalAlignment="Center" 
+                               IsEnabled="{Binding VlcSharpenFilter}" Style="{StaticResource FilterLabelStyle}" />
+                    
+                    <ui:TextBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Intensidade do filtro. Recomendado entre 0.01 e 1.0." 
+                                Text="{Binding VlcSharpenSigma}" ClearButtonEnabled="False" IsEnabled="{Binding VlcSharpenFilter}">
+                        <ui:TextBox.Style>
+                            <Style TargetType="ui:TextBox" BasedOn="{StaticResource {x:Type ui:TextBox}}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="ToolTip" Value="É necessário ativar o filtro correspondente para ter o efeito desejado." />
+                                        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:TextBox.Style>
+                    </ui:TextBox>
+                </Grid>
+
+                <!-- Sepia -->
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Filtro Sepia" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcSepiaFilter}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Sepia Intensidade" VerticalAlignment="Center" 
+                               IsEnabled="{Binding VlcSepiaFilter}" Style="{StaticResource FilterLabelStyle}" />
+                    
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Intensidade do filtro sépia, de 0 a 255." 
+                                  Value="{Binding VlcSepiaIntensity}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" IsEnabled="{Binding VlcSepiaFilter}">
+                        <ui:NumberBox.Style>
+                            <Style TargetType="ui:NumberBox" BasedOn="{StaticResource {x:Type ui:NumberBox}}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="ToolTip" Value="É necessário ativar o filtro correspondente para ter o efeito desejado." />
+                                        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:NumberBox.Style>
+                    </ui:NumberBox>
+                </Grid>
+
+                <!-- Gradfun -->
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Filtro Gradfun" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VlcGradfunFilter}" />
+                </Grid>
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Gradfun Radius" VerticalAlignment="Center" 
+                               IsEnabled="{Binding VlcGradfunFilter}" Style="{StaticResource FilterLabelStyle}" />
+                    
+                    <ui:NumberBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Raio do filtro Gradfun (padrão: 16)." 
+                                  Value="{Binding VlcGradfunRadius}" ClearButtonEnabled="False" SpinButtonPlacementMode="Hidden" IsEnabled="{Binding VlcGradfunFilter}">
+                        <ui:NumberBox.Style>
+                            <Style TargetType="ui:NumberBox" BasedOn="{StaticResource {x:Type ui:NumberBox}}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="ToolTip" Value="É necessário ativar o filtro correspondente para ter o efeito desejado." />
+                                        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:NumberBox.Style>
+                    </ui:NumberBox>
+                </Grid>
+                
+                <Grid Margin="0,6" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Gradfun Strength" VerticalAlignment="Center" 
+                               IsEnabled="{Binding VlcGradfunFilter}" Style="{StaticResource FilterLabelStyle}" />
+                    
+                    <ui:TextBox Grid.Column="1" Width="80" VerticalAlignment="Center" ToolTip="Força do filtro (padrão: 1.2)." 
+                                Text="{Binding VlcGradfunStrength}" ClearButtonEnabled="False" IsEnabled="{Binding VlcGradfunFilter}">
+                        <ui:TextBox.Style>
+                            <Style TargetType="ui:TextBox" BasedOn="{StaticResource {x:Type ui:TextBox}}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="ToolTip" Value="É necessário ativar o filtro correspondente para ter o efeito desejado." />
+                                        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:TextBox.Style>
+                    </ui:TextBox>
+                </Grid>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Rodapé com botões -->
+        <Border Grid.Row="2" Background="#1A1A1A" Padding="20,15" Margin="0,10,0,0" BorderBrush="#333333" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Content="Cancelar" Click="Cancelar_Click" Margin="0,0,10,0" />
+                <ui:Button Content="Salvar" Appearance="Primary" Click="Salvar_Click" />
+            </StackPanel>
+        </Border>
+    </Grid>
 </ui:FluentWindow>
