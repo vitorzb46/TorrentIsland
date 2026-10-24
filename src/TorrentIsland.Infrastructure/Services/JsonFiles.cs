@@ -8,7 +8,7 @@ public class JsonFiles
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
     /// <summary>
-    /// Persiste de forma assíncrona o conteúdo de um dicionário em um arquivo JSON no disco.
+    /// Persiste de forma assíncrona o conteúdo de um tipo genérico em um arquivo JSON no disco.
     /// Esta operação é thread-safe, utilizando um semáforo para garantir que apenas uma gravação
     /// ocorra por vez, prevenindo corrupção de arquivo.
     /// </summary>
@@ -22,12 +22,10 @@ public class JsonFiles
     /// O caminho físico completo (incluindo nome e extensão) do arquivo JSON de destino.
     /// </param>
     /// <returns>Uma tarefa que representa a operação assíncrona de escrita.</returns>
-    public static async Task SaveToFileAsync<TKey, TValue>(IDictionary<TKey, TValue> instance,
-                                                           string cachePath,
-                                                           CancellationToken ct = default)
+    public static async Task SaveToFileAsync<T>(T instance, string cachePath, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        await _semaphore.WaitAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var json = JsonSerializer.Serialize(instance, Options);
@@ -44,8 +42,8 @@ public class JsonFiles
     }
 
     /// <summary>
-    /// Carrega de forma assíncrona os dados de um arquivo JSON e os insere no dicionário fornecido em memória.
-    /// Esta operação é thread-safe e substitui completamente o conteúdo atual do dicionário pelos dados do arquivo.
+    /// Carrega de forma assíncrona os dados de um arquivo JSON e os insere em um tipo genérico fornecido em memória.
+    /// Esta operação é thread-safe e substitui completamente o conteúdo atual do tipo T pelos dados do arquivo.
     /// </summary>
     /// <typeparam name="TKey">O tipo das chaves do dicionário.</typeparam>
     /// <typeparam name="TValue">O tipo dos valores do dicionário.</typeparam>
@@ -74,6 +72,54 @@ public class JsonFiles
                 foreach (var item in data)
                     instance[item.Key] = item.Value;
             }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"{ex.Message}");
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// Persiste de forma síncrona o conteúdo de um tipo genérico em um arquivo JSON no disco.
+    /// Esta operação é thread-safe, utilizando um semáforo para garantir que apenas uma gravação
+    /// ocorra por vez, prevenindo corrupção de arquivo.
+    /// </summary>
+    public static void SaveToFile<T>(T instance, string cachePath, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        _semaphore.Wait(ct);
+        try
+        {
+            var json = JsonSerializer.Serialize(instance, Options);
+            File.WriteAllText(cachePath, json);
+        }
+        catch (OperationCanceledException)
+        {
+            throw new OperationCanceledException();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// Carrega de forma síncrona os dados de um arquivo JSON e os insere em um tipo genérico fornecido em memória.
+    /// Esta operação é thread-safe e substitui completamente o conteúdo atual do tipo T pelos dados do arquivo.
+    /// </summary>
+    public static T? LoadFromFile<T>(string cachePath, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        _semaphore.Wait(ct);
+        try
+        {
+            if (!File.Exists(cachePath)) return default;
+            var json = File.ReadAllText(cachePath);
+            return JsonSerializer.Deserialize<T>(json);
         }
         catch (Exception ex)
         {
