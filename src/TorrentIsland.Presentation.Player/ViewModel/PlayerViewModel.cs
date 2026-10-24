@@ -1,7 +1,6 @@
 using LibVLCSharp.Shared;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Threading;
 using TorrentIsland.Application.Interfaces;
 using TorrentIsland.Application.Medias.Events;
 using TorrentIsland.Infrastructure.Events;
@@ -14,7 +13,7 @@ namespace TorrentIsland.Presentation.Player.ViewModel;
 public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly MediaPlayer _mediaPlayer;
-
+    private readonly IServiceProvider _sp;
     private readonly MediaCastManager _mediaCastManager;
     
     private bool _disposed;
@@ -24,7 +23,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
     public IReadOnlyList<CastDevice> Devices => _mediaCastManager.Devices;
 
     #region Constructor
-    public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer, IFormattingHelper fb)
+    public PlayerViewModel(LibVLC libVLC, MediaPlayer mediaPlayer, IFormattingHelper fb, IServiceProvider sp)
     {
         LibVLC = libVLC;
         _mediaPlayer = mediaPlayer;
@@ -32,6 +31,7 @@ public sealed partial class PlayerViewModel : INotifyPropertyChanged, IDisposabl
         _mediaCastManager.Start();
         _mediaPlayer.SetAdjustFloat(VideoAdjustOption.Enable, 1.0f);
         _fb = fb;
+        _sp = sp;
         _mediaPlayer.PositionChanged += OnPositionChanged;
         _mediaPlayer.Playing += OnPlaying;
         _mediaPlayer.Paused += OnPaused;

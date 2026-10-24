@@ -98,7 +98,7 @@ public partial class App : System.Windows.Application
         {
             var vlc = sp.GetRequiredService<VlcPlayerService>();
             var fb = sp.GetRequiredService<IFormattingHelper>();
-            return new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer, fb);
+            return new PlayerViewModel(vlc.LibVLC, vlc.MediaPlayer, fb, sp);
         });
 
         services.AddTransient(sp =>
