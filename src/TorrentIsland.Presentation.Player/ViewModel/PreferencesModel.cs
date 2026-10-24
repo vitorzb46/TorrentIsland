@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Infrastructure.Services;
 
@@ -23,7 +22,7 @@ public class PreferencesModel : INotifyPropertyChanged
     public bool VlcDirect3DBuffering { get => field; set { field = value; OnPropertyChanged(); } }
     public bool VlcDirect3D11HwBlending { get => field; set { field = value; OnPropertyChanged(); } }
 
-    public string VlcHardwareDecoding { get => field; set { field = value; OnPropertyChanged(); } }
+    public string VlcHardwareDecoding { get => field; set { field = value; OnPropertyChanged(); } } = string.Empty;
     public int VlcSkipLoopFilter { get => field; set { field = value; OnPropertyChanged(); } }
 
     public int VlcClockJitterMs { get => field; set { field = value; OnPropertyChanged(); } }
@@ -58,8 +57,8 @@ public class PreferencesModel : INotifyPropertyChanged
     public bool LoadDhtCache { get => field; set { field = value; OnPropertyChanged(); } }
     public int UploadSlotsMaximo { get => field; set { field = value; OnPropertyChanged(); } }
     public int PortaLivre { get => field; set { field = value; OnPropertyChanged(); } }
-    public List<TimeSpan> Retry { get => field; set { field = value; OnPropertyChanged(); } }
-    public List<TimeSpan> PeerTimeout { get => field; set { field = value; OnPropertyChanged(); } }
+    public List<TimeSpan> Retry { get => field; set { field = value; OnPropertyChanged(); } } = [];
+    public List<TimeSpan> PeerTimeout { get => field; set { field = value; OnPropertyChanged(); } } = [];
 
 
     // YT-DLP
