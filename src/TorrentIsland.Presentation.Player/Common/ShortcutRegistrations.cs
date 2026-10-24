@@ -2,15 +2,14 @@
 using System.Windows.Input;
 using TorrentIsland.Presentation.Player.Abstractions;
 using TorrentIsland.Presentation.Player.ViewModel;
-using TorrentIsland.Presentation.Player.Windows.Settings;
 
 namespace TorrentIsland.Presentation.Player.Common;
 
 public static class ShortcutRegistrations
 {
-    private static Preferences? _preferencesWindow;
     public static void RegisterPlayerShortcuts(this IShortcutManager manager, IPlayerUiContext window, PlayerViewModel vm)
-    {        
+    {   
+        manager.Register(Key.F9, ModifierKeys.None, window.ShowPreferencesWindow);
         manager.Register(Key.F11, ModifierKeys.None, window.ToggleFullscreen);
         manager.Register(Key.Space, ModifierKeys.None, vm.TogglePlay);
         manager.Register(Key.Left, ModifierKeys.None, vm.RetrocederTempo);
@@ -32,29 +31,7 @@ public static class ShortcutRegistrations
         manager.Register(Key.I, ModifierKeys.Control, () => vm.ExecuteCommand(vm.OpenAudioExternalCommand));
 
         manager.Register(Key.F12, ModifierKeys.None, () => vm.ExecuteCommand(vm.PrintScreenCommand));
-
-        manager.Register(Key.Multiply, ModifierKeys.None, () =>
-        {
-            if (_preferencesWindow is { IsLoaded: true })
-            {
-                _preferencesWindow.Activate();
-                return Task.FromResult(true);
-            }
-
-            _preferencesWindow = new Preferences
-            {
-                Owner = window as Window,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-
-            _preferencesWindow.Closed += (_, _) => _preferencesWindow = null;
-            
-            _preferencesWindow.Show();
-            _preferencesWindow.Activate();
-
-            return Task.FromResult(true);
-        });
-
+        
         manager.Register(Key.Down, ModifierKeys.None, () =>
         {
             vm.ToggleVolume(false);

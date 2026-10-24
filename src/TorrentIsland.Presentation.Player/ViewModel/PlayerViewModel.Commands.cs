@@ -1,7 +1,9 @@
 ﻿using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
 using TorrentIsland.Application.Medias.Enums;
 using TorrentIsland.Application.Medias.Events;
 using TorrentIsland.Application.Settings;
+using TorrentIsland.Presentation.Player.Abstractions;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.TvCast;
 
@@ -149,6 +151,15 @@ public partial class PlayerViewModel
                 PrintScreen(args.fp, args.num, args.width, args.height);
             });  
 
+    private ICommand? _preferencesWindowCommand;
+    public ICommand PreferencesWindowCommand =>
+        _preferencesWindowCommand ??= new RelayCommand(PreferencesWindow);
+
+    public void PreferencesWindow()
+    {
+        var pw = _sp.GetRequiredService<IPlayerUiContext>();
+        pw.ShowPreferencesWindow();
+    }
     public void PrintScreen(string? filePath = null, uint num = 0, uint width = 0, uint height = 0)
     {
         var utc = DateTime.Now.ToString("dd:MM:yyyy HH:mm:ss.ffff");

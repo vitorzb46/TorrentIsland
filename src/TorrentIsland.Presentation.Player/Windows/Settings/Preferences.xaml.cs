@@ -24,6 +24,12 @@ public partial class Preferences : FluentWindow
         _model.PropertyChanged += (s, e) => _isPropChanged = true;
     }
 
+    public void ReloadData()
+    {
+        _model.LoadFromAppSettings();
+        _isPropChanged = false;
+    }
+    
     private async void Salvar_Click(object sender, RoutedEventArgs e)
     {
         await SalvarAlteracoesAsync();

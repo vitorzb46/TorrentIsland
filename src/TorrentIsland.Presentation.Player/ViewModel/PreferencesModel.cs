@@ -124,7 +124,15 @@ public class PreferencesModel : INotifyPropertyChanged
             }
             catch (Exception) { /* best effort */ }
         }
-        
+
+        LoadFromAppSettings();
+    }
+
+    /// <summary>
+    /// Carrega direto do <see cref="AppSettings"/>
+    /// </summary>
+    public void LoadFromAppSettings()
+    {
         VlcVerboseLog = AppSettings.VlcVerboseLog;
         VlcHttpReconnect = AppSettings.VlcHttpReconnect;
         VlcDropLateFrames = AppSettings.VlcDropLateFrames;
@@ -166,6 +174,7 @@ public class PreferencesModel : INotifyPropertyChanged
 
         AllowDownload = AppSettings.AllowDownload;
     }
+
 
     /// <summary>
     /// Pega os valores alterados na tela e salva de volta no AppSettings (estático).

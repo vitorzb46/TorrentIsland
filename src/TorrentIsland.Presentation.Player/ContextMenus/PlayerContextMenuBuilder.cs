@@ -37,6 +37,8 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
         menu.Items.Add(BuildSubmenu("Áudio", AudioTrack()));
         menu.Items.Add(BuildSubmenu("Legenda", SubtitleTrack()));
         menu.Items.Add(new Separator());
+        menu.Items.Add(BuildItem("Preferências...", _viewModel.PreferencesWindowCommand, null, Key.F9));
+        menu.Items.Add(new Separator());
         menu.Items.Add(BuildSubmenu("Opções Globais", GlobalOptions()));
         return menu;
     }

@@ -16,6 +16,7 @@ using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.ContextMenus;
 using TorrentIsland.Presentation.Player.ViewModel;
 using TorrentIsland.Presentation.Player.Windows.Controls;
+using TorrentIsland.Presentation.Player.Windows.Settings;
 using TorrentIsland.Presentation.Player.Windows.StreamUrl;
 using TorrentIsland.Presentation.Player.Windows.WebSearch;
 using Wpf.Ui.Controls;
@@ -44,6 +45,7 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     private readonly ControlsWindowPositioner _controlsPositioner;
     private readonly IMediasFolderLoader _folderLoader;
     private readonly TorrentSearchWindow _torrentSearch;
+    private Preferences? _preferencesWindow;
 
     public PlayerWindow(IManagers managers,
                         ITorrentStatusEvent torrentStatus,
@@ -66,20 +68,19 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
         _timers = timers;
         _dropHandler = dropHandler;
         _scManager = shortcutManager;
-
+        _scManager.RegisterPlayerShortcuts(this, _viewModel);
+        
+        _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService);
+        _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
+        
         _localMedia = localLoaderFactory(this);
         _folderLoader = folderLoaderFactory(this);
         _streamLoader = torrentLoaderFactory(this);
+        _controlsPositioner = positionerFactory(this, _controls);
 
         DataContext = _viewModel;
         VideoView.MediaPlayer = vlc.MediaPlayer;
-
-        _controls = new ControlsWindow(_viewModel, this, torrentStatus, torrentService);
-        _torrentSearch = new TorrentSearchWindow(_viewModel, this, torrentService, torrentStatus);
-
-        _controlsPositioner = positionerFactory(this, _controls);
-        _scManager.RegisterPlayerShortcuts(this, _viewModel);
-
+        
         SubscribeEvents();
 
         Loaded += (_, _) =>
@@ -123,6 +124,20 @@ public partial class PlayerWindow : FluentWindow, IPlayerUiContext
     #endregion
 
     #region Public Methods
+    public void ShowPreferencesWindow()
+    {
+        if (_preferencesWindow is { IsLoaded: true })
+        {
+            _preferencesWindow.Activate();
+            return;
+        }
+        _preferencesWindow ??= new Preferences { Owner = _controls };
+        _preferencesWindow.Closed += (_, _) => _preferencesWindow = null;
+        _preferencesWindow.ReloadData();
+        _preferencesWindow.Show();
+        _preferencesWindow.Activate();
+    }
+
     public async Task<bool> ProcessPaste(KeyEventArgs e)
     {
         var mediaLoader = new MediaLoader(this);
