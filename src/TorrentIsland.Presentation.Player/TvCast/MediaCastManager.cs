@@ -6,13 +6,13 @@ namespace TorrentIsland.Presentation.Player.TvCast;
 // Tv cast (WIP)
 public sealed class MediaCastManager : IDisposable
 {
-    private LibVLC _libVLC;
-    private MediaPlayer? _mediaPlayer;
-    private RendererDiscoverer _rendererDiscoverer;    
-    private List<CastDevice> _devices  = [];
+    private readonly LibVLC _libVLC;
+    private readonly MediaPlayer? _mediaPlayer;
+    private readonly RendererDiscoverer _rendererDiscoverer;    
+    private readonly List<CastDevice> _devices  = [];
+    private readonly Lock _lock = new();
     private bool _disposed;
     private bool _isDiscovering;
-    private readonly Lock _lock = new();
     
     public IReadOnlyList<CastDevice> Devices
     {
