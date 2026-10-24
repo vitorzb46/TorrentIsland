@@ -6,35 +6,36 @@ namespace TorrentIsland.Application.Settings;
 public sealed class AppSettings
 {
     // File Logging
-    public static bool StackTrace { get; } = false;
+    public static bool StackTrace { get; set; } = false;
 
     // Pastas - AppData
-    public static string AppDataFolder { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-    public static string CacheFolder { get; } = Path.Combine(AppDataFolder, "TorrentIsland", "Cache");
-    public static string HtmlsFolder { get; } = Path.Combine(CacheFolder, "htmls");
-    public static string TempFolder { get; } = Path.Combine(CacheFolder, "Temp");
-    public static string LimaoFolder { get; } = Path.Combine(HtmlsFolder, "Limao");
+    public static string AppDataFolder { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+    public static string CacheFolder { get; set; } = Path.Combine(AppDataFolder, "TorrentIsland", "Cache");
+    public static string HtmlsFolder { get; set; } = Path.Combine(CacheFolder, "htmls");
+    public static string TempFolder { get; set; } = Path.Combine(CacheFolder, "Temp");
+    public static string LimaoFolder { get; set; } = Path.Combine(HtmlsFolder, "Limao");
 
     // Pastas - CurrentDirectory
-    public static string CurrentFolder { get; } = Path.Combine(AppContext.BaseDirectory);
-    public static string DownloadsFolder { get; } = Path.Combine(CurrentFolder, "Downloads");
-    public static string TorrentsFolder { get; } = Path.Combine(CurrentFolder, "Torrents");
-    public static string ResourcesFolder { get; } = Path.Combine(CurrentFolder, "Resources");
-    public static string PrintScreenFolder { get; } = Path.Combine(CurrentFolder, "Prints");
+    public static string CurrentFolder { get; set; } = Path.Combine(AppContext.BaseDirectory);
+    public static string DownloadsFolder { get; set; } = Path.Combine(CurrentFolder, "Downloads");
+    public static string TorrentsFolder { get; set; } = Path.Combine(CurrentFolder, "Torrents");
+    public static string ResourcesFolder { get; set; } = Path.Combine(CurrentFolder, "Resources");
+    public static string PrintScreenFolder { get; set; } = Path.Combine(CurrentFolder, "Prints");
 
     // Arquivos
-    public static string AppLog { get; } = Path.Combine(CurrentFolder, "TorrentIsland.log");
-    public static string SubCacheFile { get; } = Path.Combine(CacheFolder, "legendas_cache.json");
-    public static string TimeCacheFile { get; } = Path.Combine(CacheFolder, "time_cache.json");
-    public static string MkvExtract { get; } = Path.Combine(ResourcesFolder, "mkvextract.exe");
-    public static string YtDlpExe { get; } = Path.Combine(ResourcesFolder, "yt-dlp.exe");
-    public static string FfmpegExe { get; } = Path.Combine(ResourcesFolder, "ffmpeg.exe");
-    public static string ArquivoEngineState { get; } = Path.Combine(CacheFolder, "EngineState");
+    public static string UserPreferencesJson { get; set; } = Path.Combine(CacheFolder, "UserPreferences.json");
+    public static string AppLog { get; set; } = Path.Combine(CurrentFolder, "TorrentIsland.log");
+    public static string SubCacheFile { get; set; } = Path.Combine(CacheFolder, "legendas_cache.json");
+    public static string TimeCacheFile { get; set; } = Path.Combine(CacheFolder, "time_cache.json");
+    public static string MkvExtract { get; set; } = Path.Combine(ResourcesFolder, "mkvextract.exe");
+    public static string YtDlpExe { get; set; } = Path.Combine(ResourcesFolder, "yt-dlp.exe");
+    public static string FfmpegExe { get; set; } = Path.Combine(ResourcesFolder, "ffmpeg.exe");
+    public static string ArquivoEngineState { get; set; } = Path.Combine(CacheFolder, "EngineState");
 
     // Yt-DLP
     public static bool AllowDownload { get; set; } = false;
-    public static string NomeMidia { get; } = "%(title)s.%(ext)s";
-    public static string VideoAudioQualidade { get; } = "bestvideo+bestaudio/best";
+    public static string NomeMidia { get; set; } = "%(title)s.%(ext)s";
+    public static string VideoAudioQualidade { get; set; } = "bestvideo+bestaudio/best";
 
     // Vlc Configs
     public static bool VlcVerboseLog { get; set; } = false;
@@ -74,32 +75,32 @@ public sealed class AppSettings
     public static string FullPath { get; set; } = string.Empty;
     public static bool OneStream { get; set; } = true;
     public bool Semeando { get; set; } = true;
-    public int TorrentLimiteDownload { get; }
-    public int TorrentLimiteUpload { get; }
+    public static int TorrentLimiteDownload { get; set; }
+    public static int TorrentLimiteUpload { get; set; }
 
     // Client Engine Settings
-    public bool RedirecionarPorta { get; } = true;
-    public bool DescobertaPeerLocal { get; } = true;
-    public IPEndPoint IpV4 { get; } = new(IPAddress.Any, 0);
-    public IPEndPoint IpV6 { get; } = new(IPAddress.Any, 0);
-    public int TorrentConnections { get; } = 100;
-    public int EngineConnections { get; } = 300;
-    public bool LoadFastResume { get; } = true;
-    public bool LoadMagnetLinkMetadata { get; } = true;
-    public bool LoadDhtCache { get; } = true;
-    public bool ArquivoParcial { get; } = false;
-    public int CacheBytesEmDisco { get; } = 150 * 1024 * 1024;
-    public string StreamingPrefix { get; } = $"http://127.0.0.1:{PortaLivre}/torrent-stream/";
-    public TimeSpan ConexaoTimeout { get; } = TimeSpan.FromSeconds(15);
-    public int UploadSlotsMaximo { get; } = 4;
-    public List<TimeSpan> Retry { get; } =
+    public static bool RedirecionarPorta { get; set; } = true;
+    public static bool DescobertaPeerLocal { get; set; } = true;
+    public IPEndPoint IpV4 { get; set; } = new(IPAddress.Any, 0);
+    public IPEndPoint IpV6 { get; set; } = new(IPAddress.Any, 0);
+    public static int TorrentConnections { get; set; } = 100;
+    public static int EngineConnections { get; set; } = 300;
+    public static bool LoadFastResume { get; set; } = true;
+    public static bool LoadMagnetLinkMetadata { get; set; } = true;
+    public static bool LoadDhtCache { get; set; } = true;
+    public static bool ArquivoParcial { get; set; } = false;
+    public static int CacheBytesEmDisco { get; set; } = 150 * 1024 * 1024;
+    public string StreamingPrefix { get; set; } = $"http://127.0.0.1:{PortaLivre}/torrent-stream/";
+    public static TimeSpan ConexaoTimeout { get; set; } = TimeSpan.FromSeconds(15);
+    public static int UploadSlotsMaximo { get; set; } = 4;
+    public static List<TimeSpan> Retry { get; set; } =
     [
         TimeSpan.FromSeconds(15),
         TimeSpan.FromSeconds(30),
         TimeSpan.FromSeconds(60),
         TimeSpan.FromSeconds(120)
     ];
-    public List<TimeSpan> PeerTimeout { get; } =
+    public static List<TimeSpan> PeerTimeout { get; set; } =
     [
         TimeSpan.FromSeconds(5),
         TimeSpan.FromSeconds(7),
@@ -107,7 +108,7 @@ public sealed class AppSettings
         TimeSpan.FromSeconds(13)
     ];
 
-    private static int PortaLivre { get; set; } = ObterPortaLivre();
+    public static int PortaLivre { get; set; } = ObterPortaLivre();
 
     private static int ObterPortaLivre()
     {

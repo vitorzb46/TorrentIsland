@@ -51,31 +51,31 @@ public class ClientEngineInitializer : IHostedService
         return new EngineSettingsBuilder
         {
             // --- REDE E CONEXÕES ---
-            AllowPortForwarding = settings.RedirecionarPorta,
-            AllowLocalPeerDiscovery = settings.DescobertaPeerLocal,
+            AllowPortForwarding = AppSettings.RedirecionarPorta,
+            AllowLocalPeerDiscovery = AppSettings.DescobertaPeerLocal,
             DhtEndPoint = settings.IpV4, // Porta UDP dinâmica para DHT
             ListenEndPoints = new Dictionary<string, IPEndPoint>
                 {
                     { "ipv4", settings.IpV4 }, // Porta TCP/UDP dinâmica para Peers
                     { "ipv6", settings.IpV6 }
                 },
-            MaximumConnections = settings.EngineConnections,
-            ConnectionRetryDelays = settings.Retry,
-            ConnectionTimeouts = settings.PeerTimeout,
+            MaximumConnections = AppSettings.EngineConnections,
+            ConnectionRetryDelays = AppSettings.Retry,
+            ConnectionTimeouts = AppSettings.PeerTimeout,
             DhtBootstrapRouters = DhtRouter(),
 
             // --- CACHE E ARQUIVOS ---
-            AutoSaveLoadFastResume = settings.LoadFastResume,
-            AutoSaveLoadMagnetLinkMetadata = settings.LoadMagnetLinkMetadata,
-            AutoSaveLoadDhtCache = settings.LoadDhtCache,
+            AutoSaveLoadFastResume = AppSettings.LoadFastResume,
+            AutoSaveLoadMagnetLinkMetadata = AppSettings.LoadMagnetLinkMetadata,
+            AutoSaveLoadDhtCache = AppSettings.LoadDhtCache,
             CacheDirectory = AppSettings.CacheFolder,
-            UsePartialFiles = settings.ArquivoParcial, // Desativado para ajudar o VLC a ler o arquivo direto
+            UsePartialFiles = AppSettings.ArquivoParcial, // Desativado para ajudar o VLC a ler o arquivo direto
             DiskCachePolicy = CachePolicy.ReadsAndWrites,
-            DiskCacheBytes = settings.CacheBytesEmDisco, // 150MB de RAM dedicada a cache
+            DiskCacheBytes = AppSettings.CacheBytesEmDisco, // 150MB de RAM dedicada a cache
 
             // --- STREAMING E WEBSEEDS ---
             HttpStreamingPrefix = settings.StreamingPrefix,
-            WebSeedConnectionTimeout = settings.ConexaoTimeout,
+            WebSeedConnectionTimeout = AppSettings.ConexaoTimeout,
             WebSeedSpeedTrigger = 0 // Baixa de fontes HTTP e P2P simultaneamente se disponível
 
         };

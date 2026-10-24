@@ -33,7 +33,7 @@ public class Managers : IManagers
     internal TorrentSettings Settings { get; private set; }
     internal TorrentManager? StreamingManager { get; set; }
 
-    public Managers(ClientEngine Engine, AppSettings app, IEntityMapping map, IServiceProvider serviceProvider)
+    public Managers(ClientEngine Engine, IEntityMapping map, IServiceProvider serviceProvider)
     {
         _engine = Engine;
         _map = map;
@@ -44,10 +44,10 @@ public class Managers : IManagers
             AllowInitialSeeding = true,
             AllowPeerExchange = true,
             CreateContainingDirectory = true,
-            MaximumConnections = app.TorrentConnections,
-            UploadSlots = app.UploadSlotsMaximo,
-            MaximumDownloadRate = app.TorrentLimiteDownload,
-            MaximumUploadRate = app.TorrentLimiteUpload
+            MaximumConnections = TorrentConnections,
+            UploadSlots = UploadSlotsMaximo,
+            MaximumDownloadRate = TorrentLimiteDownload,
+            MaximumUploadRate = TorrentLimiteUpload
         }.ToSettings();
         RestoreTorrentsFromEngine();
         ResumeTorrentsQueue();
