@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using TorrentIsland.Application.Settings;
 using TorrentIsland.Presentation.Player.ViewModel;
+using static TorrentIsland.Presentation.Player.Windows.CustomFilterSettings.CustomFilterWindow;
 using ContextMenu = System.Windows.Controls.ContextMenu;
 using MenuItem = System.Windows.Controls.MenuItem;
 
@@ -66,16 +67,17 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
     private object[] Gradfun()
     {
         var current = AppSettings.VlcGradfunRadius;
+        var strength = AppSettings.VlcGradfunStrength;
 
         return
         [
-            BuildRadioItem("Desativado", _viewModel.GradfunCommand, (-1, -1f), current == null),
-            BuildRadioItem("Sutil",      _viewModel.GradfunCommand, (8,  0.8f), current == 8),
-            BuildRadioItem("Padrão",     _viewModel.GradfunCommand, (16, 1.2f), current == 16),
-            BuildRadioItem("Intenso",    _viewModel.GradfunCommand, (24, 2.5f), current == 24),
-            BuildRadioItem("Agressivo",  _viewModel.GradfunCommand, (32, 4.0f), current == 32),
+            BuildRadioItem("Desativado", _viewModel.GradfunCommand, (-1, -1f),  (current, strength) == (null, null)),
+            BuildRadioItem("Sutil",      _viewModel.GradfunCommand, (8,  0.8f), (current, strength) == (8,  0.8f)),
+            BuildRadioItem("Padrão",     _viewModel.GradfunCommand, (16, 1.2f), (current, strength) == (16, 1.2f)),
+            BuildRadioItem("Intenso",    _viewModel.GradfunCommand, (24, 2.5f), (current, strength) == (24, 2.5f)),
+            BuildRadioItem("Agressivo",  _viewModel.GradfunCommand, (32, 4.0f), (current, strength) == (32, 4.0f)),
             new Separator(),
-            BuildItem("Custom..."), // Todo
+            BuildItem("Custom...", _viewModel.CustomFilterCommand, FilterType.Gradfun),
         ];
     }
 
@@ -91,7 +93,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
             BuildRadioItem("Intenso",     _viewModel.SepiaCommand, 220, current == 220),
             BuildRadioItem("Total",       _viewModel.SepiaCommand, 255, current == 255),
             new Separator(),
-            BuildItem("Custom..."), // Todo
+            BuildItem("Custom...", _viewModel.CustomFilterCommand, FilterType.Sepia),
         ];
     }
 
@@ -107,7 +109,7 @@ public sealed class PlayerContextMenuBuilder(PlayerViewModel viewModel)
             BuildRadioItem("Forte",          _viewModel.SharpenCommand, 1.0f, current == 1.0f),
             BuildRadioItem("Extremo",        _viewModel.SharpenCommand, 2.0f, current == 2.0f),
             new Separator(),
-            BuildItem("Custom...") // Todo
+            BuildItem("Custom...", _viewModel.CustomFilterCommand, FilterType.Sharpen),
         ];
     }
 

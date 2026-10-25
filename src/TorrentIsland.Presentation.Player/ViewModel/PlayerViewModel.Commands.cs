@@ -1,4 +1,5 @@
-﻿using System.Windows.Input;
+﻿using System.Windows;
+using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using TorrentIsland.Application.Medias.Enums;
 using TorrentIsland.Application.Medias.Events;
@@ -6,6 +7,8 @@ using TorrentIsland.Application.Settings;
 using TorrentIsland.Presentation.Player.Abstractions;
 using TorrentIsland.Presentation.Player.Common;
 using TorrentIsland.Presentation.Player.TvCast;
+using TorrentIsland.Presentation.Player.Windows.CustomFilterSettings;
+using static TorrentIsland.Presentation.Player.Windows.CustomFilterSettings.CustomFilterWindow;
 
 namespace TorrentIsland.Presentation.Player.ViewModel;
 
@@ -154,6 +157,17 @@ public partial class PlayerViewModel
     private ICommand? _preferencesWindowCommand;
     public ICommand PreferencesWindowCommand =>
         _preferencesWindowCommand ??= new RelayCommand(PreferencesWindow);
+
+    private ICommand? _customFilterCommand;
+    public ICommand CustomFilterCommand =>
+        _customFilterCommand ??= new RelayCommand<FilterType>(CustomFilter);
+
+    public void CustomFilter(FilterType filter)
+    {
+        var pw = _sp.GetRequiredService<IPlayerUiContext>();
+        var window = new CustomFilterWindow(filter) { Owner = pw as Window};
+        window.ShowDialog();
+    }
 
     public void PreferencesWindow()
     {

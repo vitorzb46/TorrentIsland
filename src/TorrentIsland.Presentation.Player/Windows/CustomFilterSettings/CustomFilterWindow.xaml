@@ -1,0 +1,144 @@
+<ui:FluentWindow
+    x:Class="TorrentIsland.Presentation.Player.Windows.CustomFilterSettings.CustomFilterWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:player="clr-namespace:TorrentIsland.Presentation.Player"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Width="340"
+    MinWidth="340"
+    MinHeight="160"
+    MaxWidth="340"
+    HorizontalAlignment="Center"
+    VerticalAlignment="Center"
+    ExtendsContentIntoTitleBar="True"
+    PreviewKeyDown="FilterWindow_PreviewKeyDown"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    WindowBackdropType="Mica"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  Barra de Título  -->
+        <ui:TitleBar
+            x:Name="TitleName"
+            Title="Configuração de Filtro"
+            Grid.Row="0"
+            ButtonsForeground="#AAAAAA"
+            Foreground="White"
+            ShowMaximize="False"
+            ShowMinimize="False"
+            Style="{StaticResource TituloGlobalStyle}">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon
+                    Filled="True"
+                    Foreground="#2D323F"
+                    Symbol="Glance24" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <!--  Conteúdo  -->
+        <Grid Grid.Row="1" Margin="20,10,20,10">
+
+            <!--  Filtro Sharpen  -->
+            <StackPanel
+                x:Name="PanelSharpen"
+                Margin="0,5,0,0"
+                VerticalAlignment="Center"
+                Visibility="Collapsed">
+                <TextBlock Margin="0,0,0,5" Text="Intensidade (Sigma)" />
+                <ui:TextBox x:Name="TxtSharpenSigma" PlaceholderText="Ex: 0.05" />
+                <TextBlock
+                    Margin="0,10,0,0"
+                    FontSize="11"
+                    Foreground="Gray"
+                    TextWrapping="Wrap">
+                    <Run Text="Aceita valores entre 0.01 e 2.0." />
+                    <LineBreak />
+                    <Run Text="Use -1 para desativar." />
+                </TextBlock>
+            </StackPanel>
+
+            <!--  Filtro Sepia  -->
+            <StackPanel
+                x:Name="PanelSepia"
+                Margin="0,5,0,0"
+                VerticalAlignment="Center"
+                Visibility="Collapsed">
+                <TextBlock Margin="0,0,0,5" Text="Intensidade" />
+                <ui:TextBox x:Name="TxtSepiaIntensity" PlaceholderText="Ex: 128" />
+                <TextBlock
+                    Margin="0,10,0,0"
+                    FontSize="11"
+                    Foreground="Gray"
+                    TextWrapping="Wrap">
+                    <Run Text="Aceita valores entre 0 e 255." />
+                    <LineBreak />
+                    <Run Text="Use 0 para desativar." />
+                </TextBlock>
+            </StackPanel>
+
+            <!--  Filtro Gradfun  -->
+            <StackPanel
+                x:Name="PanelGradfun"
+                Margin="0,5,0,0"
+                VerticalAlignment="Center"
+                Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="15" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Margin="0,0,0,5" Text="Raio (Radius)" />
+                        <ui:TextBox x:Name="TxtGradfunRadius" PlaceholderText="Ex: 16" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Margin="0,0,0,5" Text="Força (Strength)" />
+                        <ui:TextBox x:Name="TxtGradfunStrength" PlaceholderText="Ex: 1.2" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock
+                    Margin="0,10,0,0"
+                    FontSize="11"
+                    Foreground="Gray"
+                    TextWrapping="Wrap">
+                    <Run Text="Raio: Inteiro positivo." />
+                    <LineBreak />
+                    <Run Text="Força: Float positivo." />
+                    <LineBreak />
+                    <Run Text="Deixe ambos vazios para desativar o filtro." />
+                </TextBlock>
+            </StackPanel>
+
+        </Grid>
+
+        <!--  Rodapé  -->
+        <Border
+            Grid.Row="2"
+            Padding="15,10"
+            Background="#1A1A1A"
+            BorderBrush="#333333"
+            BorderThickness="0,1,0,0">
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <ui:Button
+                    Margin="0,0,10,0"
+                    Click="Cancelar_Click"
+                    Content="Cancelar" />
+                <ui:Button
+                    Appearance="Primary"
+                    Click="Salvar_Click"
+                    Content="Salvar" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</ui:FluentWindow>
